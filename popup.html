@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Privacy & Cookie Manager</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        #cookiesList,
+        #privacySettings,
+        #controls {
+            margin-bottom: 20px;
+        }
+
+        button {
+            margin: 5px;
+            padding: 10px 15px;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 15px;
+            border: 1px pink solid;
+            font-size: 15px;
+        }
+
+        input[type="text"] {
+            margin-top: 10px;
+            padding: 5px;
+            font-size: 14px;
+            width: calc(100% - 20px);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th,
+        td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f4f4f4;
+        }
+
+        #notification {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f0f8ff;
+            border: 1px solid #add8e6;
+            display: none;
+            min-height: 30px;
+            border-radius: 20px;
+            font-size: 20px;
+
+        }
+
+        .domain-section {
+            margin-top: 20px;
+        }
+
+        .domain-header {
+            font-size: 18px;
+            margin: 10px 0;
+            border-bottom: 2px solid #ccc;
+            padding-bottom: 5px;
+        }
+
+        #clearIcon {
+            width: 20px;
+            height: 20px;
+        }
+
+        .domain-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    </style>
+</head>
+
+<body style="min-width: 500px; transition: all .3s;">
+    <h1>Privacy & Cookie Manager <a href="./question.html" target="_blank" rel="noopener noreferrer">hello</a></h1>
+
+    <div id="controls">
+        <button id="clearCookies">Clear All Cookies</button>
+        <button id="clearSiteData">Clear Site Data</button>
+        <button id="copyCurrentCookies">Copy Current Tab Cookies</button>
+        <button id="pasteCookies">Paste Cookies</button>
+    </div>
+    <div id="privacySettings">
+        <h2>Privacy Settings</h2>
+        <button id="toggleTracking">Toggle Tracking Protection</button>
+    </div>
+    <div id="notification"></div>
+    <div id="cookiesList">
+        <div class="cookies-filter" style="position: relative;">
+            <h2>Cookies</h2>
+            <p class="Number-Cookies" id="totalCookies"
+                style="font-size: 20px;color: rebeccapurple;border: 2px pink solid;border-radius: 10px;box-sizing: content-box;padding: 10px;">
+            </p>
+            <input type=" text" id="filterInput" placeholder="Filter cookies by name or domain..."
+                style="width: calc(100% - 25px);min-height: 25px; border-radius: 10px; font-size: 15px; font-weight: bold;">
+            <img src="icons/bin.png" alt="clear-icons" id="clearInputFillter"
+                style=" position: absolute;width: 20px; height: 20px; right: 30px; bottom: 5px;">
+        </div>
+
+        <div id="cookieTableContainer"></div>
+    </div>
+    <script src="popup.js"></script>
+    <script src="script.js"></script>
+    <script src="email.min.js"></script>
+</body>
+
+</html>

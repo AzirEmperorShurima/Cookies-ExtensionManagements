@@ -1,0 +1,48 @@
+{
+    "manifest_version": 3,
+    "author": "Constantine Thompson",
+    "name": "Privacy & Cookies Manager",
+    "version": "1.0.1",
+    "description": "Extension for managing cookies and privacy settings \n in this extension you can manage your cookies \n enable/disable third-party cookies, \nview your cookies,\n copy , paste and export your cookies \n and delete cookies data.",
+    "permissions": [
+        "cookies",
+        "storage",
+        "tabs",
+        "privacy",
+        "webRequest",
+        "declarativeNetRequest",
+        "activeTab",
+        "notifications",
+        "clipboardRead",
+        "clipboardWrite",
+        "scripting"
+    ],
+    "host_permissions": [
+        "<all_urls>"
+    ],
+    "action": {
+        "default_popup": "popup.html",
+        "default_icon": {
+            "16": "icons/icon16.png",
+            "48": "icons/icon16.png",
+            "128": "icons/icon16.png"
+        }
+    },
+    "icons": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon128.png",
+        "128": "icons/icon128.png"
+    },
+    "background": {
+        "service_worker": "background.js"
+    },
+    "declarative_net_request": {
+        "rule_resources": [
+            {
+                "id": "ruleset_1",
+                "enabled": true,
+                "path": "rules.json"
+            }
+        ]
+    }
+}
