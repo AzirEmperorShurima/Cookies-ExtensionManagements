@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "author": "Constantine Thompson",
     "name": "Privacy & Cookies Manager",
-    "version": "1.0.1",
+    "version": "1.1.5.1",
     "description": "Extension for managing cookies and privacy settings \n in this extension you can manage your cookies \n enable/disable third-party cookies, \nview your cookies,\n copy , paste and export your cookies \n and delete cookies data.",
     "permissions": [
         "cookies",

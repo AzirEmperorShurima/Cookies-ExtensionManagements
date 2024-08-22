@@ -8,12 +8,19 @@
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
+
         }
 
         #cookiesList,
         #privacySettings,
         #controls {
             margin-bottom: 20px;
+        }
+
+        #controls button {
+            font-weight: bolder;
+            color: pink;
+            text-shadow: 1px 1px black;
         }
 
         button {
@@ -60,6 +67,7 @@
             border-radius: 20px;
             font-size: 20px;
 
+
         }
 
         .domain-section {
@@ -73,9 +81,15 @@
             padding-bottom: 5px;
         }
 
-        #clearIcon {
-            width: 20px;
-            height: 20px;
+        #clearIcon,
+        #copyIcon {
+            width: 30px;
+            height: 30px;
+        }
+
+        #copyIcon {
+            position: absolute;
+            right: 5%;
         }
 
         .domain-header {
@@ -83,21 +97,41 @@
             justify-content: space-between;
             align-items: center;
         }
+
+        #trackingprotectionicon {
+            border: 1px pink solid;
+            border-radius: 10px;
+            left: 50px;
+            width: 50px;
+            height: 50px;
+            position: absolute;
+        }
     </style>
 </head>
 
 <body style="min-width: 500px; transition: all .3s;">
-    <h1>Privacy & Cookie Manager <a href="./question.html" target="_blank" rel="noopener noreferrer">hello</a></h1>
+    <h1 style="position: relative;">Privacy & Cookie Manager <img src="icons/cookies.png" alt="paste"
+            class="paste-icon ico" width="40px" height="40px" id="Cookies"
+            style="position: absolute; padding-left: 20px;">
+    </h1>
 
     <div id="controls">
         <button id="clearCookies">Clear All Cookies</button>
         <button id="clearSiteData">Clear Site Data</button>
         <button id="copyCurrentCookies">Copy Current Tab Cookies</button>
-        <button id="pasteCookies">Paste Cookies</button>
+        <button id="pasteCookies" style="position: relative; padding-right: 30px;">Paste Cookies
+            <img src="icons/paste.png" alt="paste" class="paste-icon ico" width="20px" height="20px"
+                id="pasteCookiesIco" style="position: absolute; right:5px">
+        </button>
     </div>
     <div id="privacySettings">
         <h2>Privacy Settings</h2>
-        <button id="toggleTracking">Toggle Tracking Protection</button>
+        <img src="icons/tracking_protection.png" alt="trackingProtection" class="tracking-protection-icon ico"
+            width="20px" height="20px" id="trackingprotectionicon">
+        <button id="toggleTracking" style="position: relative; width: 400px; margin-left: 20%; font-size: 20px;">
+            Toggle Tracking Protection
+        </button>
+
     </div>
     <div id="notification"></div>
     <div id="cookiesList">
