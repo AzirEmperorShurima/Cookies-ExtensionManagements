@@ -3,7 +3,7 @@ const getAllCookies = async () => {
     if (getAllCookies)
         return getAllCookies
     else
-        return null
+        return { "type": "Cookies", "Status": "Non Exist Any Data" }
 }
 
 
@@ -70,12 +70,6 @@ function notify(message, status) {
         notification.style.backgroundColor = 'green';
         notification.style.color = 'white';
     }
-    // if(status==='internalERR'){
-    //     notification.style.backgroundColor = 'yellow';
-    //     notification.style.color = 'black';
-    //     notification.style.fontWeight = 'bold';
-    //     notification.style.fontSize = '16px';
-    // }
     notification.textContent = message;
     notification.style.display = 'block';
     setTimeout(() => {
@@ -163,9 +157,10 @@ async function loadCookies(filter = '') {
         domainHeader.appendChild(copyIcon);
         clearIcon.id = 'clearIcon';
         clearIcon.src = 'icons/clear.png';
+
         clearIcon.addEventListener('click', () => {
             deleteCookies_in_Domains(domain);
-            loadCookies(filter);
+
         })
         domainHeader.appendChild(clearIcon);
         domainSection.appendChild(domainHeader);
@@ -210,6 +205,7 @@ async function loadCookies(filter = '') {
     });
 }
 const deleteCookies_in_Domains = async (DomainName) => {
+    const temp = document.getElementById('filterInput').value
     const cookieList = await chrome.cookies.getAll({});
     if (confirm('Are you sure you want to delete all cookies in domain  ' + DomainName + '?')) {
         await Promise.all(cookieList.map(cookie => {
@@ -222,7 +218,7 @@ const deleteCookies_in_Domains = async (DomainName) => {
             }
         }));
         notify('All cookies in domain' + DomainName + 'have been deleted.', 'warning');
-        loadCookies(DomainName);
+        loadCookies(temp);
     }
 
 };
@@ -268,64 +264,6 @@ async function copyCurrentTabCookies() {
         notify(`Failed to copy cookies: ${error.message}`, 'error');
     }
 }
-
-// async function pasteCookies() {
-//     notify('Pasting cookies from clipboard...', 'warning');
-//     try {
-//         const clipboardText = await navigator.clipboard.readText();
-//         if (!clipboardText) throw new Error('No data found in clipboard');
-
-//         const [domainLine, ...cookieLines] = clipboardText.split('\n');
-//         if (domainLine) {
-//             const domainMatch = domainLine.trim().match(/^domain=(.+)$/);
-//             if (!domainMatch) throw new Error('Domain not found in clipboard data');
-
-//             const domain = domainMatch[1];
-
-//             const cookies = cookieLines.map(line => {
-//                 const separatorIndex = line.indexOf('=');
-//                 const name = line.slice(0, separatorIndex);
-//                 const value = line.slice(separatorIndex + 1);
-//                 return { name, value };
-//             }).filter(cookie => cookie.name && cookie.value);
-
-//             if (cookies.length === 0) throw new Error('No valid cookies found in clipboard data');
-
-//             const newTab = await chrome.tabs.create({ url: `https://${domain || 'google.com'}` });
-
-//             // for (const cookie of cookies) {
-//             //     await chrome.cookies.set({
-//             //         url: `https://${domain}`,
-//             //         name: cookie.name,
-//             //         value: cookie.value,
-//             //         domain: `.${domain}`,
-//             //         secure: true
-//             //     });
-//             // }
-//             await Promise.all(cookies.map(cookie =>
-//                 chrome.cookies.set({
-//                     url: `https://${domain}`,
-//                     name: cookie.name,
-//                     value: cookie.value,
-//                     domain: `.${domain}`,
-//                     secure: true,
-//                     session: cookie.session
-//                 })
-//             ));
-
-//         }
-//         else {
-//             const JsonCookies = JSON.parse(clipboardText);
-//             console.log(JsonCookies);
-//         }
-
-
-//         notify('Cookies pasted and new tab opened.');
-//     } catch (error) {
-//         notify(`Failed to paste cookies: ${error.message}`);
-
-//     }
-// }
 
 async function pasteCookies() {
     notify('Pasting cookies from clipboard...', 'warning');
