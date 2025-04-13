@@ -653,40 +653,79 @@ input:checked+.slider:before {
 }
 
 .domain-section {
-    background: white;
-    border-radius: var(--border-radius-md);
-    margin-bottom: var(--spacing-md);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 16px;
+    padding: 12px;
 }
 
 .domain-header {
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    padding: var(--spacing-md);
-    background: rgba(255, 192, 203, 0.1);
-    border-radius: var(--border-radius-md) var(--border-radius-md) 0 0;
+    padding: 10px;
+    margin-bottom: 15px;
+    background-color: #fff3e0;
+    border-radius: 8px;
 }
 
 .domain-header p {
     margin: 0;
-    font-weight: bold;
-    color: var(--secondary-color);
+    font-size: 14px;
+    font-weight: 600;
+    color: #e65100;
+    padding: 8px 12px;
+    border: 1px solid #ffb74d;
+    border-radius: 6px;
+    background-color: white;
 }
 
-#clearIcon,
-#copyIcon {
-    width: 20px;
-    height: 20px;
-    margin-left: var(--spacing-md);
-    cursor: url('../icons/dildo.png'), pointer;
-    opacity: 0.7;
-    transition: var(--transition-fast);
+.domain-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
 }
 
-#clearIcon:hover,
-#copyIcon:hover {
-    opacity: 1;
+.domain-actions img {
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.domain-actions img:hover {
+    background-color: rgba(255, 255, 255, 0.8);
     transform: scale(1.1);
+}
+
+/* Update table styles */
+.domain-section table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 13px;
+}
+
+.domain-section th {
+    background-color: #fff3e0;
+    color: #e65100;
+    font-weight: 600;
+    padding: 10px;
+    text-align: left;
+    border: 1px solid #ffe0b2;
+}
+
+.domain-section td {
+    padding: 8px 10px;
+    border: 1px solid #ffe0b2;
+    word-break: break-all;
+}
+
+.domain-section tr:hover {
+    background-color: #fff8e1;
 }
 
 /* Scrollbar styling */
