@@ -1,3 +1,117 @@
+const cookiesManager = document.getElementById('cookiesManager');
+const extensionManager = document.getElementById('extensionManager');
+const cookiesList = document.getElementById('cookiesList');
+const extensionsList = document.getElementById('extensionsList');
+const control = document.getElementById('controls');
+document.getElementById('extensionManager').addEventListener('click', async () => {
+    const extensionsList = document.getElementById('extensionsList');
+    const isVisible = extensionsList.classList.contains('show');
+
+    if (!isVisible) {
+        extensionsList.innerHTML = '';
+        chrome.management.getAll((extensions) => {
+            const extensionsContainer = document.createElement('div');
+            extensionsContainer.className = 'extensions-grid';
+
+            extensions.forEach(ext => {
+                const extCard = document.createElement('div');
+                extCard.className = 'extension-card';
+
+                // Get the largest icon available or fallback to default
+                const iconUrl = ext.icons && ext.icons.length > 0
+                    ? ext.icons[ext.icons.length - 1].url
+                    : 'icons/extension-default.png';
+
+                extCard.innerHTML = `
+                    <div class="extension-header">
+                        <div class="extension-icon-wrapper">
+                            <img src="${iconUrl}" alt="${ext.name}" class="extension-icon">
+                        </div>
+                        <div class="extension-title">
+                            <strong>${ext.name}</strong>
+                            <span class="extension-version">v${ext.version}</span>
+                        </div>
+                    </div>
+                    <div class="extension-status ${ext.enabled ? 'enabled' : 'disabled'}">
+                        <label class="switch">
+                            <input type="checkbox" ${ext.enabled ? 'checked' : ''}>
+                            <span class="slider round"></span>
+                        </label>
+                        <span class="status-text">${ext.enabled ? "Enabled" : "Disabled"}</span>
+                        <button class="remove-extension">Remove</button>
+                    </div>
+                    <div class="extension-details">
+                        <div class="detail-item">
+                            <strong>Type:</strong> ${ext.type}
+                        </div>
+                        <div class="detail-item permissions">
+                            <strong>Permissions:</strong> 
+                            <span class="permissions-list">${ext.permissions.length ? ext.permissions.join(", ") : "None"}</span>
+                        </div>
+                    </div>
+                `;
+
+                // Add toggle functionality
+                const toggle = extCard.querySelector('input[type="checkbox"]');
+                toggle.addEventListener('change', async () => {
+                    // Store the intended state
+                    const newState = toggle.checked;
+                    
+                    // Show confirmation only when disabling
+                    if (!newState && ext.enabled) {
+                        if (!confirm(`Are you sure you want to disable "${ext.name}"?`)) {
+                            toggle.checked = true;
+                            return;
+                        }
+                    }
+
+                    try {
+                        await chrome.management.setEnabled(ext.id, newState);
+                        // Update the extension's enabled status
+                        ext.enabled = newState;
+                        
+                        // Update UI
+                        extCard.querySelector('.extension-status').className =
+                            `extension-status ${newState ? 'enabled' : 'disabled'}`;
+                        extCard.querySelector('.extension-status .status-text').textContent =
+                            newState ? "Enabled" : "Disabled";
+                    } catch (error) {
+                        // Revert the toggle if operation fails
+                        toggle.checked = !newState;
+                        notify(`Failed to ${newState ? 'enable' : 'disable'} "${ext.name}"`, 'error');
+                    }
+                });
+
+                // Add remove functionality
+                const removeButton = extCard.querySelector('.remove-extension');
+                removeButton.addEventListener('click', () => {
+                    if (confirm(`Are you sure you want to remove "${ext.name}"?`)) {
+                        chrome.management.uninstall(ext.id, () => {
+                            extCard.remove();
+                            notify(`Extension "${ext.name}" has been removed.`, 'warning');
+                        });
+                    }
+                });
+
+                extensionsContainer.appendChild(extCard);
+            });
+
+            extensionsList.appendChild(extensionsContainer);
+        });
+    }
+
+    extensionsList.classList.toggle('show');
+});
+document.getElementById('cookiesManager').addEventListener('click', async () => {
+    const cookiesList = document.getElementById('cookiesList');
+    const isVisible = cookiesList.classList.contains('show');
+
+    if (!isVisible) {
+        loadCookies();
+    }
+    control.classList.toggle('show');
+    cookiesList.classList.toggle('show');
+});
 const getAllCookies = async () => {
     const getAllCookies = await chrome.cookies.getAll({})
     if (getAllCookies)
@@ -33,11 +147,20 @@ const Tracking = document.getElementById('toggleTracking');
 const setTrackStyle = (element, status, content = '', color = '') => {
     const trackingIcon = document.getElementById('trackingprotectionicon');
     trackingIcon.src = status ? 'icons/skincell.png' : 'icons/tracking_protection.png';
-    element.style.backgroundColor = status ? 'white' : 'pink';
-    element.style.borderRadius = '10px';
-    element.style.border = '2px red solid';
-    element.style.color = color || (status ? 'green' : 'red');
-    element.textContent = content || (status ? 'Tracking protection is enabled' : 'Tracking protection is disabled');
+    // Enhanced button styling
+    element.style.backgroundColor = status ? '#e8f5e9' : '#ffebee';
+    element.style.borderRadius = '8px';
+    element.style.border = `2px solid ${status ? '#4caf50' : '#f44336'}`;
+    element.style.color = status ? '#2e7d32' : '#d32f2f';
+    element.style.padding = '10px 20px';
+    element.style.transition = 'all 0.3s ease';
+    element.style.cursor = 'pointer';
+    element.style.width = 'auto';
+    element.style.marginTop = '10px';
+    element.style.fontWeight = 'bold';
+
+    // Update text content
+    element.textContent = content || (status ? 'Tracking Protection: Enabled' : 'Tracking Protection: Disabled');
 }
 
 document.getElementById('toggleTracking').addEventListener('click', async () => {
@@ -67,13 +190,15 @@ function notify(message, status) {
         notification.style.color = 'white';
     }
     if (status === 'success') {
-        notification.style.backgroundColor = 'green';
-        notification.style.color = 'white';
+        notification.style.backgroundColor = 'white';
+        notification.style.color = 'orange';
     }
     notification.textContent = message;
     notification.style.display = 'block';
+    notification.classList.add('show');
     setTimeout(() => {
         notification.style.display = 'none';
+        notification.classList.remove('show');
     }, 5000);
 }
 notification.addEventListener('dblclick', () => {
@@ -94,15 +219,7 @@ async function loadCookies(filter = '') {
     const cookieTableContainer = document.getElementById('cookieTableContainer');
     cookieTableContainer.innerHTML = '';
     const cookiesByDomain = {};
-
-    // const testcookies = await chrome.cookies.getAll({})
-    // let y
-    // testcookies.forEach(cookie => {
-    //     if (cookie.domain.includes('studocu')) {
-    //         y = cookie
-    //     }
-    // })
-    if (!cookies) {
+    if (cookies) {
         cookies.forEach(cookie => {
             if (cookie.name.includes(filter) || cookie.domain.includes(filter)) {
                 if (!cookiesByDomain[cookie.domain]) {
@@ -207,7 +324,7 @@ async function loadCookies(filter = '') {
     else {
         cookieTableContainer.innerHTML = 'No Cookies Available Founded'
         cookieTableContainer.style.paddingTop = '30px'
-        cookieTableContainer.style.color = 'red'    
+        cookieTableContainer.style.color = 'red'
         cookieTableContainer.style.textAlign = 'center'
         cookieTableContainer.style.fontSize = '40px'
 
@@ -334,12 +451,10 @@ async function pasteCookies() {
 document.getElementById('filterInput').addEventListener('input', (event) => {
     loadCookies(event.target.value);
 });
-
 document.getElementById('copyCurrentCookies').addEventListener('click', copyCurrentTabCookies);
 document.getElementById('pasteCookies').addEventListener('click', pasteCookies);
 
 document.addEventListener('DOMContentLoaded', async () => {
-    loadCookies();
     const a = await chrome.privacy.websites.doNotTrackEnabled.get({});
     setTrackStyle(Tracking, a.value);
 });

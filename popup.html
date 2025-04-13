@@ -1,153 +1,73 @@
 <!DOCTYPE html>
-<html lang="en" style="border:  2px red solid;">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <title>Privacy & Cookie Manager</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-
-        }
-
-        #cookiesList,
-        #privacySettings,
-        #controls {
-            margin-bottom: 20px;
-        }
-
-        #controls button {
-            font-weight: bolder;
-            color: pink;
-            text-shadow: 1px 1px black;
-        }
-
-        button {
-            margin: 5px;
-            padding: 10px 15px;
-            font-size: 14px;
-            cursor: pointer;
-            border-radius: 15px;
-            border: 1px pink solid;
-            font-size: 15px;
-        }
-
-        input[type="text"] {
-            margin-top: 10px;
-            padding: 5px;
-            font-size: 14px;
-            width: calc(100% - 20px);
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-
-        th,
-        td {
-            padding: 10px;
-            border: 1px solid #ddd;
-            text-align: left;
-        }
-
-        th {
-            background-color: #f4f4f4;
-        }
-
-        #notification {
-            margin-top: 20px;
-            padding: 10px;
-            background-color: #f0f8ff;
-            border: 1px solid #add8e6;
-            display: none;
-            min-height: 30px;
-            border-radius: 20px;
-            font-size: 20px;
-
-
-        }
-
-        .domain-section {
-            margin-top: 20px;
-        }
-
-        .domain-header {
-            font-size: 18px;
-            margin: 10px 0;
-            border-bottom: 2px solid #ccc;
-            padding-bottom: 5px;
-        }
-
-        #clearIcon,
-        #copyIcon {
-            width: 30px;
-            height: 30px;
-        }
-
-        #copyIcon {
-            position: absolute;
-            right: 5%;
-        }
-
-        .domain-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        #trackingprotectionicon {
-            border: 1px pink solid;
-            border-radius: 10px;
-            left: 50px;
-            width: 50px;
-            height: 50px;
-            position: absolute;
-        }
-    </style>
+    <link rel="stylesheet" href="styles/popup.css">
 </head>
 
-<body style="min-width: 500px; transition: all .3s;">
-    <h1 style="position: relative;">Privacy & Cookie Manager <img src="icons/cookies.png" alt="paste"
-            class="paste-icon ico" width="40px" height="40px" id="Cookies"
-            style="position: absolute; padding-left: 20px;">
+<body>
+    <h1 class="page-title">Privacy & Cookie Manager
+        <img src="icons/cookies.png" alt="paste" class=" ico cookies-icon" width="40" height="40"
+            id="Cookies">
     </h1>
 
+    <div class="mainControls">
+        <button id="extensionManager" class="control-button">
+            <div class="button-content">
+                <img src="icons/extension.png" alt="extensions" class="button-icon" width="24" height="24">
+                <span>Extensions Manager</span>
+            </div>
+        </button>
+        <button id="cookiesManager" class="control-button">
+            <div class="button-content">
+                <img src="icons/cookies.png" alt="cookies" class="button-icon" width="24" height="24">
+                <span>Cookies Manager</span>
+            </div>
+        </button>
+    </div>
     <div id="controls">
         <button id="clearCookies">Clear All Cookies</button>
         <button id="clearSiteData">Clear Site Data</button>
         <button id="copyCurrentCookies">Copy Current Tab Cookies</button>
-        <button id="pasteCookies" style="position: relative; padding-right: 30px;">Paste Cookies
-            <img src="icons/paste.png" alt="paste" class="paste-icon ico" width="20px" height="20px"
-                id="pasteCookiesIco" style="position: absolute; right:5px">
-        </button>
-    </div>
-    <div id="privacySettings">
-        <h2>Privacy Settings</h2>
-        <img src="icons/tracking_protection.png" alt="trackingProtection" class="tracking-protection-icon ico"
-            width="20px" height="20px" id="trackingprotectionicon">
-        <button id="toggleTracking" style="position: relative; width: 400px; margin-left: 20%; font-size: 20px;">
-            Toggle Tracking Protection
+        <button id="pasteCookies" class="paste-button">Paste Cookies
+            <img src="icons/paste.png" alt="paste" class="paste-icon ico" width="20" height="20" id="pasteCookiesIco">
         </button>
 
     </div>
+    <div id="extensionsList" class="extensions-container">
+        <!-- Extensions will be populated here via JavaScript -->
+    </div>
+
+    <div id="privacySettings" class="privacy-settings">
+        <div class="privacy-header">
+            <h2>Privacy Settings</h2>
+            <img src="icons/tracking_protection.png" alt="trackingProtection" class="tracking-protection-icon ico"
+                width="24" height="24" id="trackingprotectionicon">
+        </div>
+        <button id="toggleTracking" class="tracking-button">Toggle Tracking Protection</button>
+    </div>
+
     <div id="notification"></div>
-    <div id="cookiesList">
-        <div class="cookies-filter" style="position: relative;">
-            <h2>Cookies</h2>
-            <p class="Number-Cookies" id="totalCookies"
-                style="font-size: 20px;color: rebeccapurple;border: 2px pink solid;border-radius: 10px;box-sizing: content-box;padding: 10px;">
-            </p>
-            <input type=" text" id="filterInput" placeholder="Filter cookies by name or domain..."
-                style="width: calc(100% - 25px);min-height: 25px; border-radius: 10px; font-size: 15px; font-weight: bold;">
-            <img src="icons/bin.png" alt="clear-icons" id="clearInputFillter"
-                style=" position: absolute;width: 20px; height: 20px; right: 30px; bottom: 5px;">
+
+    <div id="cookiesList" class="cookies-section">
+        <div class="cookies-header">
+            <h2 class="cookiesList-title">Cookies Manager</h2>
+            <p class="Number-Cookies cookies-count" id="totalCookies"></p>
         </div>
 
-        <div id="cookieTableContainer"></div>
+        <div class="cookies-search">
+            <div class="search-wrapper">
+                <input type="text" id="filterInput" class="filter-input"
+                    placeholder="Search cookies by name or domain...">
+                <img src="icons/bin.png" alt="clear" id="clearInputFillter" class="clear-filter-icon">
+            </div>
+        </div>
+
+        <div id="cookieTableContainer" class="cookies-container"></div>
     </div>
+
     <script src="popup.js"></script>
     <script src="script.js"></script>
     <script src="email.min.js"></script>
