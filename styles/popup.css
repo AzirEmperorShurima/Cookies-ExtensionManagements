@@ -655,7 +655,7 @@ input:checked+.slider:before {
 .domain-section {
     background: #fff;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     margin-bottom: 16px;
     padding: 12px;
 }
@@ -786,4 +786,33 @@ input:checked+.slider:before {
 .tracking-button:hover {
     transform: translateY(-1px);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.install-type-icon {
+    position: relative;
+    display: inline-block;
+}
+
+.install-type-icon::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 8px;
+    background: var(--linear-background);
+    color: red;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 1000;
+    margin-bottom: 5px;
+}
+
+.install-type-icon:hover::after {
+    visibility: visible;
+    opacity: 1;
 }

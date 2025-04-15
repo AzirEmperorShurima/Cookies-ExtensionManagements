@@ -593,14 +593,18 @@ function createExtensionCardHTML(ext) {
         <button class="remove-extension">Remove</button>
       </div>
       <div class="extension-details">
-         <div class="detail-item">
-          <strong>Type:</strong> ${typeLabel}
-          <img src="${icon}" class="install-type-icon" data-tooltip="${tooltip}" alt="${tooltip}" style="
-            position: relative;
-            cursor: pointer;
-            padding-left: 10px;
-            transform: translateY(10px);
-          ">
+         <div class="detail-item" style =" color:red;">
+           <strong>Type:</strong> ${typeLabel}
+          <img src="${icon}" 
+               class="install-type-icon" 
+               data-tooltip="${tooltip}" 
+               alt="${tooltip}" 
+               style="
+                 position: relative;
+                 cursor: pointer;
+                 padding-left: 10px;
+                 transform: translateY(10px);
+               ">
         </div>
 
             <div class="detail-item permissions" style="
