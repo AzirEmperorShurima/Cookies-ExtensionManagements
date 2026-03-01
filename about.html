@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giới thiệu & Hướng dẫn - Privacy & Cookies Manager</title>
+    <link rel="stylesheet" href="styles/popup.css">
+    <style>
+        .about-container {
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            color: var(--text-main);
+            background: var(--bg-main);
+        }
+        .about-header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .about-section {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--glass-shadow);
+            border: 1px solid var(--border-color);
+        }
+        .about-section h3 {
+            margin-bottom: 15px;
+            color: var(--text-main);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .about-section p, .about-section li {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+        .about-section ul {
+            padding-left: 20px;
+        }
+        .author-info {
+            text-align: center;
+            font-weight: 700;
+            color: var(--text-muted);
+            margin-top: 30px;
+        }
+        .tip-box {
+            background: var(--accent-gradient);
+            border-left: 5px solid #7928ca;
+            padding: 15px;
+            border-radius: var(--radius-md);
+            margin-top: 20px;
+        }
+        .back-btn {
+            display: inline-block;
+            margin-bottom: 20px;
+            padding: 8px 16px;
+            background: var(--primary-gradient);
+            color: white;
+            text-decoration: none;
+            border-radius: var(--radius-md);
+            font-weight: 700;
+            transition: var(--transition-smooth);
+        }
+        .back-btn:hover {
+            transform: translateX(-5px);
+            box-shadow: 0 4px 12px rgba(255, 0, 128, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="about-container">
+        <a href="popup.html" class="back-btn" data-i18n="back">⬅ Quay lại</a>
+        
+        <header class="about-header">
+            <h1 data-i18n="pageTitle">Privacy & Cookies Manager</h1>
+        </header>
+
+        <section class="about-section">
+            <h3 data-i18n="aboutIntroTitle">📖 Giới thiệu</h3>
+            <p data-i18n="aboutIntroDesc">Privacy & Cookies Manager là một công cụ mạnh mẽ giúp bạn kiểm soát hoàn toàn quyền riêng tư và dữ liệu duyệt web của mình. Với các tính năng bảo mật tiên tiến, chúng tôi giúp bạn lướt web an toàn và sạch sẽ hơn.</p>
+        </section>
+
+        <section class="about-section">
+            <h3 data-i18n="aboutGuideTitle">🛠 Hướng dẫn sử dụng</h3>
+            <ul>
+                <li data-i18n="aboutGuide1"><strong>Cookies Manager:</strong> Xem, sao chép, xuất và xóa cookies của trang web hiện tại hoặc toàn bộ trình duyệt.</li>
+                <li data-i18n="aboutGuide2"><strong>Privacy Player:</strong> Xem video, phim trong môi trường cách ly (Iframe) để tránh bị theo dõi.</li>
+                <li data-i18n="aboutGuide3"><strong>Privacy Vault:</strong> Lưu trữ các liên kết quan trọng trong một "két sắt" được bảo vệ bằng mật mã.</li>
+                <li data-i18n="aboutGuide4"><strong>Side Panel:</strong> Bạn có thể bật tính năng này trong cài đặt để sử dụng extension song song với việc lướt web.</li>
+                <li data-i18n="aboutGuide5"><strong>Security Protection:</strong> Bật tính năng chặn Clickjacking và Crypto Mining trong phần cài đặt để tăng cường bảo mật.</li>
+            </ul>
+        </section>
+
+        <div class="tip-box" data-i18n="aboutTip">
+            <strong>💡 Mẹo nhỏ:</strong> Để có trải nghiệm tốt nhất và an toàn nhất, bạn nên sử dụng extension này kết hợp với các công cụ chặn quảng cáo như <strong>uBlock Origin</strong> hoặc các trình duyệt tích hợp sẵn tính năng chặn quảng cáo mạnh mẽ như <strong>Cốc Cốc</strong> hoặc <strong>Brave</strong>.
+        </div>
+
+        <div class="author-info" data-i18n="author">
+            Tác giả: Justinan - DrakeDev
+        </div>
+    </div>
+    <script src="about.js"></script>
+</body>
+</html>

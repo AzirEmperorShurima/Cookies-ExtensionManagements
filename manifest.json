@@ -1,23 +1,29 @@
 {
     "manifest_version": 3,
-    "author": "Constantine Thompson",
+    "author": "Justinan - DrakeDev",
     "name": "Privacy & Cookies Manager",
-    "version": "1.2.0",
+    "version": "1.5.0",
     "description": "Extension for managing cookies and privacy settings \n in this extension you can manage your cookies \n enable/disable third-party cookies, \nview your cookies,\n copy , paste and export your cookies \n and delete cookies data.",
     "permissions": [
         "cookies",
-        "storage",
         "tabs",
-        "privacy",
-        "webRequest",
-        "declarativeNetRequest",
-        "activeTab",
+        "storage",
+        "management",
         "notifications",
-        "clipboardRead",
-        "clipboardWrite",
+        "privacy",
+        "history",
+        "sessions",
+        "downloads",
         "scripting",
-        "management"
+        "contextMenus",
+        "webRequest",
+        "webNavigation",
+        "declarativeNetRequest",
+        "sidePanel"
     ],
+    "side_panel": {
+        "default_path": "popup.html"
+    },
     "host_permissions": [
         "<all_urls>"
     ],
@@ -36,6 +42,24 @@
     },
     "background": {
         "service_worker": "background.js"
+    },
+    "content_scripts": [
+        {
+            "matches": ["<all_urls>"],
+            "js": ["videoDetector.js"],
+            "all_frames": true,
+            "run_at": "document_start"
+        }
+    ],
+    "commands": {
+        "activate_panic": {
+            "suggested_key": {
+                "default": "Alt+Shift+X",
+                "windows": "Alt+Shift+X",
+                "mac": "Alt+Shift+X"
+            },
+            "description": "Kích hoạt chế độ Panic ngay lập tức"
+        }
     },
     "declarative_net_request": {
         "rule_resources": [
