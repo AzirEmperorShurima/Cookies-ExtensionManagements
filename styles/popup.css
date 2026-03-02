@@ -492,35 +492,157 @@ body.dark-mode .vault-lock-screen input[type="password"] {
     overflow-y: auto;
 }
 
-.vault-item {
-    background: #f8fafc;
+.vault-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px dashed var(--border-color);
+}
+
+.vault-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: var(--text-main);
+}
+
+.vault-input-container {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    padding: 20px;
+    border-radius: var(--radius-lg);
+    margin-bottom: 25px;
+    box-shadow: var(--glass-shadow);
+    backdrop-filter: blur(10px);
+}
+
+.vault-input-group {
+    display: flex;
+    gap: 12px;
+}
+
+.vault-input-group input {
+    flex: 1;
+    padding: 12px 18px;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
-    padding: 12px;
+    font-size: 0.95rem;
+    background: rgba(255, 255, 255, 0.8);
+    transition: var(--transition-smooth);
+    color: var(--text-main);
+}
+
+.vault-input-group input:focus {
+    outline: none;
+    border-color: #ff0080;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(255, 0, 128, 0.1);
+}
+
+.vault-add-btn {
+    background: var(--primary-gradient);
+    color: white;
+    border: none;
+    padding: 10px 25px;
+    border-radius: var(--radius-md);
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transition-smooth);
     display: flex;
     align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+}
+
+.vault-add-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 0, 128, 0.3);
+}
+
+.vault-add-btn:active {
+    transform: translateY(0);
+}
+
+.vault-input-hint {
+    margin-top: 10px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    opacity: 0.8;
+}
+
+.vault-list {
+    display: flex;
+    flex-direction: column;
     gap: 12px;
+    max-height: 350px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.vault-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.vault-list::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 3px;
+}
+
+.vault-list::-webkit-scrollbar-thumb {
+    background: rgba(121, 40, 202, 0.2);
+    border-radius: 3px;
+}
+
+.vault-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(121, 40, 202, 0.4);
+}
+
+.vault-item {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
     transition: var(--transition-smooth);
+    backdrop-filter: blur(5px);
 }
 
 .vault-item:hover {
-    transform: translateX(5px);
+    transform: translateX(8px);
+    background: rgba(255, 255, 255, 0.9);
     border-color: #7928ca;
+    box-shadow: 0 4px 15px rgba(121, 40, 202, 0.1);
 }
 
 .vault-item-icon {
-    font-size: 1.5rem;
+    width: 45px;
+    height: 45px;
+    background: var(--accent-gradient);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+    box-shadow: 0 4px 10px rgba(166, 193, 238, 0.3);
 }
 
 .vault-item-info {
     flex-grow: 1;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
 .vault-item-title {
     display: block;
     font-weight: 700;
     color: var(--text-main);
+    font-size: 1rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -528,31 +650,45 @@ body.dark-mode .vault-lock-screen input[type="password"] {
 
 .vault-item-url {
     display: block;
-    font-size: 0.8rem;
-    color: var(--text-muted);
+    font-size: 0.85rem;
+    color: #3b82f6;
     text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .vault-item-url:hover {
     text-decoration: underline;
+    color: #2563eb;
 }
 
 .vault-item-actions {
     display: flex;
     gap: 8px;
-}
-
-.vault-delete-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 1.1rem;
-    opacity: 0.6;
+    opacity: 0;
     transition: opacity 0.2s;
 }
 
-.vault-delete-btn:hover {
+.vault-item:hover .vault-item-actions {
     opacity: 1;
+}
+
+.vault-delete-btn {
+    background: rgba(255, 65, 108, 0.1);
+    color: #ff416c;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 8px;
+    border-radius: 8px;
+    transition: var(--transition-smooth);
+}
+
+.vault-delete-btn:hover {
+    background: #ff416c;
+    color: white;
+    transform: scale(1.1);
 }
 
 /* Multi-Account Section */
@@ -654,7 +790,6 @@ body.dark-mode .vault-lock-screen input[type="password"] {
     width: 24px;
     height: 24px;
     object-fit: contain;
-    filter: brightness(0) invert(1); /* Giúp icon màu trắng để nổi bật trên nền màu */
 }
 
 .container-card-name {
@@ -998,23 +1133,155 @@ body.dark-mode .health-bar-container {
 }
 
 .container-card {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    padding: 15px;
+    background: white; /* Nền trắng rõ ràng thay vì trong suốt */
+    border: 1px solid rgba(121, 40, 202, 0.2);
+    border-radius: var(--radius-lg);
+    padding: 22px 15px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
+    justify-content: center;
+    gap: 15px;
     cursor: pointer;
-    transition: var(--transition-smooth);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
-    border-top: 4px solid var(--container-color);
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Đổ bóng rõ hơn khi không hover */
+}
+
+body.dark-mode .container-card {
+    background: rgba(45, 45, 45, 0.95);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.container-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 5px; /* Dày hơn một chút */
+    background: var(--primary-gradient);
+}
+
+.container-card-icon {
+    width: 58px;
+    height: 58px;
+    background: #f8f9fa; /* Màu nền nhẹ cho icon */
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px;
+    transition: var(--transition-smooth);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    border: 2px solid rgba(121, 40, 202, 0.15);
+}
+
+body.dark-mode .container-card-icon {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.container-card-icon img {
+    width: 34px !important;
+    height: 34px !important;
+    object-fit: contain;
+    display: block !important;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1)) !important; /* Thêm bóng cho chính icon */
+}
+
+.container-card-name {
+    font-weight: 800; /* Đậm hơn nữa */
+    font-size: 1rem; /* Lớn hơn chút */
+    color: var(--text-main);
+    text-align: center;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+}
+
+.container-delete-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(255, 65, 108, 0.15);
+    color: #ff416c;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    cursor: pointer;
+    opacity: 0.5; /* Hiển thị mờ khi không hover thay vì ẩn hoàn toàn */
+    transform: scale(0.9);
+    transition: all 0.2s ease;
+    z-index: 2;
+}
+
+.container-card:hover .container-delete-btn {
+    opacity: 1;
+    transform: scale(1.1);
+    background: #ff416c;
+    color: white;
+}
+
+.container-delete-btn:hover {
+    background: #ff416c;
+    color: white;
 }
 
 .container-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 20px var(--container-shadow);
+    transform: translateY(-8px);
+    box-shadow: 0 12px 25px var(--container-shadow);
+    border-color: var(--container-color);
+}
+
+.container-card:hover .container-card-icon {
+    transform: scale(1.1) rotate(5deg);
+    background: white;
+}
+
+/* Icon Picker */
+.icon-picker {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.picker-icon {
+    width: 36px;
+    height: 36px;
+    padding: 6px;
+    cursor: pointer;
+    border-radius: var(--radius-md);
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    border: 2px solid transparent;
+    background: white;
+    object-fit: contain;
+}
+
+.picker-icon:hover {
+    transform: scale(1.2);
+    background: var(--accent-gradient);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.picker-icon.selected {
+    border-color: #ff0080;
+    background: var(--accent-gradient);
+    box-shadow: 0 0 12px rgba(255, 0, 128, 0.3);
+    transform: scale(1.1);
 }
 
 /* Hibernation Custom Timeout */
@@ -2905,7 +3172,7 @@ body.dark-mode .telegram-info {
     gap: 6px;
 }
 
-.resize-btn, .reset-btn, .nav-btn {
+.resize-btn, .reset-btn, .nav-btn, .theater-btn {
     background: var(--glass-bg);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
@@ -2918,9 +3185,15 @@ body.dark-mode .telegram-info {
     justify-content: center;
 }
 
-.resize-btn:hover, .reset-btn:hover, .nav-btn:hover {
+.resize-btn:hover, .reset-btn:hover, .nav-btn:hover, .theater-btn:hover {
     background: var(--primary-gradient);
     color: white;
+}
+
+.theater-btn.active {
+    background: var(--success-gradient);
+    border-color: transparent;
+    box-shadow: 0 0 10px rgba(0, 176, 155, 0.4);
 }
 
 .stealth-search {

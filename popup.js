@@ -48,6 +48,7 @@ const elements = {
     
     // Navigation and toggles
     appSettingsBtn: document.getElementById('appSettingsBtn'),
+    pipToggle: document.getElementById('pipToggle'),
     homeSection: document.getElementById('homeSection'),
     darkModeToggle: document.getElementById('darkModeToggle'),
     defaultPlayerWidth: document.getElementById('defaultPlayerWidth'),
@@ -63,6 +64,8 @@ const elements = {
     goBackPlayer: document.getElementById('goBackPlayer'),
     goForwardPlayer: document.getElementById('goForwardPlayer'),
     reloadPlayer: document.getElementById('reloadPlayer'),
+    togglePip: document.getElementById('togglePip'),
+    toggleTheaterMode: document.getElementById('toggleTheaterMode'),
     playerContainer: document.querySelector('.player-container'),
     
     // History
@@ -102,7 +105,8 @@ const elements = {
     toggleVaultPass: document.getElementById('toggleVaultPass'),
     unlockVault: document.getElementById('unlockVault'),
     vaultList: document.getElementById('vaultList'),
-    addNoteBtn: document.getElementById('addNoteBtn'),
+    vaultInput: document.getElementById('vaultInput'),
+    vaultAddBtn: document.getElementById('vaultAddBtn'),
     
     // Others
     searchEngineSelect: document.getElementById('searchEngineSelect'),
@@ -165,6 +169,7 @@ const elements = {
     multiAccountSection: document.getElementById('multiAccountSection'),
     newContainerName: document.getElementById('newContainerName'),
     newContainerColor: document.getElementById('newContainerColor'),
+    containerIconPicker: document.getElementById('containerIconPicker'),
     addContainerBtn: document.getElementById('addContainerBtn'),
     quickIdentityBtn: document.getElementById('quickIdentityBtn'),
     containerList: document.getElementById('containerList'),
@@ -319,6 +324,7 @@ function applySettings() {
 
     elements.telegramDownloaderToggle.checked = settings.telegramDownloaderEnabled || false;
     elements.videoDownloaderToggle.checked = settings.videoDownloaderEnabled || false;
+    elements.pipToggle.checked = settings.pipEnabled || false;
     elements.multiAccountToggle.checked = settings.multiAccountEnabled || false;
     elements.hibernationToggle.checked = settings.hibernationEnabled || false;
     
@@ -343,6 +349,7 @@ function applySettings() {
     // Show/hide buttons based on setting
     elements.telegramDownloaderBtn.classList.toggle('hidden', !settings.telegramDownloaderEnabled);
     elements.videoDownloaderBtn.classList.toggle('hidden', !settings.videoDownloaderEnabled);
+    elements.togglePip.classList.toggle('hidden', !settings.pipEnabled);
     elements.multiAccountBtn.classList.toggle('hidden', !settings.multiAccountEnabled);
 
     // Player settings
@@ -436,6 +443,22 @@ function updateUILanguage() {
         if (infoKey && dict[infoKey]) {
             el.setAttribute('data-info', dict[infoKey]);
         }
+    });
+
+    // Cập nhật title cho các phần tử có data-i18n-title
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        const key = el.getAttribute('data-i18n-title');
+        if (dict[key]) {
+            el.title = dict[key];
+        }
+    });
+
+    // Container Icon Picker Logic
+    document.querySelectorAll('.picker-icon').forEach(icon => {
+        icon.addEventListener('click', () => {
+            document.querySelectorAll('.picker-icon').forEach(i => i.classList.remove('selected'));
+            icon.classList.add('selected');
+        });
     });
 
     // Cập nhật nhãn Language riêng biệt
@@ -1574,6 +1597,13 @@ elements.videoDownloaderToggle.addEventListener('change', (e) => {
     chrome.runtime.sendMessage({ type: 'toggleVideoDetection', enabled: settings.videoDownloaderEnabled });
 });
 
+elements.pipToggle.addEventListener('change', (e) => {
+    settings.pipEnabled = e.target.checked;
+    saveSettings();
+    elements.togglePip.classList.toggle('hidden', !settings.pipEnabled);
+    notify(`Picture-in-Picture ${settings.pipEnabled ? 'enabled' : 'disabled'}`, 'success');
+});
+
 /**
  * Tải danh sách video đã phát hiện được từ background script
  */
@@ -2015,13 +2045,13 @@ elements.unlockVault.addEventListener('click', async () => {
     });
 });
 
-elements.addNoteBtn.addEventListener('click', () => {
-    const note = prompt('Enter a private note or link:');
-    if (note && note.trim()) {
+elements.vaultAddBtn.addEventListener('click', () => {
+    const note = elements.vaultInput.value.trim();
+    if (note) {
         const item = {
             id: Date.now(),
-            title: note.trim(),
-            url: note.includes('http') ? note.trim() : null,
+            title: note,
+            url: note.includes('http') ? note : null,
             type: note.includes('http') ? 'link' : 'note',
             date: new Date().toISOString()
         };
@@ -2030,12 +2060,20 @@ elements.addNoteBtn.addEventListener('click', () => {
             const vault = result.privacyVault || [];
             vault.unshift(item);
             chrome.storage.local.set({ privacyVault: vault }, () => {
+                elements.vaultInput.value = ''; // Clear input
                 loadVault();
                 syncVaultToCloud(); // Sync after adding
                 notify('Added to Vault', 'success');
             });
         });
+    } else {
+        notify('Please enter a note or link', 'warning');
     }
+});
+
+// Allow Enter key to add note
+elements.vaultInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') elements.vaultAddBtn.click();
 });
 
 /**
@@ -2665,7 +2703,11 @@ function loadContainers() {
         iconWrapper.className = 'container-card-icon';
         
         const iconImg = document.createElement('img');
-        iconImg.src = 'icons/container.png';
+        const iconName = container.icon || 'container.png';
+        iconImg.src = `icons/${iconName}`;
+        iconImg.alt = iconName;
+        iconImg.style.width = '24px'; // Ensure base size
+        iconImg.style.height = '24px';
         iconWrapper.appendChild(iconImg);
         
         card.appendChild(iconWrapper);
@@ -2709,6 +2751,10 @@ elements.addContainerBtn.addEventListener('click', () => {
     const name = nameInput.value.trim();
     const color = colorInput.value;
 
+    // Get selected icon
+    const selectedIconEl = document.querySelector('.picker-icon.selected');
+    const icon = selectedIconEl ? selectedIconEl.getAttribute('data-icon') : 'container.png';
+
     if (!name) {
         notify('Please enter a container name.', 'warning');
         return;
@@ -2717,7 +2763,8 @@ elements.addContainerBtn.addEventListener('click', () => {
     const newContainer = {
         id: Date.now().toString(),
         name: name,
-        color: color
+        color: color,
+        icon: icon
     };
 
     if (!settings.accountContainers) settings.accountContainers = [];
@@ -2725,6 +2772,12 @@ elements.addContainerBtn.addEventListener('click', () => {
     saveSettings();
     
     nameInput.value = '';
+    // Reset icon picker
+    document.querySelectorAll('.picker-icon').forEach(i => i.classList.remove('selected'));
+    if (elements.containerIconPicker) {
+        elements.containerIconPicker.firstElementChild.classList.add('selected');
+    }
+    
     loadContainers();
     notify(`Container "${name}" created!`, 'success');
 });
@@ -2732,14 +2785,17 @@ elements.addContainerBtn.addEventListener('click', () => {
 elements.quickIdentityBtn.addEventListener('click', () => {
     const randomNames = ['Ghost', 'Phantom', 'Stealth', 'Ninja', 'Specter', 'Shadow', 'Anon', 'Voyager'];
     const randomColors = ['#3182ce', '#e53e3e', '#38a169', '#d69e2e', '#805ad5', '#ff0080'];
+    const randomIcons = ['container.png', 'shield.png', 'incognito.png', 'shape.png', 'vietnam.png'];
     
     const name = `${randomNames[Math.floor(Math.random() * randomNames.length)]}_${Math.floor(Math.random() * 1000)}`;
     const color = randomColors[Math.floor(Math.random() * randomColors.length)];
+    const icon = randomIcons[Math.floor(Math.random() * randomIcons.length)];
 
     const newContainer = {
         id: Date.now().toString(),
         name: name,
         color: color,
+        icon: icon,
         isTemporary: true
     };
 
@@ -3755,6 +3811,24 @@ elements.loadStealth.addEventListener('click', () => {
     let targetUrl;
     if (isValidUrl(input)) {
         targetUrl = input.startsWith('http') ? input : `https://${input}`;
+        
+        // Smart YouTube Embed Conversion
+        try {
+            const url = new URL(targetUrl);
+            if (url.hostname.includes('youtube.com') && url.pathname === '/watch') {
+                const videoId = url.searchParams.get('v');
+                if (videoId) {
+                    targetUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
+                    notify('Optimizing YouTube for Privacy Player...', 'success');
+                }
+            } else if (url.hostname.includes('youtu.be')) {
+                const videoId = url.pathname.substring(1);
+                if (videoId) {
+                    targetUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
+                    notify('Optimizing YouTube for Privacy Player...', 'success');
+                }
+            }
+        } catch (e) {}
     } else {
         const encodedQuery = encodeURIComponent(input);
         switch (settings.searchEngine) {
@@ -4001,6 +4075,52 @@ elements.reloadPlayer.addEventListener('click', () => {
         notify('Reloading player...', 'success');
     }
 });
+
+elements.toggleTheaterMode.addEventListener('click', () => {
+     // Send message to the iframe
+     // Use both postMessage (direct) and chrome.tabs.sendMessage (via content script)
+     try {
+         elements.stealthPlayer.contentWindow.postMessage({ type: 'toggleTheaterMode' }, '*');
+         
+         // Try also via extension API (may fail if frameId is not 0 or not yet ready)
+         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+             if (tabs[0]) {
+                 chrome.tabs.sendMessage(tabs[0].id, { type: 'toggleTheaterMode' }, (response) => {
+                     if (chrome.runtime.lastError) {
+                         // Ignore errors from other tabs
+                     }
+                 });
+             }
+         });
+     } catch (e) {
+         console.error('Error sending theater mode message:', e);
+     }
+     
+     // Toggle active class on button
+     elements.toggleTheaterMode.classList.toggle('active');
+     notify('Toggling Theater Mode...', 'success');
+ });
+
+ elements.togglePip.addEventListener('click', () => {
+    try {
+        elements.stealthPlayer.contentWindow.postMessage({ type: 'togglePip' }, '*');
+        
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0]) {
+                chrome.tabs.sendMessage(tabs[0].id, { type: 'togglePip' }, (response) => {
+                    if (chrome.runtime.lastError) {
+                        // Ignore errors from other tabs
+                    }
+                });
+            }
+        });
+        
+        notify('Requesting Picture-in-Picture...', 'success');
+    } catch (e) {
+        console.error('Error sending PiP message:', e);
+    }
+});
+
 elements.filterInput.addEventListener('input', (e) => loadCookies(e.target.value));
 document.getElementById('clearInputFillter').addEventListener('click', () => {
     if (elements.filterInput.value !== '') {

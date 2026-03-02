@@ -387,6 +387,14 @@
                 </label>
             </div>
             <div class="setting-item">
+                <span data-i18n="enablePip">Enable Picture-in-Picture (PiP)</span>
+                <button class="info-icon" data-info="Cho phép video tách ra thành một cửa sổ nhỏ nổi trên cùng, giúp bạn vừa làm việc vừa xem phim." data-i18n-info="pipDesc">ℹ️</button>
+                <label class="switch">
+                    <input type="checkbox" id="pipToggle">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <div class="setting-item">
                 <span data-i18n="enableMultiAccount">Enable Multi-Account Containers</span>
                 <button class="info-icon" data-info="Cho phép đăng nhập nhiều tài khoản trên cùng một trang web bằng các vùng chứa cookie riêng biệt.">ℹ️</button>
                 <label class="switch">
@@ -685,9 +693,15 @@
         </div>
         <div class="vault-header">
             <h2 data-i18n="vault">Privacy Vault 🔐</h2>
-            <div class="vault-actions">
-                <button id="addNoteBtn" title="Add Note" data-i18n="addNote">📝 Add Note</button>
+        </div>
+        <div class="vault-input-container">
+            <div class="vault-input-group">
+                <input type="text" id="vaultInput" placeholder="Nhập ghi chú hoặc dán link tại đây..." data-i18n-placeholder="addNotePlaceholder">
+                <button id="vaultAddBtn" class="vault-add-btn">
+                    <span>➕</span> <span data-i18n="add">Add</span>
+                </button>
             </div>
+            <p class="vault-input-hint" data-i18n="vaultInputHint">💡 Ghi chú sẽ được mã hóa và lưu trữ an toàn trong Két sắt.</p>
         </div>
         <div id="vaultContent" class="vault-content">
             <!-- Vault items will be listed here -->
@@ -725,6 +739,8 @@
                 <button id="goBackPlayer" class="nav-btn" title="Go Back">⬅️</button>
                 <button id="goForwardPlayer" class="nav-btn" title="Go Forward">➡️</button>
                 <button id="reloadPlayer" class="nav-btn" title="Reload">🔄</button>
+                <button id="togglePip" class="pip-btn hidden" title="Picture-in-Picture" data-i18n-title="pipMode">🖼️</button>
+                <button id="toggleTheaterMode" class="theater-btn" title="Theater Mode" data-i18n-title="theaterMode">🎬</button>
                 <button id="shrinkPlayer" class="resize-btn" title="Shrink Player">➖</button>
                 <button id="enlargePlayer" class="resize-btn" title="Enlarge Player">➕</button>
                 <button id="resetPlayer" class="reset-btn" title="Reset Player">✖️</button>
@@ -842,6 +858,22 @@
                             <option value="#805ad5" style="color: #805ad5;">Purple</option>
                             <option value="#ff0080" style="color: #ff0080;">Pink</option>
                         </select>
+                    </div>
+                    <div class="input-with-label">
+                        <label data-i18n="containerIconLabel">Icon</label>
+                        <div id="containerIconPicker" class="icon-picker">
+                            <img src="icons/container.png" class="picker-icon selected" data-icon="container.png">
+                            <img src="icons/age-restriction.png" class="picker-icon" data-icon="age-restriction.png">
+                            <img src="icons/data-leak.png" class="picker-icon" data-icon="data-leak.png">
+                            <img src="icons/incognito.png" class="picker-icon" data-icon="incognito.png">
+                            <img src="icons/nudes.png" class="picker-icon" data-icon="nudes.png">
+                            <img src="icons/shape.png" class="picker-icon" data-icon="shape.png">
+                            <img src="icons/shield.png" class="picker-icon" data-icon="shield.png">
+                            <img src="icons/twitter.png" class="picker-icon" data-icon="twitter.png">
+                            <img src="icons/vibrator.png" class="picker-icon" data-icon="vibrator.png">
+                            <img src="icons/vietnam.png" class="picker-icon" data-icon="vietnam.png">
+                            <img src="icons/youtube.png" class="picker-icon" data-icon="youtube.png">
+                        </div>
                     </div>
                     <button id="addContainerBtn" class="add-container-btn" data-i18n="addContainer">
                         <span>+</span> Add Container
