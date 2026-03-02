@@ -1453,6 +1453,11 @@ body.dark-mode .history-tab-btn.active {
     background: rgba(0, 0, 0, 0.05);
 }
 
+.history-play-btn {
+    color: #ff0080;
+    filter: drop-shadow(0 0 2px rgba(255, 0, 128, 0.3));
+}
+
 body.dark-mode .history-item-actions {
     background: rgba(45, 45, 45, 0.9);
 }

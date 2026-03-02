@@ -2943,7 +2943,12 @@ function createHistoryItemUI(item, type) {
     // 1. Play in Privacy Player
     const playBtn = document.createElement('button');
     playBtn.innerHTML = '🛡️';
-    playBtn.title = 'Open in Privacy Player';
+    playBtn.className = 'history-play-btn';
+    
+    const lang = settings.language || 'vi';
+    const dict = translations[lang] || translations.vi;
+    playBtn.title = dict.openInPrivacyPlayer || 'Open in Privacy Player';
+    
     playBtn.onclick = (e) => {
         e.stopPropagation();
         elements.stealthUrl.value = item.url;
