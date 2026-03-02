@@ -101,9 +101,18 @@
                 <span class="stat-value" id="statExtensions">0</span>
                 <span class="stat-label" data-i18n="activeExts">Active Exts</span>
             </div>
-            <div class="stat-card highlight">
-                <span class="stat-value" id="privacyScore">A+</span>
-                <span class="stat-label" data-i18n="privacyGrade">Privacy Grade</span>
+            <div class="stat-card grade-card">
+                <span data-i18n="privacyGrade">Privacy Grade</span>
+                <div class="grade-container">
+                    <div id="privacyGradeValue" class="grade-circle">B+</div>
+                    <div class="grade-info">
+                        <div id="healthScoreText" class="score-text">85/100</div>
+                        <div id="healthStatusText" class="status-text">Good</div>
+                    </div>
+                </div>
+                <div class="health-bar-container">
+                    <div id="healthBarFill" class="health-bar-fill" style="width: 85%;"></div>
+                </div>
             </div>
         </div>
 
@@ -169,8 +178,18 @@
             <h2 data-i18n="settings">App Settings</h2>
             <img src="icons/extension.png" alt="settings" width="24" height="24">
         </div>
+
+        <!-- Settings Search -->
+        <div class="settings-search-container">
+            <div class="search-wrapper">
+                <input type="text" id="settingsSearchInput" class="filter-input"
+                    placeholder="Search settings..." data-i18n-placeholder="searchSettingsPlaceholder">
+                <img src="icons/bin.png" alt="clear" id="clearSettingsSearch" class="clear-filter-icon">
+            </div>
+        </div>
         
-        <!-- Panic Button Settings (Moved to top & Highlighted) -->
+        <div id="settingsContainer" class="settings-scroll-area">
+            <!-- Panic Button Settings (Moved to top & Highlighted) -->
         <div class="settings-group panic-settings-group highlighted">
             <h3 data-i18n="panicButtonTitle">🚨 Panic Button Configuration</h3>
             <p class="setting-hint" style="margin-bottom: 15px; font-size: 11px; color: var(--text-muted);" data-i18n="panicButtonDesc">
@@ -259,6 +278,22 @@
                 <select id="playerBackgroundType">
                     <option value="default" data-i18n="playerBackground_default">Default Image</option>
                     <option value="custom" data-i18n="playerBackground_custom">Custom URL</option>
+                </select>
+            </div>
+            <div class="setting-item">
+                <span data-i18n="playerLinkBehavior">Link Click Behavior</span>
+                <button class="info-icon" data-info="Chọn cách xử lý khi bạn nhấn vào các liên kết bên trong Privacy Player.">ℹ️</button>
+                <select id="playerLinkBehavior">
+                    <option value="inside" data-i18n="link_inside">Open Inside Player</option>
+                    <option value="newTab" data-i18n="link_newTab">Open in New Tab</option>
+                </select>
+            </div>
+            <div class="setting-item hidden" id="playerNewTabModeRow">
+                <span data-i18n="playerNewTabMode">New Tab Target</span>
+                <button class="info-icon" data-info="Chọn nơi mở tab mới khi 'Open in New Tab' được bật.">ℹ️</button>
+                <select id="playerNewTabMode">
+                    <option value="main" data-i18n="tab_main">Main Browser</option>
+                    <option value="incognito" data-i18n="tab_incognito">Incognito Mode</option>
                 </select>
             </div>
             <div id="customBgUrlRow" class="settings-group hidden" style="margin-top: 10px; padding: 10px; border: 1px dashed var(--border-color);">
@@ -369,12 +404,17 @@
             </div>
             <div class="setting-item" id="hibernationTimeoutRow">
                 <span data-i18n="hibernationTimeout">Hibernation Timeout</span>
-                <select id="hibernationTimeoutSelect">
-                    <option value="15" data-i18n="hibernationTimeout_15">15 phút</option>
-                    <option value="30" data-i18n="hibernationTimeout_30">30 phút</option>
-                    <option value="60" data-i18n="hibernationTimeout_60">1 giờ</option>
-                    <option value="120" data-i18n="hibernationTimeout_120">2 giờ</option>
-                </select>
+                <div class="timeout-container">
+                    <select id="hibernationTimeoutSelect">
+                        <option value="1" data-i18n="hibernationTimeout_1">1 phút</option>
+                        <option value="5" data-i18n="hibernationTimeout_5">5 phút</option>
+                        <option value="15" data-i18n="hibernationTimeout_15">15 phút</option>
+                        <option value="30" data-i18n="hibernationTimeout_30">30 phút</option>
+                        <option value="60" data-i18n="hibernationTimeout_60">1 giờ</option>
+                        <option value="custom" data-i18n="hibernationTimeout_custom">Tùy chỉnh (giây)</option>
+                    </select>
+                    <input type="number" id="hibernationCustomTimeout" class="modern-input hidden" placeholder="Giây..." min="10">
+                </div>
             </div>
             <div class="setting-item">
                 <span data-i18n="switchView">Switch View Mode</span>
@@ -552,6 +592,7 @@
                 </div>
             </div>
         </div>
+    </div> <!-- End of settingsContainer -->
     </div>
 
     <div id="cookiesList" class="cookies-section">
@@ -583,6 +624,8 @@
         
         <div class="history-tabs">
             <button class="history-tab-btn active" data-tab="localHistory" data-i18n="localHistory">History</button>
+            <button class="history-tab-btn" data-tab="bookmarksTab" data-i18n="bookmarks">Bookmarks</button>
+            <button class="history-tab-btn" data-tab="readingListTab" data-i18n="readingList">Reading List</button>
             <button class="history-tab-btn" data-tab="remoteDevices" data-i18n="remoteDevices">Other Devices</button>
         </div>
 
@@ -596,22 +639,48 @@
             </div>
             <div class="history-list" id="historyList"></div>
         </div>
+
+        <div id="bookmarksTab" class="history-tab-content">
+            <div class="history-search">
+                <div class="search-wrapper">
+                    <input type="text" id="bookmarksSearchInput" class="filter-input"
+                        placeholder="Search bookmarks..." data-i18n-placeholder="searchBookmarksPlaceholder">
+                </div>
+            </div>
+            <div class="history-list" id="bookmarksList"></div>
+        </div>
+
+        <div id="readingListTab" class="history-tab-content">
+            <div class="history-list" id="readingListContainer"></div>
+        </div>
+
         <div id="remoteDevices" class="history-tab-content">
             <div class="device-list" id="deviceList"></div>
         </div>
     </div>
 
     <div id="vaultSection" class="vault-section">
-        <div id="vaultLockScreen" class="vault-lock-screen">
-            <div class="lock-content">
-                <img src="icons/icon128.png" alt="security" class="lock-icon" width="64" height="64">
-                <h3 data-i18n="vaultProtected">Vault Protected</h3>
-                <p data-i18n="vaultLockDesc">Enter your Stealth Code to access the Vault</p>
-                <div class="input-row password-wrapper">
-                    <input type="password" id="vaultPassInput" placeholder="Enter secret code..." data-i18n-placeholder="enterSecretCode">
-                    <button id="toggleVaultPass" class="pass-eye hidden">👁️</button>
+        <div id="vaultLockScreen" class="lock-screen-modern">
+            <div class="lock-container">
+                <div class="lock-header">
+                    <div class="lock-icon-wrapper">
+                        <img src="icons/icon128.png" alt="security" class="lock-icon">
+                        <div class="lock-pulse"></div>
+                    </div>
+                    <h3 data-i18n="vaultProtected">Vault Protected</h3>
+                    <p data-i18n="vaultLockDesc">Enter your Stealth Code to access the Vault</p>
                 </div>
-                <button id="unlockVault" data-i18n="unlockVault">Unlock Vault</button>
+                <div class="lock-body">
+                    <div class="password-input-group">
+                        <div class="password-wrapper">
+                            <input type="password" id="vaultPassInput" placeholder="Enter secret code..." data-i18n-placeholder="enterSecretCode">
+                            <button id="toggleVaultPass" class="pass-eye hidden">👁️</button>
+                        </div>
+                        <button id="unlockVault" class="unlock-btn-modern" data-i18n="unlockVault">
+                            <span>🔓</span> Unlock
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="vault-header">
@@ -627,16 +696,28 @@
     </div>
 
     <div id="stealthSection" class="stealth-section">
-        <div id="stealthLockScreen" class="stealth-lock-screen">
-            <div class="lock-content">
-                    <img src="icons/icon128.png" alt="security" class="lock-icon" width="64" height="64">
-                    <h3 data-i18n="stealthModeLocked">Stealth Mode Locked</h3>
-                    <div class="input-row password-wrapper">
-                        <input type="password" id="stealthPassInput" placeholder="Enter secret code..." data-i18n-placeholder="enterSecretCode">
-                        <button id="toggleStealthPass" class="pass-eye hidden">👁️</button>
+        <div id="stealthLockScreen" class="lock-screen-modern">
+            <div class="lock-container">
+                <div class="lock-header">
+                    <div class="lock-icon-wrapper">
+                        <img src="icons/icon128.png" alt="security" class="lock-icon">
+                        <div class="lock-pulse"></div>
                     </div>
-                    <button id="unlockStealth" data-i18n="unlock">Unlock</button>
+                    <h3 data-i18n="stealthModeLocked">Stealth Mode Locked</h3>
+                    <p data-i18n="stealthLockDesc">Enter your secret code to unlock Privacy Player</p>
                 </div>
+                <div class="lock-body">
+                    <div class="password-input-group">
+                        <div class="password-wrapper">
+                            <input type="password" id="stealthPassInput" placeholder="Enter secret code..." data-i18n-placeholder="enterSecretCode">
+                            <button id="toggleStealthPass" class="pass-eye hidden">👁️</button>
+                        </div>
+                        <button id="unlockStealth" class="unlock-btn-modern" data-i18n="unlock">
+                            <span>🔓</span> Unlock
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="stealth-header">
             <h2 id="stealthTitle" data-i18n="privacyPlayer">Privacy Player</h2>
@@ -657,7 +738,7 @@
             </div>
         </div>
         <div class="player-container">
-            <iframe id="stealthPlayer" frameborder="0" allowfullscreen sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+            <iframe id="stealthPlayer" frameborder="0" allowfullscreen sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
         </div>
     </div>
 
@@ -733,24 +814,57 @@
             <p data-i18n="multiAccountDesc">Log in to multiple accounts on the same website simultaneously.</p>
         </div>
         <div class="multi-account-content">
-            <div class="beta-tip" style="margin-bottom: 20px; line-height: 1.5;">
-                <h4 data-i18n="multiAccountTipTitle">💡 Multi-Account Tip:</h4>
-                <p data-i18n="multiAccountDetailedTip" style="margin-top: 8px;">Multi-Account Containers allow you to separate different login sessions on the same website. Each 'Container' you create has its own Cookie storage, enabling you to log in to multiple Facebook, Gmail, or Shopee accounts simultaneously without needing incognito tabs or different browsers.</p>
+            <div class="identity-switcher-card">
+                <div class="identity-switcher-icon">🎭</div>
+                <div class="identity-switcher-info">
+                    <h3 data-i18n="quickIdentityTitle">Quick Identity</h3>
+                    <p data-i18n="identityHint">Tạo nhanh một vùng chứa ngẫu nhiên để lướt web ẩn danh.</p>
+                </div>
+                <button id="quickIdentityBtn" class="identity-quick-btn">
+                    <span>⚡</span> <span data-i18n="launchNow">Launch Now</span>
+                </button>
             </div>
-            <div class="container-actions">
-                <input type="text" id="newContainerName" placeholder="Container Name..." data-i18n-placeholder="containerName">
-                <select id="newContainerColor">
-                    <option value="#3182ce" style="color: #3182ce;">Blue</option>
-                    <option value="#e53e3e" style="color: #e53e3e;">Red</option>
-                    <option value="#38a169" style="color: #38a169;">Green</option>
-                    <option value="#d69e2e" style="color: #d69e2e;">Yellow</option>
-                    <option value="#805ad5" style="color: #805ad5;">Purple</option>
-                    <option value="#ff0080" style="color: #ff0080;">Pink</option>
-                </select>
-                <button id="addContainerBtn" class="action-btn primary-btn" data-i18n="addContainer">Add Container</button>
+
+            <div class="container-creator-box">
+                <h3 data-i18n="createNewContainer">Create New Container</h3>
+                <div class="container-form">
+                    <div class="input-with-label">
+                        <label data-i18n="containerNameLabel">Name</label>
+                        <input type="text" id="newContainerName" placeholder="Container Name..." data-i18n-placeholder="containerName">
+                    </div>
+                    <div class="input-with-label">
+                        <label data-i18n="containerColorLabel">Color</label>
+                        <select id="newContainerColor">
+                            <option value="#3182ce" style="color: #3182ce;">Blue</option>
+                            <option value="#e53e3e" style="color: #e53e3e;">Red</option>
+                            <option value="#38a169" style="color: #38a169;">Green</option>
+                            <option value="#d69e2e" style="color: #d69e2e;">Yellow</option>
+                            <option value="#805ad5" style="color: #805ad5;">Purple</option>
+                            <option value="#ff0080" style="color: #ff0080;">Pink</option>
+                        </select>
+                    </div>
+                    <button id="addContainerBtn" class="add-container-btn" data-i18n="addContainer">
+                        <span>+</span> Add Container
+                    </button>
+                </div>
+            </div>
+
+            <div class="container-list-header">
+                <h3 data-i18n="activeContainers">Active Containers</h3>
             </div>
             <div id="containerList" class="container-list">
                 <p class="empty-msg" data-i18n="noContainers">No containers yet. Create one to start!</p>
+            </div>
+
+            <!-- New Multi-Account Guide Section -->
+            <div class="multi-account-guide-box">
+                <div class="guide-header">
+                    <span class="guide-icon">💡</span>
+                    <h3 data-i18n="multiAccountTipTitle">Multi-Account Tip:</h3>
+                </div>
+                <div class="guide-content">
+                    <p data-i18n="multiAccountDetailedTip">Multi-Account Containers allow you to separate different login sessions on the same website. Each 'Container' you create has its own Cookie storage, enabling you to log in to multiple Facebook, Gmail, or Shopee accounts simultaneously without needing incognito tabs or different browsers.</p>
+                </div>
             </div>
         </div>
     </div>

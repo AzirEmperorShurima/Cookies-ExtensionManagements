@@ -26,6 +26,7 @@ const elements = {
     stealthPlayer: document.getElementById('stealthPlayer'),
     stealthLockScreen: document.getElementById('stealthLockScreen'),
     stealthPassInput: document.getElementById('stealthPassInput'),
+    toggleStealthPass: document.getElementById('toggleStealthPass'),
     unlockStealth: document.getElementById('unlockStealth'),
     stealthTitle: document.getElementById('stealthTitle'),
     
@@ -71,6 +72,9 @@ const elements = {
     deviceList: document.getElementById('deviceList'),
     historyRestrictedOverlay: document.getElementById('historyRestrictedOverlay'),
     historySearchInput: document.getElementById('historySearchInput'),
+    bookmarksSearchInput: document.getElementById('bookmarksSearchInput'),
+    bookmarksList: document.getElementById('bookmarksList'),
+    readingListContainer: document.getElementById('readingListContainer'),
     clearHistorySearch: document.getElementById('clearHistorySearch'),
     
     // Dashboard Stats
@@ -78,6 +82,10 @@ const elements = {
     statExtensions: document.getElementById('statExtensions'),
     statTrackers: document.getElementById('statTrackers'),
     privacyScore: document.getElementById('privacyScore'),
+    privacyGradeValue: document.getElementById('privacyGradeValue'),
+    healthScoreText: document.getElementById('healthScoreText'),
+    healthStatusText: document.getElementById('healthStatusText'),
+    healthBarFill: document.getElementById('healthBarFill'),
     privacyInsightsList: document.getElementById('privacyInsightsList'),
     permanentBar: document.getElementById('permanentBar'),
     sessionBar: document.getElementById('sessionBar'),
@@ -91,6 +99,7 @@ const elements = {
     vaultSection: document.getElementById('vaultSection'),
     vaultLockScreen: document.getElementById('vaultLockScreen'),
     vaultPassInput: document.getElementById('vaultPassInput'),
+    toggleVaultPass: document.getElementById('toggleVaultPass'),
     unlockVault: document.getElementById('unlockVault'),
     vaultList: document.getElementById('vaultList'),
     addNoteBtn: document.getElementById('addNoteBtn'),
@@ -109,6 +118,9 @@ const elements = {
     protectionLevelSelect: document.getElementById('protectionLevelSelect'),
     languageSelect: document.getElementById('languageSelect'),
     playerBackgroundType: document.getElementById('playerBackgroundType'),
+    playerLinkBehavior: document.getElementById('playerLinkBehavior'),
+    playerNewTabMode: document.getElementById('playerNewTabMode'),
+    playerNewTabModeRow: document.getElementById('playerNewTabModeRow'),
     customBgUrlRow: document.getElementById('customBgUrlRow'),
     customBgUrlInput: document.getElementById('customBgUrlInput'),
     addCustomBgBtn: document.getElementById('addCustomBgBtn'),
@@ -123,6 +135,9 @@ const elements = {
     addSafeUrlBtn: document.getElementById('addSafeUrlBtn'),
     safeUrlsList: document.getElementById('safeUrlsList'),
     mainPanicBtn: document.getElementById('mainPanicBtn'),
+    settingsSearchInput: document.getElementById('settingsSearchInput'),
+    clearSettingsSearch: document.getElementById('clearSettingsSearch'),
+    settingsContainer: document.getElementById('settingsContainer'),
     sessionNameInput: document.getElementById('sessionNameInput'),
     sessionTabTypeSelect: document.getElementById('sessionTabTypeSelect'),
     saveSessionBtn: document.getElementById('saveSessionBtn'),
@@ -151,11 +166,13 @@ const elements = {
     newContainerName: document.getElementById('newContainerName'),
     newContainerColor: document.getElementById('newContainerColor'),
     addContainerBtn: document.getElementById('addContainerBtn'),
+    quickIdentityBtn: document.getElementById('quickIdentityBtn'),
     containerList: document.getElementById('containerList'),
     
     // Hibernation
     hibernationToggle: document.getElementById('hibernationToggle'),
     hibernationTimeoutSelect: document.getElementById('hibernationTimeoutSelect'),
+    hibernationCustomTimeout: document.getElementById('hibernationCustomTimeout'),
     hibernationTimeoutRow: document.getElementById('hibernationTimeoutRow'),
     
     // Auto-Cleanup Rules
@@ -167,6 +184,8 @@ const elements = {
     // Sync
     vaultSyncToggle: document.getElementById('vaultSyncToggle'),
     masterSyncSection: document.getElementById('masterSyncSection'),
+    vaultLockScreen: document.getElementById('vaultLockScreen'),
+    stealthLockScreen: document.getElementById('stealthLockScreen'),
     masterSyncKeyInput: document.getElementById('masterSyncKeyInput'),
     copyMasterKeyBtn: document.getElementById('copyMasterKeyBtn'),
     manualMasterKeyInput: document.getElementById('manualMasterKeyInput'),
@@ -209,6 +228,8 @@ let settings = {
     protectionLevel: 'standard',
     language: 'vi',
     playerBackgroundType: 'default',
+    playerLinkBehavior: 'inside', // Default: open inside player
+    playerNewTabMode: 'main', // Default: main browser
     customBgUrl: '',
     customBgList: [],
     panicAction: 'closeIncognito',
@@ -300,7 +321,17 @@ function applySettings() {
     elements.videoDownloaderToggle.checked = settings.videoDownloaderEnabled || false;
     elements.multiAccountToggle.checked = settings.multiAccountEnabled || false;
     elements.hibernationToggle.checked = settings.hibernationEnabled || false;
-    elements.hibernationTimeoutSelect.value = settings.hibernationTimeout || 30;
+    
+    // Hibernation Timeout initialization
+    if (settings.hibernationTimeout && !['1', '5', '15', '30', '60'].includes(settings.hibernationTimeout.toString())) {
+        elements.hibernationTimeoutSelect.value = 'custom';
+        elements.hibernationCustomTimeout.classList.remove('hidden');
+        elements.hibernationCustomTimeout.value = settings.hibernationTimeout;
+    } else {
+        elements.hibernationTimeoutSelect.value = settings.hibernationTimeout || 30;
+        elements.hibernationCustomTimeout.classList.add('hidden');
+    }
+    
     elements.hibernationTimeoutRow.style.display = settings.hibernationEnabled ? 'flex' : 'none';
     elements.vaultSyncToggle.checked = settings.vaultSyncEnabled || false;
     elements.masterSyncSection.style.display = settings.vaultSyncEnabled ? 'block' : 'none';
@@ -331,6 +362,9 @@ function applySettings() {
 
     // Apply Background settings
     elements.playerBackgroundType.value = settings.playerBackgroundType || 'default';
+    elements.playerLinkBehavior.value = settings.playerLinkBehavior || 'inside';
+    elements.playerNewTabMode.value = settings.playerNewTabMode || 'main';
+    elements.playerNewTabModeRow.classList.toggle('hidden', (settings.playerLinkBehavior || 'inside') !== 'newTab');
     elements.customBgUrlInput.value = ''; // Clear input on load
     toggleCustomBgUrlRow();
     renderCustomBgList();
@@ -414,6 +448,9 @@ function updateUILanguage() {
     if (typeof updatePanicDescription === 'function') {
         updatePanicDescription(settings.panicAction || 'closeIncognito');
     }
+
+    // Update Privacy Health Score UI
+    updatePrivacyHealthScore();
 
     // Cập nhật các thông báo trống (empty messages)
     const sessionsList = document.getElementById('sessionsList');
@@ -2002,6 +2039,96 @@ elements.addNoteBtn.addEventListener('click', () => {
 });
 
 /**
+ * Cập nhật Privacy Health Score trên Dashboard
+ */
+async function updatePrivacyHealthScore() {
+    if (!elements.healthScoreText) return;
+
+    let score = 0;
+    const insights = [];
+    const lang = settings.language || 'vi';
+    const dict = translations[lang] || translations.vi;
+
+    // 1. Kiểm tra Tracking Protection (20đ)
+    try {
+        const { value } = await chrome.privacy.websites.doNotTrackEnabled.get({});
+        if (value) {
+            score += 20;
+        } else {
+            insights.push(dict.insightTracking || "Bật Chống theo dõi để bảo vệ quyền riêng tư.");
+        }
+    } catch (e) {}
+
+    // 2. Kiểm tra Mật khẩu Vault/Stealth (20đ)
+    if (settings.requireStrongPassword) {
+        score += 20;
+    } else {
+        insights.push(dict.insightStrongPass || "Sử dụng mật khẩu mạnh cho Vault để tăng bảo mật.");
+    }
+
+    // 3. Kiểm tra Protection Level (20đ)
+    if (settings.protectionLevel === 'enhanced' || settings.protectionLevel === 'noscript') {
+        score += 20;
+    } else {
+        insights.push(dict.insightProtection || "Nâng cấp mức độ bảo vệ lên Nâng cao.");
+    }
+
+    // 4. Kiểm tra Real-time Protection & Security (20đ)
+    if (settings.realTimeProtection && settings.blockClickjacking && settings.blockCryptoMining) {
+        score += 20;
+    } else {
+        insights.push(dict.insightSecurity || "Bật bảo vệ thời gian thực và chặn đào tiền ảo.");
+    }
+
+    // 5. Kiểm tra Cookies (20đ - Giảm điểm nếu có quá nhiều cookie theo dõi)
+    const cookies = await chrome.cookies.getAll({});
+    const permanentCount = cookies.filter(c => !c.session).length;
+    if (permanentCount < 50) {
+        score += 20;
+    } else if (permanentCount < 150) {
+        score += 10;
+        insights.push(dict.insightCookies || "Bạn có nhiều cookie theo dõi, hãy dọn dẹp chúng.");
+    }
+
+    // Cập nhật UI
+    elements.healthScoreText.textContent = `${score}/100`;
+    elements.healthBarFill.style.width = `${score}%`;
+    
+    // Tính Grade
+    let grade = 'F';
+    let status = 'Critical';
+    let color = '#e53e3e';
+
+    if (score >= 90) { grade = 'A+'; status = 'Excellent'; color = '#38a169'; }
+    else if (score >= 80) { grade = 'A'; status = 'Very Good'; color = '#38a169'; }
+    else if (score >= 70) { grade = 'B+'; status = 'Good'; color = '#3182ce'; }
+    else if (score >= 60) { grade = 'B'; status = 'Fair'; color = '#3182ce'; }
+    else if (score >= 50) { grade = 'C'; status = 'Average'; color = '#d69e2e'; }
+    else if (score >= 40) { grade = 'D'; status = 'Poor'; color = '#e53e3e'; }
+
+    elements.privacyGradeValue.textContent = grade;
+    elements.healthStatusText.textContent = status;
+    elements.healthStatusText.style.color = color;
+    elements.healthBarFill.style.background = color;
+
+    // Render Insights
+    if (elements.privacyInsightsList) {
+        elements.privacyInsightsList.innerHTML = '';
+        if (insights.length === 0) {
+            const li = document.createElement('li');
+            li.textContent = "🛡️ " + (dict.allSecure || "Mọi thứ đều an toàn!");
+            elements.privacyInsightsList.appendChild(li);
+        } else {
+            insights.slice(0, 3).forEach(text => {
+                const li = document.createElement('li');
+                li.textContent = "💡 " + text;
+                elements.privacyInsightsList.appendChild(li);
+            });
+        }
+    }
+}
+
+/**
  * Load and display vault items
  */
 /**
@@ -2246,6 +2373,58 @@ elements.clearHistorySearch.addEventListener('click', () => {
     loadHistoryAndSessions();
 });
 
+elements.bookmarksSearchInput.addEventListener('input', (e) => {
+    loadBookmarks(e.target.value);
+});
+
+elements.settingsSearchInput.addEventListener('input', (e) => {
+    const query = e.target.value.toLowerCase().trim();
+    const groups = document.querySelectorAll('.settings-group');
+    
+    groups.forEach(group => {
+        const title = group.querySelector('h3')?.textContent.toLowerCase() || '';
+        const items = group.querySelectorAll('.setting-item');
+        let groupHasMatch = title.includes(query);
+        
+        items.forEach(item => {
+            const itemText = item.textContent.toLowerCase();
+            const isMatch = itemText.includes(query);
+            
+            if (query === '') {
+                item.classList.remove('hidden-search');
+                item.classList.remove('match-search');
+            } else if (isMatch) {
+                item.classList.remove('hidden-search');
+                item.classList.add('match-search');
+                groupHasMatch = true;
+            } else {
+                item.classList.add('hidden-search');
+                item.classList.remove('match-search');
+            }
+        });
+        
+        if (query === '') {
+            group.classList.remove('hidden-search');
+            group.classList.remove('fade-out');
+        } else if (groupHasMatch) {
+            group.classList.remove('hidden-search');
+            group.classList.remove('fade-out');
+        } else {
+            group.classList.add('fade-out');
+            setTimeout(() => {
+                if (group.classList.contains('fade-out')) {
+                    group.classList.add('hidden-search');
+                }
+            }, 300);
+        }
+    });
+});
+
+elements.clearSettingsSearch.addEventListener('click', () => {
+    elements.settingsSearchInput.value = '';
+    elements.settingsSearchInput.dispatchEvent(new Event('input'));
+});
+
 // Quick Actions Dashboard
 elements.quickFocusMode.addEventListener('click', () => {
     chrome.management.getAll((extensions) => {
@@ -2372,15 +2551,17 @@ function calculatePrivacyGrade() {
             else if (!score.endsWith('+')) score += '+';
         }
 
-        privacyScore.textContent = score;
-        
-        // Màu sắc tương ứng
-        if (score.startsWith('A')) {
-            privacyScore.style.color = '#10b981'; // Green
-        } else if (score.startsWith('B')) {
-            privacyScore.style.color = '#f59e0b'; // Orange
-        } else {
-            privacyScore.style.color = '#ef4444'; // Red
+        if (elements.privacyScore) {
+            elements.privacyScore.textContent = score;
+            
+            // Màu sắc tương ứng
+            if (score.startsWith('A')) {
+                elements.privacyScore.style.color = '#10b981'; // Green
+            } else if (score.startsWith('B')) {
+                elements.privacyScore.style.color = '#f59e0b'; // Orange
+            } else {
+                elements.privacyScore.style.color = '#ef4444'; // Red
+            }
         }
     }, 500);
 }
@@ -2548,6 +2729,31 @@ elements.addContainerBtn.addEventListener('click', () => {
     notify(`Container "${name}" created!`, 'success');
 });
 
+elements.quickIdentityBtn.addEventListener('click', () => {
+    const randomNames = ['Ghost', 'Phantom', 'Stealth', 'Ninja', 'Specter', 'Shadow', 'Anon', 'Voyager'];
+    const randomColors = ['#3182ce', '#e53e3e', '#38a169', '#d69e2e', '#805ad5', '#ff0080'];
+    
+    const name = `${randomNames[Math.floor(Math.random() * randomNames.length)]}_${Math.floor(Math.random() * 1000)}`;
+    const color = randomColors[Math.floor(Math.random() * randomColors.length)];
+
+    const newContainer = {
+        id: Date.now().toString(),
+        name: name,
+        color: color,
+        isTemporary: true
+    };
+
+    if (!settings.accountContainers) settings.accountContainers = [];
+    settings.accountContainers.push(newContainer);
+    saveSettings();
+    
+    loadContainers();
+    notify(`Quick Identity "${name}" created!`, 'success');
+    
+    // Simulate opening tab in this container
+    chrome.tabs.create({ url: 'https://www.google.com' });
+});
+
 elements.quickClearAll.addEventListener('click', async () => {
     try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -2595,9 +2801,208 @@ document.querySelectorAll('.history-tab-btn').forEach(btn => {
         document.querySelectorAll('.history-tab-btn').forEach(b => b.classList.remove('active'));
         document.querySelectorAll('.history-tab-content').forEach(c => c.classList.remove('active'));
         btn.classList.add('active');
-        document.getElementById(btn.dataset.tab).classList.add('active');
+        const tabId = btn.dataset.tab;
+        document.getElementById(tabId).classList.add('active');
+        
+        // Load data based on tab
+        if (tabId === 'bookmarksTab') {
+            loadBookmarks();
+        } else if (tabId === 'readingListTab') {
+            loadReadingList();
+        } else if (tabId === 'localHistory') {
+            loadHistoryAndSessions();
+        }
     });
 });
+
+/**
+ * Load Bookmarks
+ */
+async function loadBookmarks(query = '') {
+    const { bookmarksList } = elements;
+    if (!chrome.bookmarks) {
+        bookmarksList.innerHTML = '<p class="empty-msg">Bookmarks API not available.</p>';
+        return;
+    }
+
+    bookmarksList.innerHTML = '<p class="loading">Loading bookmarks...</p>';
+    
+    const handleResults = (items) => {
+        bookmarksList.innerHTML = '';
+        const bookmarks = items.filter(item => item.url); // Chỉ hiện bookmark thực sự, không hiện folder
+        
+        if (bookmarks.length === 0) {
+            const lang = settings.language || 'vi';
+            const dict = translations[lang] || translations.vi;
+            bookmarksList.innerHTML = `<p class="empty-msg">${dict.noBookmarks || 'No bookmarks found.'}</p>`;
+            return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        bookmarks.forEach(bookmark => {
+            const div = createHistoryItemUI(bookmark, 'bookmark');
+            fragment.appendChild(div);
+        });
+        bookmarksList.appendChild(fragment);
+    };
+
+    if (query.trim() === '') {
+        // Nếu không có từ khóa, lấy 1000 dấu trang gần nhất
+        chrome.bookmarks.getRecent(1000, handleResults);
+    } else {
+        // Nếu có từ khóa, tìm kiếm theo từ khóa
+        chrome.bookmarks.search(query, handleResults);
+    }
+}
+
+/**
+ * Load Reading List
+ */
+async function loadReadingList() {
+    const { readingListContainer } = elements;
+    
+    // chrome.readingList is only available in Chrome 102+
+    if (!chrome.readingList) {
+        readingListContainer.innerHTML = '<p class="empty-msg">Reading List API not available.</p>';
+        return;
+    }
+
+    readingListContainer.innerHTML = '<p class="loading">Loading reading list...</p>';
+    
+    try {
+        const items = await chrome.readingList.query({});
+        readingListContainer.innerHTML = '';
+        
+        if (items.length === 0) {
+            const lang = settings.language || 'vi';
+            const dict = translations[lang] || translations.vi;
+            readingListContainer.innerHTML = `<p class="empty-msg">${dict.noReadingList || 'Reading list is empty.'}</p>`;
+            return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        items.forEach(item => {
+            const div = createHistoryItemUI(item, 'readingList');
+            fragment.appendChild(div);
+        });
+        readingListContainer.appendChild(fragment);
+    } catch (e) {
+        readingListContainer.innerHTML = `<p class="empty-msg">Error loading reading list: ${e.message}</p>`;
+    }
+}
+
+/**
+ * Create a unified UI item for History, Bookmarks, and Reading List
+ */
+function createHistoryItemUI(item, type) {
+    const div = document.createElement('div');
+    div.className = 'history-item';
+    
+    let hostname = 'unknown';
+    try { hostname = new URL(item.url).hostname; } catch(e) {}
+    
+    const favicon = `https://www.google.com/s2/favicons?domain=${hostname}`;
+    const img = document.createElement('img');
+    img.src = favicon;
+    img.className = 'history-icon';
+    img.onerror = function() { this.src = 'icons/extension.png'; };
+    div.appendChild(img);
+
+    const infoDiv = document.createElement('div');
+    infoDiv.className = 'history-info';
+
+    const topLineDiv = document.createElement('div');
+    topLineDiv.className = 'history-top-line';
+
+    const titleSpan = document.createElement('span');
+    titleSpan.className = 'history-title';
+    titleSpan.title = item.title || item.url;
+    titleSpan.textContent = item.title || 'No Title';
+    topLineDiv.appendChild(titleSpan);
+
+    if (item.lastVisitTime) {
+        const visitDate = new Date(item.lastVisitTime);
+        const visitTime = visitDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+        const timeSpan = document.createElement('span');
+        timeSpan.className = 'history-time';
+        timeSpan.textContent = visitTime;
+        topLineDiv.appendChild(timeSpan);
+    }
+    infoDiv.appendChild(topLineDiv);
+
+    const urlSpan = document.createElement('span');
+    urlSpan.className = 'history-url';
+    urlSpan.textContent = item.url;
+    infoDiv.appendChild(urlSpan);
+    div.appendChild(infoDiv);
+
+    // Add Action Buttons
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'history-item-actions';
+    
+    // 1. Play in Privacy Player
+    const playBtn = document.createElement('button');
+    playBtn.innerHTML = '🛡️';
+    playBtn.title = 'Open in Privacy Player';
+    playBtn.onclick = (e) => {
+        e.stopPropagation();
+        elements.stealthUrl.value = item.url;
+        toggleSection('player');
+        elements.loadStealth.click();
+    };
+    
+    // 2. Copy Link
+    const copyBtn = document.createElement('button');
+    copyBtn.innerHTML = '🔗';
+    copyBtn.title = 'Copy Link';
+    copyBtn.onclick = (e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(item.url);
+        notify('Link copied to clipboard', 'success');
+    };
+
+    // 3. Delete from History/Bookmarks/Reading List
+    const deleteBtn = document.createElement('button');
+    deleteBtn.innerHTML = '🗑️';
+    deleteBtn.title = 'Delete';
+    deleteBtn.onclick = (e) => {
+        e.stopPropagation();
+        if (confirm('Are you sure you want to delete this item?')) {
+            if (type === 'history') {
+                chrome.history.deleteUrl({ url: item.url }, () => {
+                    div.remove();
+                    notify('Deleted from history', 'success');
+                });
+            } else if (type === 'bookmark') {
+                chrome.bookmarks.remove(item.id, () => {
+                    div.remove();
+                    notify('Deleted from bookmarks', 'success');
+                });
+            } else if (type === 'readingList') {
+                chrome.readingList.removeEntry({ url: item.url }).then(() => {
+                    div.remove();
+                    notify('Deleted from reading list', 'success');
+                });
+            }
+        }
+    };
+
+    actionsDiv.appendChild(playBtn);
+    actionsDiv.appendChild(copyBtn);
+    actionsDiv.appendChild(deleteBtn);
+    div.appendChild(actionsDiv);
+
+    div.addEventListener('click', () => {
+        if (settings.historyIncognito) {
+            chrome.windows.create({ url: item.url, incognito: true, type: 'normal' });
+            notify('Opening in Incognito window...', 'success');
+        } else {
+            chrome.tabs.create({ url: item.url });
+        }
+    });
+    
+    return div;
+}
 
 /**
  * Load History and Remote Sessions
@@ -2780,55 +3185,8 @@ function renderNextHistoryChunk() {
             lastRenderedDate = displayDate;
         }
 
-        const div = document.createElement('div');
-        div.className = 'history-item';
+        const div = createHistoryItemUI(item, 'history');
         div.style.animationDelay = `${(index % historyChunkSize) * 0.02}s`; // Staggered animation
-        
-        let hostname = 'unknown';
-        try { hostname = new URL(item.url).hostname; } catch(e) {}
-        
-        const visitDate = new Date(item.lastVisitTime);
-        const visitTime = visitDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-
-        const favicon = `https://www.google.com/s2/favicons?domain=${hostname}`;
-        const img = document.createElement('img');
-        img.src = favicon;
-        img.className = 'history-icon';
-        img.onerror = function() { this.src = 'icons/extension.png'; };
-        div.appendChild(img);
-
-        const infoDiv = document.createElement('div');
-        infoDiv.className = 'history-info';
-
-        const topLineDiv = document.createElement('div');
-        topLineDiv.className = 'history-top-line';
-
-        const titleSpan = document.createElement('span');
-        titleSpan.className = 'history-title';
-        titleSpan.title = item.title || item.url;
-        titleSpan.textContent = item.title || 'No Title';
-        topLineDiv.appendChild(titleSpan);
-
-        const timeSpan = document.createElement('span');
-        timeSpan.className = 'history-time';
-        timeSpan.textContent = visitTime;
-        topLineDiv.appendChild(timeSpan);
-        infoDiv.appendChild(topLineDiv);
-
-        const urlSpan = document.createElement('span');
-        urlSpan.className = 'history-url';
-        urlSpan.textContent = item.url;
-        infoDiv.appendChild(urlSpan);
-        div.appendChild(infoDiv);
-
-        div.addEventListener('click', () => {
-            if (settings.historyIncognito) {
-                chrome.windows.create({ url: item.url, incognito: true, type: 'normal' });
-                notify('Opening in Incognito window...', 'success');
-            } else {
-                chrome.tabs.create({ url: item.url });
-            }
-        });
         fragment.appendChild(div);
     });
     
@@ -2943,10 +3301,7 @@ elements.multiAccountToggle.addEventListener('change', (e) => {
     
     if (settings.multiAccountEnabled) {
         notify('Multi-Account Containers enabled! Check the main menu.', 'success');
-        // If enabled for first time, show the section immediately
-        setTimeout(() => {
-            elements.multiAccountBtn.click();
-        }, 500);
+        // Removed automatic tab switch as requested by user
     } else {
         notify('Multi-Account Containers disabled.', 'warning');
         // If currently in multi-account section, go home
@@ -2972,16 +3327,36 @@ elements.hibernationToggle.addEventListener('change', (e) => {
 });
 
 elements.hibernationTimeoutSelect.addEventListener('change', (e) => {
-    settings.hibernationTimeout = parseInt(e.target.value);
-    saveSettings();
+    const isCustom = e.target.value === 'custom';
+    elements.hibernationCustomTimeout.classList.toggle('hidden', !isCustom);
     
-    chrome.runtime.sendMessage({ 
-        type: 'updateHibernation', 
-        enabled: settings.hibernationEnabled, 
-        timeout: settings.hibernationTimeout 
-    });
-    
-    notify(`Hibernation timeout set to ${settings.hibernationTimeout} minutes`, 'success');
+    if (!isCustom) {
+        settings.hibernationTimeout = parseInt(e.target.value);
+        saveSettings();
+        
+        chrome.runtime.sendMessage({ 
+            type: 'updateHibernation', 
+            enabled: settings.hibernationEnabled, 
+            timeout: settings.hibernationTimeout 
+        });
+        
+        notify(`Hibernation timeout set to ${settings.hibernationTimeout} minutes`, 'success');
+    }
+});
+
+elements.hibernationCustomTimeout.addEventListener('input', (e) => {
+    const value = parseInt(e.target.value);
+    if (value && value >= 10) {
+        settings.hibernationTimeout = value;
+        saveSettings();
+        
+        chrome.runtime.sendMessage({ 
+            type: 'updateHibernation', 
+            enabled: settings.hibernationEnabled, 
+            timeout: settings.hibernationTimeout,
+            isSeconds: true // Signal background it's in seconds
+        });
+    }
 });
 
 elements.vaultSyncToggle.addEventListener('change', async (e) => {
@@ -3068,6 +3443,20 @@ elements.playerBackgroundType.addEventListener('change', (e) => {
     toggleCustomBgUrlRow();
     applyPlayerBackground();
     notify(`Background type set to ${settings.playerBackgroundType}`, 'success');
+});
+
+elements.playerLinkBehavior.addEventListener('change', (e) => {
+    settings.playerLinkBehavior = e.target.value;
+    elements.playerNewTabModeRow.classList.toggle('hidden', settings.playerLinkBehavior !== 'newTab');
+    saveSettings();
+    updatePlayerSandbox(); // Cập nhật sandbox ngay lập tức
+    notify(`Link behavior: ${settings.playerLinkBehavior === 'inside' ? 'Inside Player' : 'New Tab'}`, 'success');
+});
+
+elements.playerNewTabMode.addEventListener('change', (e) => {
+    settings.playerNewTabMode = e.target.value;
+    saveSettings();
+    notify(`New tab mode: ${settings.playerNewTabMode === 'main' ? 'Main Browser' : 'Incognito'}`, 'success');
 });
 
 elements.addCustomBgBtn.addEventListener('click', () => {
@@ -3409,6 +3798,27 @@ elements.loadStealth.addEventListener('click', () => {
         notify('Failed to load content.', 'error');
     }
 });
+
+/**
+ * Cập nhật thuộc tính sandbox của iframe Privacy Player dựa trên cài đặt
+ */
+function updatePlayerSandbox() {
+    const { stealthPlayer } = elements;
+    if (!stealthPlayer) return;
+
+    // Các quyền cơ bản
+    let sandbox = ['allow-scripts', 'allow-same-origin', 'allow-forms'];
+    
+    // Nếu cài đặt là mở trong Tab mới, ta cần allow-popups
+    if (settings.playerLinkBehavior === 'newTab') {
+        sandbox.push('allow-popups');
+    }
+    
+    stealthPlayer.setAttribute('sandbox', sandbox.join(' '));
+}
+
+// Cập nhật sandbox khi load popup
+updatePlayerSandbox();
 
 // Listener để cập nhật trạng thái khi iframe load xong (chỉ dùng cho hiệu ứng UI, không cập nhật URL)
 elements.stealthPlayer.addEventListener('load', () => {
@@ -4023,6 +4433,49 @@ async function restoreSession(session) {
         notify('Lỗi khi khôi phục: ' + error.message, 'error');
     }
 }
+
+// Listen for link click messages from Privacy Player iframe
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === 'privacyPlayerLinkClicked') {
+        const url = message.url;
+        
+        if (settings.playerLinkBehavior === 'newTab') {
+            if (settings.playerNewTabMode === 'incognito') {
+                chrome.extension.isAllowedIncognitoAccess((isAllowed) => {
+                    chrome.windows.create({
+                        url: url,
+                        type: 'popup',
+                        width: 800,
+                        height: 600,
+                        incognito: isAllowed
+                    });
+                    if (!isAllowed) {
+                        notify('Incognito access required for Incognito mode. Opened in normal window.', 'warning');
+                    } else {
+                        notify('Opened in Incognito Stealth Window!', 'success');
+                    }
+                });
+            } else {
+                chrome.tabs.create({ url: url });
+                notify('Opened in new tab!', 'success');
+            }
+        } else {
+            // Default: Open inside player
+            elements.stealthPlayer.src = url;
+            elements.stealthUrl.value = url;
+            
+            // Cập nhật History Stack nội bộ
+            if (url !== playerHistory[currentUrlIndex]) {
+                playerHistory = playerHistory.slice(0, currentUrlIndex + 1);
+                playerHistory.push(url);
+                currentUrlIndex = playerHistory.length - 1;
+                updatePlayerNavState();
+            }
+            
+            notify('Navigating inside player...', 'success');
+        }
+    }
+});
 
 // Khởi tạo tracking protection
 document.addEventListener('DOMContentLoaded', async () => {

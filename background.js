@@ -74,6 +74,35 @@ chrome.webRequest.onBeforeRequest.addListener(
     { urls: ["<all_urls>"] }
 );
 
+// Listen for new tab creation from Privacy Player (popup iframe)
+chrome.webNavigation.onCreatedNavigationTarget.addListener((details) => {
+    // Check if the source is our extension popup (sourceTabId is -1)
+    if (details.sourceTabId === -1) {
+        chrome.storage.local.get(['appSettings'], (result) => {
+            const settings = result.appSettings || {};
+            
+            // If user wants Incognito for new tabs from Privacy Player
+            if (settings.playerLinkBehavior === 'newTab' && settings.playerNewTabMode === 'incognito') {
+                chrome.extension.isAllowedIncognitoAccess((isAllowed) => {
+                    if (isAllowed) {
+                        // Close the newly created tab
+                        chrome.tabs.remove(details.tabId);
+                        
+                        // Re-open in Incognito window
+                        chrome.windows.create({
+                            url: details.url,
+                            incognito: true,
+                            type: 'popup',
+                            width: 800,
+                            height: 600
+                        });
+                    }
+                });
+            }
+        });
+    }
+});
+
 // Phát hiện video qua Response Headers (MIME Type)
 chrome.webRequest.onHeadersReceived.addListener(
     (details) => {
