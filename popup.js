@@ -41,6 +41,7 @@ const elements = {
     toggleConfirmPass: document.getElementById('toggleConfirmPass'),
     saveNewPass: document.getElementById('saveNewPass'),
     strongPasswordToggle: document.getElementById('strongPasswordToggle'),
+    alwaysRequirePasswordToggle: document.getElementById('alwaysRequirePasswordToggle'),
     showPasswordToggle: document.getElementById('showPasswordToggle'),
     passwordRequirementText: document.getElementById('passwordRequirementText'),
     
@@ -220,6 +221,7 @@ let settings = {
     hibernationEnabled: false,
     hibernationTimeout: 30, // Default 30 minutes
     whitelist: ['google.com', 'facebook.com', 'gmail.com', 'youtube.com', 'github.com'], // Default whitelist
+    alwaysRequirePassword: true, // New setting: default to true for security
     vaultSyncEnabled: false,
     masterSyncKey: null // Encrypted Master Key
 };
@@ -288,6 +290,7 @@ function applySettings() {
     elements.blockClickjackingToggle.checked = settings.blockClickjacking ?? true;
     elements.blockCryptoMiningToggle.checked = settings.blockCryptoMining ?? true;
     elements.strongPasswordToggle.checked = settings.requireStrongPassword ?? false;
+    elements.alwaysRequirePasswordToggle.checked = settings.alwaysRequirePassword ?? true;
     elements.showPasswordToggle.checked = settings.showPasswordInSettings ?? true;
     
     // Cập nhật trạng thái hiển thị của các nút ẩn/hiện password
@@ -369,10 +372,16 @@ function updateUILanguage() {
             // Chèn lại các thẻ con (như <img>)
             children.forEach(child => el.appendChild(child));
             
-            // Thêm văn bản đã dịch
+            // Thêm văn bản đã dịch (Hỗ trợ HTML nếu cần)
             const translatedText = dict[key];
-            const textNode = document.createTextNode(' ' + translatedText);
-            el.appendChild(textNode);
+            if (translatedText.includes('<') && translatedText.includes('>')) {
+                const tempSpan = document.createElement('span');
+                tempSpan.innerHTML = translatedText;
+                el.appendChild(tempSpan);
+            } else {
+                const textNode = document.createTextNode(' ' + translatedText);
+                el.appendChild(textNode);
+            }
 
             // Xử lý riêng cho Beta Badge nếu có trong cấu trúc gốc
             // Chúng ta không chèn lại nó bằng innerHTML vì nó sẽ bị lặp
@@ -1180,7 +1189,7 @@ function toggleSection(section) {
     vaultSection.classList.remove('show');
     elements.telegramSection.classList.remove('show');
     elements.videoDownloaderSection.classList.remove('show');
-    elements.multiAccountSection.style.display = 'none';
+    elements.multiAccountSection.classList.remove('show');
     
     extensionManager.classList.remove('active');
     cookiesManager.classList.remove('active');
@@ -1209,6 +1218,12 @@ function toggleSection(section) {
         stealthLockScreen.classList.remove('show');
         stealthPassInput.value = '';
         
+        // If always require password is ON, we clear the session secret
+        if (settings.alwaysRequirePassword) {
+            secretCode = null;
+            if (chrome.storage.session) chrome.storage.session.remove('sessionPassword');
+        }
+        
         if (settings.autoClear && stealthPlayer.src !== 'about:blank' && stealthPlayer.src !== '') {
             chrome.history.deleteUrl({ url: stealthPlayer.src });
         }
@@ -1225,6 +1240,12 @@ function toggleSection(section) {
         isVaultUnlocked = false;
         vaultLockScreen.classList.remove('show');
         vaultPassInput.value = '';
+        
+        // If always require password is ON, we clear the session secret
+        if (settings.alwaysRequirePassword) {
+            secretCode = null;
+            if (chrome.storage.session) chrome.storage.session.remove('sessionPassword');
+        }
     }
 
     if (section === 'extensions') {
@@ -1241,8 +1262,16 @@ function toggleSection(section) {
         privacyPlayer.classList.add('active');
         privacySettings.classList.add('show');
         
+        // If always require password is ON, we reset secretCode to force lock screen
+        if (settings.alwaysRequirePassword) {
+            secretCode = null;
+            isStealthUnlocked = false;
+            stealthLockScreen.classList.add('show');
+        }
+
         if (!secretCode) {
-            if (chrome.storage.session) {
+            // Only try to restore from session if ALWAYS require password is OFF
+            if (!settings.alwaysRequirePassword && chrome.storage.session) {
                 chrome.storage.session.get(['sessionPassword'], (result) => {
                     if (result.sessionPassword) {
                         secretCode = result.sessionPassword;
@@ -1275,6 +1304,13 @@ function toggleSection(section) {
         historySection.classList.add('show');
         historyManagerBtn.classList.add('active');
     } else if (section === 'vault') {
+        // If always require password is ON, we reset secretCode to force lock screen
+        if (settings.alwaysRequirePassword) {
+            secretCode = null;
+            isVaultUnlocked = false;
+            vaultLockScreen.classList.add('show');
+        }
+        
         loadVault();
         vaultSection.classList.add('show');
         vaultBtn.classList.add('active');
@@ -1293,7 +1329,7 @@ function toggleSection(section) {
             if (tab) chrome.action.setBadgeText({ text: '', tabId: tab.id });
         });
     } else if (section === 'multiAccount') {
-        elements.multiAccountSection.style.display = 'block';
+        elements.multiAccountSection.classList.add('show');
         elements.multiAccountBtn.classList.add('active');
         loadContainers();
     }
@@ -2087,7 +2123,8 @@ function loadVault() {
     
     // Check if we have the session password
     if (!secretCode) {
-        if (chrome.storage.session) {
+        // Only try to restore from session if ALWAYS require password is OFF
+        if (!settings.alwaysRequirePassword && chrome.storage.session) {
             chrome.storage.session.get(['sessionPassword'], (result) => {
                 if (result.sessionPassword) {
                     secretCode = result.sessionPassword;
@@ -2102,6 +2139,8 @@ function loadVault() {
             elements.vaultLockScreen.classList.add('show');
         }
     } else {
+        isVaultUnlocked = true;
+        elements.vaultLockScreen.classList.remove('show');
         performVaultLoad(dict);
     }
 }
@@ -2441,10 +2480,14 @@ function loadContainers() {
         card.style.setProperty('--container-color', container.color);
         card.style.setProperty('--container-shadow', `${container.color}4D`); // 30% opacity in hex
 
-        const icon = document.createElement('div');
-        icon.className = 'container-card-icon';
-        icon.textContent = '📂';
-        card.appendChild(icon);
+        const iconWrapper = document.createElement('div');
+        iconWrapper.className = 'container-card-icon';
+        
+        const iconImg = document.createElement('img');
+        iconImg.src = 'icons/container.png';
+        iconWrapper.appendChild(iconImg);
+        
+        card.appendChild(iconWrapper);
 
         const name = document.createElement('span');
         name.className = 'container-card-name';
@@ -2503,20 +2546,6 @@ elements.addContainerBtn.addEventListener('click', () => {
     nameInput.value = '';
     loadContainers();
     notify(`Container "${name}" created!`, 'success');
-});
-
-elements.multiAccountBtn.addEventListener('click', () => {
-    // Hide all other sections
-    [elements.homeSection, elements.extensionManager, elements.cookiesManager, 
-     elements.privacySettings, elements.stealthSection, elements.appSettings,
-     elements.historySection, elements.vaultSection, elements.telegramSection,
-     elements.videoDownloaderSection].forEach(section => {
-        if (section) section.style.display = 'none';
-    });
-    
-    elements.multiAccountSection.style.display = 'block';
-    loadContainers();
-    updateDashboard(); // Ensure dashboard stats are ready if needed
 });
 
 elements.quickClearAll.addEventListener('click', async () => {
@@ -3197,6 +3226,12 @@ elements.strongPasswordToggle.addEventListener('click', async (e) => {
             notify('Mật khẩu không chính xác!', 'error');
         }
     });
+});
+
+elements.alwaysRequirePasswordToggle.addEventListener('change', (e) => {
+    settings.alwaysRequirePassword = e.target.checked;
+    saveSettings();
+    notify(`Always require password ${settings.alwaysRequirePassword ? 'enabled' : 'disabled'}`, 'success');
 });
 
 elements.showPasswordToggle.addEventListener('change', (e) => {

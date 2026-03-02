@@ -121,6 +121,7 @@ const translations = {
         multiAccountContainers: "Quản lý vùng chứa tài khoản",
         multiAccountTipTitle: "💡 Mẹo sử dụng Multi-Account:",
         multiAccountTipDesc: "Tính năng này cho phép bạn đăng nhập nhiều tài khoản trên cùng một trang web bằng cách tạo ra các 'vùng chứa' cookie riêng biệt. Mỗi container sẽ hoạt động độc lập như một trình duyệt mới.",
+        multiAccountDetailedTip: "Multi-Account Containers cho phép bạn tách biệt các phiên đăng nhập khác nhau trên cùng một trang web. Mỗi 'Vùng chứa' (Container) bạn tạo ra sẽ có bộ nhớ Cookie riêng, giúp bạn có thể đăng nhập nhiều tài khoản Facebook, Gmail, hay Shopee cùng lúc mà không cần mở tab ẩn danh hay trình duyệt khác.<br><br><b>Cách sử dụng:</b><br>1. Nhập tên cho vùng chứa mới (ví dụ: 'Cá nhân', 'Công việc').<br>2. Chọn màu sắc để dễ phân biệt.<br>3. Nhấn 'Thêm vùng chứa'.<br>4. Click vào thẻ vùng chứa vừa tạo để mở một tab mới hoạt động trong môi trường riêng biệt đó.",
         addContainer: "Thêm vùng chứa",
         containerName: "Tên vùng chứa",
         containerColor: "Màu sắc",
@@ -134,6 +135,8 @@ const translations = {
         masterKeyTip: "Sao lưu khóa này! Bạn cần nó để kết nối thiết bị mới nếu mật khẩu Vault khác nhau.",
         masterKeyPlaceholder: "Dán Khóa Master của bạn vào đây...",
         foundMedia: "Danh sách Media tìm thấy:",
+        alwaysRequirePassword: "Luôn yêu cầu mật khẩu",
+        alwaysRequirePasswordTip: "Yêu cầu mật khẩu mỗi khi bạn vào Privacy Player hoặc Vault. Nếu tắt, chỉ cần nhập 1 lần.",
         strongPasswordRequirement: "Yêu cầu mật khẩu mạnh",
         showPasswordInSettings: "Ẩn/Hiện mật khẩu trong cài đặt",
         panicButtonDesc: "Tính năng này cho phép bạn nhanh chóng ẩn hoặc đóng các hoạt động duyệt web riêng tư khi có người bất ngờ xuất hiện.",
@@ -311,6 +314,7 @@ const translations = {
         multiAccountContainers: "Manage Account Containers",
         multiAccountTipTitle: "💡 Multi-Account Tip:",
         multiAccountTipDesc: "This feature allows you to log in to multiple accounts on the same website by creating separate cookie 'containers'. Each container acts as an independent browser session.",
+        multiAccountDetailedTip: "Multi-Account Containers allow you to separate different login sessions on the same website. Each 'Container' you create has its own Cookie storage, enabling you to log in to multiple Facebook, Gmail, or Shopee accounts simultaneously without needing incognito tabs or different browsers.<br><br><b>How to use:</b><br>1. Enter a name for the new container (e.g., 'Personal', 'Work').<br>2. Choose a color for easy identification.<br>3. Click 'Add Container'.<br>4. Click on the created container card to open a new tab operating in that isolated environment.",
         addContainer: "Add Container",
         containerName: "Container Name",
         containerColor: "Color",
@@ -324,6 +328,8 @@ const translations = {
         masterKeyTip: "Back this up! You need it to connect a new device with a different Vault password.",
         masterKeyPlaceholder: "Paste your Master Sync Key here...",
         foundMedia: "Found Media List:",
+        alwaysRequirePassword: "Always Require Password",
+        alwaysRequirePasswordTip: "Require password every time you enter Privacy Player or Vault. If off, only enter once.",
         strongPasswordRequirement: "Require strong password",
         showPasswordInSettings: "Show/Hide password in settings",
         panicButtonDesc: "Quickly hide or close private browsing activities when someone appears unexpectedly.",
@@ -460,6 +466,8 @@ const translations = {
         hibernationTimeout_120: "2時間",
         hibernationDesc: "一定期間アクティブでないタブのメモリ (RAM) を自動的に解放します。",
         foundMedia: "見つかったメディアリスト:",
+        alwaysRequirePassword: "常にパスワードが必要",
+        alwaysRequirePasswordTip: "プライバシープレーヤーまたは保管庫に入るたびにパスワードを要求します。オフの場合、1回のみ入力します。",
         focusMode: "🚀 集中モード",
         deepClean: "🧹 ディープクリーン",
         clearAllCookies: "すべてのクッキーを消去",
@@ -620,7 +628,9 @@ const translations = {
         telegramDownloader: "Téléchargeur Telegram",
         videoDownloader: "Téléchargeur Vidéo",
         scanMedia: "🔍 Scanner les médias",
-        scanVideo: "🔍 Scanner les vidéos"
+        scanVideo: "🔍 Scanner les vidéos",
+        alwaysRequirePassword: "Toujours exiger le mot de passe",
+        alwaysRequirePasswordTip: "Exiger le mot de passe chaque fois que vous accédez au Privacy Player ou Vault. Si désactivé, saisissez une seule fois.",
     },
     zh: {
         pageTitle: "隐私与 Cookie 管理器",
@@ -716,6 +726,8 @@ const translations = {
         telegramDownloader: "Telegram 下载器",
         videoDownloader: "视频下载器",
         scanMedia: "🔍 扫描媒体",
-        scanVideo: "🔍 扫描视频"
+        scanVideo: "🔍 扫描视频",
+        alwaysRequirePassword: "始终需要密码",
+        alwaysRequirePasswordTip: "每次进入隐私播放器或保险库时都需要密码。如果关闭，只需输入一次。",
     }
 };

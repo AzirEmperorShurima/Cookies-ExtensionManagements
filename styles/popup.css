@@ -37,6 +37,7 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+    cursor: url('../icons/toy.png'), auto;
 }
 
 html {
@@ -282,7 +283,10 @@ body {
 #appSettings,
 #homeSection,
 #historySection,
-#vaultSection {
+#vaultSection,
+#telegramSection,
+#videoDownloaderSection,
+#multiAccountSection {
     display: none;
     margin-bottom: var(--spacing-lg);
 }
@@ -295,7 +299,10 @@ body {
 #appSettings.show,
 #homeSection.show,
 #historySection.show,
-#vaultSection.show {
+#vaultSection.show,
+#telegramSection.show,
+#videoDownloaderSection.show,
+#multiAccountSection.show {
     display: block;
 }
 
@@ -640,9 +647,14 @@ body.dark-mode .vault-lock-screen input[type="password"] {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: white;
-    font-size: 1.5rem;
     box-shadow: 0 4px 10px var(--container-shadow, rgba(49, 130, 206, 0.3));
+}
+
+.container-card-icon img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    filter: brightness(0) invert(1); /* Giúp icon màu trắng để nổi bật trên nền màu */
 }
 
 .container-card-name {
@@ -3163,62 +3175,6 @@ body.dark-mode .favorite-item {
 
 body.dark-mode .favorite-actions button:hover {
     background: rgba(255,255,255,0.1);
-}
-
-/* Vault Lock Screen Improvement */
-.vault-lock-screen {
-    background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-lg);
-}
-
-body.dark-mode .vault-lock-screen {
-    background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
-}
-
-.vault-lock-screen .lock-content {
-    background: white;
-    padding: 30px;
-    border-radius: 20px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-    text-align: center;
-    max-width: 280px;
-    width: 90%;
-    animation: fadeInUp 0.5s ease;
-}
-
-body.dark-mode .vault-lock-screen .lock-content {
-    background: #3d3d3d;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-}
-
-.vault-lock-screen h3 {
-    background: var(--primary-gradient);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    font-weight: 800;
-    font-size: 1.5rem;
-    margin: 15px 0 10px;
-}
-
-.vault-lock-screen p {
-    color: var(--text-muted);
-    font-size: 0.9rem;
-    margin-bottom: 20px;
-    line-height: 1.4;
-}
-
-#unlockVault {
-    width: 100%;
-    padding: 12px;
-    margin-top: 15px;
-    background: var(--primary-gradient);
-    border-radius: 12px;
-    font-size: 1rem;
-    box-shadow: 0 4px 15px rgba(121, 40, 202, 0.3);
 }
 
 ::-webkit-scrollbar-thumb:hover { filter: brightness(1.1); }

@@ -64,7 +64,7 @@
         </button>
         <button id="multiAccountBtn" class="control-button hidden">
             <div class="button-content">
-                <img src="icons/icon128.png" alt="multi-account" class="button-icon" width="32" height="32" style="filter: hue-rotate(90deg);">
+                <img src="icons/container.png" alt="multi-account" class="button-icon" width="32" height="32">
                 <span data-i18n="multiAccount">Multi-Account</span>
             </div>
         </button>
@@ -443,6 +443,15 @@
             </div>
             
             <div class="setting-item">
+                <span data-i18n="alwaysRequirePassword">Always Require Password</span>
+                <button class="info-icon" data-info="Khi bật, bạn sẽ phải nhập mật khẩu mỗi khi vào Privacy Player hoặc Vault. Nếu tắt, bạn chỉ cần nhập mật khẩu một lần cho đến khi khởi động lại trình duyệt." data-i18n-info="alwaysRequirePasswordTip">ℹ️</button>
+                <label class="switch">
+                    <input type="checkbox" id="alwaysRequirePasswordToggle">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+
+            <div class="setting-item">
                 <span data-i18n="strongPasswordRequirement">Require Strong Password</span>
                 <button class="info-icon" data-info="Khi bật, mật khẩu mới phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.">ℹ️</button>
                 <label class="switch">
@@ -724,9 +733,9 @@
             <p data-i18n="multiAccountDesc">Log in to multiple accounts on the same website simultaneously.</p>
         </div>
         <div class="multi-account-content">
-            <div class="beta-tip" style="margin-bottom: 20px;">
+            <div class="beta-tip" style="margin-bottom: 20px; line-height: 1.5;">
                 <h4 data-i18n="multiAccountTipTitle">💡 Multi-Account Tip:</h4>
-                <p data-i18n="multiAccountTipDesc">This feature allows you to log in to multiple accounts on the same website by creating separate cookie 'containers'. Each container acts as an independent browser session.</p>
+                <p data-i18n="multiAccountDetailedTip" style="margin-top: 8px;">Multi-Account Containers allow you to separate different login sessions on the same website. Each 'Container' you create has its own Cookie storage, enabling you to log in to multiple Facebook, Gmail, or Shopee accounts simultaneously without needing incognito tabs or different browsers.</p>
             </div>
             <div class="container-actions">
                 <input type="text" id="newContainerName" placeholder="Container Name..." data-i18n-placeholder="containerName">
