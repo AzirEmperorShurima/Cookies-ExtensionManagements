@@ -4,50 +4,141 @@
 // Only run this script if it's inside an iframe (not the top-level document)
 if (window.self !== window.top) {
     let settings = {
-        playerLinkBehavior: 'inside' // Default
+        playerLinkBehavior: 'inside', // Default
+        playerLinkFilter: 'all' // Default
     };
 
     // Fetch extension settings from storage
     chrome.storage.local.get(['appSettings'], (result) => {
         if (result.appSettings) {
             settings.playerLinkBehavior = result.appSettings.playerLinkBehavior || 'inside';
+            settings.playerLinkFilter = result.appSettings.playerLinkFilter || 'all';
         }
     });
 
     // Listen for setting changes
     chrome.storage.onChanged.addListener((changes, areaName) => {
         if (areaName === 'local' && changes.appSettings) {
-            settings.playerLinkBehavior = changes.appSettings.newValue.playerLinkBehavior || 'inside';
+            const newSettings = changes.appSettings.newValue;
+            settings.playerLinkBehavior = newSettings.playerLinkBehavior || 'inside';
+            settings.playerLinkFilter = newSettings.playerLinkFilter || 'all';
         }
     });
 
     document.addEventListener('click', (event) => {
-        // If link behavior is 'newTab', we don't need to intercept
-        if (settings.playerLinkBehavior === 'newTab') return;
-
         let target = event.target;
 
-        // Traverse up the DOM tree to find an anchor tag
+        // Traverse up the DOM tree to find an anchor tag or element with data-url
         while (target && target !== document) {
-            if (target.tagName === 'A' && target.href) {
-                // If it's a mailto or other non-http link, let it be
-                if (!target.href.startsWith('http')) return;
-
-                // Always force internal navigation if link behavior is 'inside'
-                event.preventDefault();
-                event.stopPropagation();
-
-                try {
-                    // Resolve relative URLs to absolute URLs
-                    const absoluteUrl = new URL(target.href, window.location.href).toString();
-                    
-                    // Update the iframe's location to load the new URL
-                    window.location.href = absoluteUrl;
-                } catch (e) {
-                    console.error('Privacy Player: Failed to navigate to URL:', target.href, e);
-                    window.location.href = target.href; // Fallback
+            const tagName = target.tagName;
+            const href = target.href || target.getAttribute('href') || target.getAttribute('data-href') || target.getAttribute('data-url');
+            
+            if ((tagName === 'A' || target.hasAttribute('data-url') || target.hasAttribute('data-href')) && href) {
+                // Ignore non-navigation links
+                if (href === '#' || href.startsWith('javascript:')) {
+                    target = target.parentNode;
+                    continue;
                 }
-                return; // Stop processing after handling the link click
+
+                // Resolve URL
+                let finalUrl;
+                try {
+                    finalUrl = new URL(href, window.location.href).toString();
+                } catch (e) {
+                    finalUrl = href;
+                }
+
+                // If it's a mailto or other non-http link, let it be
+                if (!finalUrl.startsWith('http')) {
+                    return; // Let browser handle it
+                }
+
+                const requiresNewTab = target.target === '_blank' || 
+                                     event.ctrlKey || 
+                                     event.metaKey || 
+                                     event.shiftKey || 
+                                     event.button === 1;
+
+                // 1. Detection Logic for Cốc Cốc
+                const userAgent = navigator.userAgent;
+                const isCoccocBrowser = userAgent.includes('CocCoc') || userAgent.includes('coc_coc_browser');
+                const hostname = window.location.hostname;
+                const isCoccocSearchPage = (hostname.includes('coccoc.com') || hostname.includes('coccoc.vn')) && 
+                                          window.location.pathname.includes('/search');
+                
+                // Effective settings
+                let effectiveBehavior = settings.playerLinkBehavior;
+                let effectiveApply = settings.playerLinkFilter === 'all' || requiresNewTab;
+
+                // 2. Cốc Cốc Specific Override Logic
+                if (isCoccocBrowser && isCoccocSearchPage) {
+                    // Special rule for Cốc Cốc: Bypass block if settings are (Block + New Tab Links Only)
+                    if (effectiveBehavior === 'block' && settings.playerLinkFilter === 'newTabOnly') {
+                        // Force internal navigation instead of blocking
+                        effectiveApply = false;
+                    }
+                    // For other settings on Cốc Cốc search, we generally prefer internal navigation
+                    // to keep the user inside the Privacy Player environment.
+                    else if (effectiveBehavior === 'inside' || settings.playerLinkFilter === 'newTabOnly') {
+                        effectiveApply = false;
+                    }
+                } 
+                // 3. Handling for other Search Engines (Google, Bing, etc.)
+                // These will follow the standard rules as requested, without the Cốc Cốc exception.
+                else {
+                    const isOtherSearchEngine = hostname.includes('google.') ||
+                                              hostname.includes('duckduckgo.com') ||
+                                              hostname.includes('bing.com') ||
+                                              hostname.includes('yahoo.com');
+                    
+                    if (isOtherSearchEngine) {
+                        // For other search engines, we still provide a "Smart Inside" override 
+                        // ONLY IF behavior is 'inside' or filter is 'newTabOnly', 
+                        // but we respect the 'block' setting if that's what the user wants.
+                        if (effectiveBehavior === 'inside' || (settings.playerLinkFilter === 'newTabOnly' && effectiveBehavior !== 'block')) {
+                            effectiveApply = false;
+                        }
+                    }
+                }
+
+                if (!effectiveApply) {
+                    // Force internal navigation for non-applied links (default behavior: open inside)
+                    event.preventDefault();
+                    event.stopPropagation();
+                    window.location.href = finalUrl;
+                    return;
+                }
+
+                // Apply behavior for the link
+                if (effectiveBehavior === 'block') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    chrome.runtime.sendMessage({
+                        type: 'privacyPlayerLinkClicked',
+                        action: 'block',
+                        url: finalUrl
+                    });
+                    return;
+                }
+
+                if (effectiveBehavior === 'newTab' || effectiveBehavior === 'incognito') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    chrome.runtime.sendMessage({
+                        type: 'privacyPlayerLinkClicked',
+                        action: effectiveBehavior,
+                        url: finalUrl
+                    });
+                    return;
+                }
+
+                // If behavior is 'inside', force internal navigation
+                if (effectiveBehavior === 'inside') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    window.location.href = finalUrl;
+                    return;
+                }
             }
             target = target.parentNode;
         }

@@ -61,7 +61,7 @@ const translations = {
         pageTitle: "Privacy & Cookie Manager",
         back: "⬅ 返回",
         aboutIntroTitle: "📖 介绍",
-        aboutIntroDesc: "Privacy & Cookies Manager 是一款功能强大的工具，可帮助您完全控制隐私和浏览 data。凭借先进的安全功能，我们帮助您更安全、更干净地浏览网页。",
+        aboutIntroDesc: "Privacy & Cookies Manager 是一款功能强大的工具，可帮助您完全控制隐私和浏览数据。凭借先进的安全功能，我们帮助您更安全、更干净地浏览网页。",
         aboutGuideTitle: "🛠 用户指南",
         aboutGuide1: "Cookie 管理器：查看、复制、导出和删除当前网站或整个浏览器的 Cookie。",
         aboutGuide2: "隐私播放器：在隔离环境 (Iframe) 中观看视频和电影，以避免跟踪。",
@@ -70,6 +70,34 @@ const translations = {
         aboutGuide5: "安全保护：在设置中启用点击劫持和加密货币挖掘阻止，以增强安全性。",
         aboutTip: "💡 小贴士：为了获得最佳和最安全的体验，请将此扩展程序与 uBlock Origin 等广告拦截工具或具有强大内置广告拦截功能的浏览器（如 Coc Coc 或 Brave）结合使用。",
         author: "作者: Justinan - DrakeDev"
+    },
+    ru: {
+        pageTitle: "Privacy & Cookie Manager",
+        back: "⬅ Назад",
+        aboutIntroTitle: "📖 Введение",
+        aboutIntroDesc: "Privacy & Cookies Manager — это мощный инструмент, который поможет вам полностью контролировать свою приватность и данные просмотра. Благодаря расширенным функциям безопасности мы помогаем вам пользоваться интернетом безопаснее и чище.",
+        aboutGuideTitle: "🛠 Руководство пользователя",
+        aboutGuide1: "Менеджер Cookie: просмотр, копирование, экспорт и удаление куки текущего сайта или всего браузера.",
+        aboutGuide2: "Privacy Player: просмотр видео в изолированной среде (Iframe), чтобы избежать отслеживания.",
+        aboutGuide3: "Privacy Vault: хранение важных ссылок в защищенном паролем «сейфе».",
+        aboutGuide4: "Боковая панель: вы можете включить ее в настройках для использования расширения параллельно с просмотром сайтов.",
+        aboutGuide5: "Защита: включите блокировку кликджекинга и криптомайнинга для повышения безопасности.",
+        aboutTip: "💡 Совет: для наилучшего опыта используйте это расширение вместе с блокировщиками рекламы, такими как uBlock Origin.",
+        author: "Автор: Justinan - DrakeDev"
+    },
+    de: {
+        pageTitle: "Privacy & Cookie Manager",
+        back: "⬅ Zurück",
+        aboutIntroTitle: "📖 Einführung",
+        aboutIntroDesc: "Privacy & Cookies Manager ist ein leistungsstarkes Tool, das Ihnen hilft, die volle Kontrolle über Ihre Privatsphäre und Browserdaten zu behalten.",
+        aboutGuideTitle: "🛠 Benutzerhandbuch",
+        aboutGuide1: "Cookie-Manager: Cookies der aktuellen Seite oder des gesamten Browsers anzeigen, kopieren und löschen.",
+        aboutGuide2: "Privacy Player: Videos in einer isolierten Umgebung (Iframe) ansehen, um Tracking zu vermeiden.",
+        aboutGuide3: "Privacy Vault: Wichtige Links in einem passwortgeschützten «Tresor» speichern.",
+        aboutGuide4: "Seitenleiste: Nutzen Sie die Erweiterung parallel zum Browsen.",
+        aboutGuide5: "Sicherheitsschutz: Aktivieren Sie den Schutz vor Clickjacking und Crypto-Mining.",
+        aboutTip: "💡 Tipp: Verwenden Sie diese Erweiterung zusammen mit uBlock Origin für maximale Sicherheit.",
+        author: "Autor: Justinan - DrakeDev"
     }
 };
 

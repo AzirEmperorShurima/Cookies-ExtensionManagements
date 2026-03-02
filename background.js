@@ -82,7 +82,7 @@ chrome.webNavigation.onCreatedNavigationTarget.addListener((details) => {
             const settings = result.appSettings || {};
             
             // If user wants Incognito for new tabs from Privacy Player
-            if (settings.playerLinkBehavior === 'newTab' && settings.playerNewTabMode === 'incognito') {
+            if (settings.playerLinkBehavior === 'incognito') {
                 chrome.extension.isAllowedIncognitoAccess((isAllowed) => {
                     if (isAllowed) {
                         // Close the newly created tab

@@ -244,6 +244,8 @@
                     <option value="ja">日本語 (Japanese)</option>
                     <option value="fr">Français (French)</option>
                     <option value="zh">中文 (Chinese)</option>
+                    <option value="ru">Русский (Russian)</option>
+                    <option value="de">Deutsch (German)</option>
                 </select>
             </div>
             <div class="setting-item">
@@ -286,15 +288,27 @@
                 <select id="playerLinkBehavior">
                     <option value="inside" data-i18n="link_inside">Open Inside Player</option>
                     <option value="newTab" data-i18n="link_newTab">Open in New Tab</option>
+                    <option value="incognito" data-i18n="link_incognito">Open in Incognito Window</option>
+                    <option value="block" data-i18n="link_block">Block Link Clicks</option>
                 </select>
             </div>
-            <div class="setting-item hidden" id="playerNewTabModeRow">
-                <span data-i18n="playerNewTabMode">New Tab Target</span>
-                <button class="info-icon" data-info="Chọn nơi mở tab mới khi 'Open in New Tab' được bật.">ℹ️</button>
-                <select id="playerNewTabMode">
-                    <option value="main" data-i18n="tab_main">Main Browser</option>
-                    <option value="incognito" data-i18n="tab_incognito">Incognito Mode</option>
+            <div class="setting-item" id="playerLinkFilterRow">
+                <span data-i18n="playerLinkFilter">Applied Link Type</span>
+                <button class="info-icon" data-info="Chọn loại liên kết sẽ áp dụng hành vi trên.">ℹ️</button>
+                <select id="playerLinkFilter">
+                    <option value="all" data-i18n="filter_all">All Links</option>
+                    <option value="newTabOnly" data-i18n="filter_newTabOnly">New Tab Links Only</option>
                 </select>
+            </div>
+            <!-- Suggestions for Behavior Settings -->
+            <div id="behaviorSuggestions" class="setting-hint-box behavior-suggestion-box">
+                <h4 data-i18n="behavior_suggestion_title">💡 Gợi ý thiết lập cho Search Engine</h4>
+                <p data-i18n="behavior_suggestion_coccoc">Đối với **Cốc Cốc Search**, bạn nên để:</p>
+                <ul class="suggestion-list">
+                    <li data-i18n="behavior_suggestion_coccoc_item1">- **Link Click Behavior**: 'Mở trong Tab mới' hoặc 'Mở bên trong Player'.</li>
+                    <li data-i18n="behavior_suggestion_coccoc_item2">- **Applied Link Type**: 'Tất cả các link' để tối ưu hóa trải nghiệm tìm kiếm.</li>
+                </ul>
+                <p class="suggestion-footer" data-i18n="behavior_suggestion_general">Thiết lập này giúp bạn giữ được trang kết quả tìm kiếm trong khi xem nội dung video hoặc trang web con một cách liền mạch.</p>
             </div>
             <div id="customBgUrlRow" class="settings-group hidden" style="margin-top: 10px; padding: 10px; border: 1px dashed var(--border-color);">
                 <div class="setting-item" style="border-bottom: none; flex-direction: column; align-items: stretch; gap: 10px;">
@@ -857,6 +871,13 @@
                             <option value="#d69e2e" style="color: #d69e2e;">Yellow</option>
                             <option value="#805ad5" style="color: #805ad5;">Purple</option>
                             <option value="#ff0080" style="color: #ff0080;">Pink</option>
+                        </select>
+                    </div>
+                    <div class="input-with-label">
+                        <label data-i18n="containerModeLabel">Isolation Mode</label>
+                        <select id="newContainerMode">
+                            <option value="normal">Normal (Shared Session)</option>
+                            <option value="incognito">Incognito (Isolated Session)</option>
                         </select>
                     </div>
                     <div class="input-with-label">

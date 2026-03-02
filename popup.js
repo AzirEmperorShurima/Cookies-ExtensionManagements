@@ -123,8 +123,8 @@ const elements = {
     languageSelect: document.getElementById('languageSelect'),
     playerBackgroundType: document.getElementById('playerBackgroundType'),
     playerLinkBehavior: document.getElementById('playerLinkBehavior'),
-    playerNewTabMode: document.getElementById('playerNewTabMode'),
-    playerNewTabModeRow: document.getElementById('playerNewTabModeRow'),
+    playerLinkFilter: document.getElementById('playerLinkFilter'),
+    playerLinkFilterRow: document.getElementById('playerLinkFilterRow'),
     customBgUrlRow: document.getElementById('customBgUrlRow'),
     customBgUrlInput: document.getElementById('customBgUrlInput'),
     addCustomBgBtn: document.getElementById('addCustomBgBtn'),
@@ -169,6 +169,7 @@ const elements = {
     multiAccountSection: document.getElementById('multiAccountSection'),
     newContainerName: document.getElementById('newContainerName'),
     newContainerColor: document.getElementById('newContainerColor'),
+    newContainerMode: document.getElementById('newContainerMode'),
     containerIconPicker: document.getElementById('containerIconPicker'),
     addContainerBtn: document.getElementById('addContainerBtn'),
     quickIdentityBtn: document.getElementById('quickIdentityBtn'),
@@ -234,7 +235,7 @@ let settings = {
     language: 'vi',
     playerBackgroundType: 'default',
     playerLinkBehavior: 'inside', // Default: open inside player
-    playerNewTabMode: 'main', // Default: main browser
+    playerLinkFilter: 'all', // Default: all links
     customBgUrl: '',
     customBgList: [],
     panicAction: 'closeIncognito',
@@ -356,6 +357,8 @@ function applySettings() {
     elements.defaultPlayerWidth.value = settings.defaultPlayerWidth;
     elements.defaultPlayerHeight.value = settings.defaultPlayerHeight;
     elements.followDefaultPlayerSizeToggle.checked = settings.followDefaultPlayerSize;
+    elements.playerLinkBehavior.value = settings.playerLinkBehavior || 'inside';
+    elements.playerLinkFilter.value = settings.playerLinkFilter || 'all';
 
     // Apply Search Engine setting
     elements.searchEngineSelect.value = settings.searchEngine;
@@ -370,8 +373,6 @@ function applySettings() {
     // Apply Background settings
     elements.playerBackgroundType.value = settings.playerBackgroundType || 'default';
     elements.playerLinkBehavior.value = settings.playerLinkBehavior || 'inside';
-    elements.playerNewTabMode.value = settings.playerNewTabMode || 'main';
-    elements.playerNewTabModeRow.classList.toggle('hidden', (settings.playerLinkBehavior || 'inside') !== 'newTab');
     elements.customBgUrlInput.value = ''; // Clear input on load
     toggleCustomBgUrlRow();
     renderCustomBgList();
@@ -2717,6 +2718,14 @@ function loadContainers() {
         name.textContent = container.name;
         card.appendChild(name);
 
+        // Show mode badge
+        const modeBadge = document.createElement('span');
+        modeBadge.className = 'container-mode-badge';
+        modeBadge.textContent = container.mode === 'incognito' ? 'Isolated' : 'Shared';
+        modeBadge.style.fontSize = '0.7rem';
+        modeBadge.style.opacity = '0.6';
+        card.appendChild(modeBadge);
+
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'container-delete-btn';
         deleteBtn.textContent = '×';
@@ -2734,11 +2743,18 @@ function loadContainers() {
         });
 
         card.addEventListener('click', () => {
-            // Note: In Chrome, true 'containers' (like Firefox) don't exist in the same way.
-            // We simulate this by opening in a separate window or using tab groups if supported.
-            // For this extension, we'll open a new window which has its own 'session' or use incognito if configured.
-            chrome.tabs.create({ url: 'https://www.google.com' }); 
-            notify(`Opening new tab in "${container.name}" session...`, 'success');
+            const url = 'https://www.google.com';
+            if (container.mode === 'incognito') {
+                chrome.windows.create({
+                    url: url,
+                    incognito: true,
+                    type: 'normal'
+                });
+                notify(`Opening "${container.name}" in isolated Incognito window...`, 'success');
+            } else {
+                chrome.tabs.create({ url: url }); 
+                notify(`Opening new tab in "${container.name}" (shared session)...`, 'success');
+            }
         });
 
         containerList.appendChild(card);
@@ -2748,8 +2764,10 @@ function loadContainers() {
 elements.addContainerBtn.addEventListener('click', () => {
     const nameInput = elements.newContainerName;
     const colorInput = elements.newContainerColor;
+    const modeInput = elements.newContainerMode;
     const name = nameInput.value.trim();
     const color = colorInput.value;
+    const mode = modeInput ? modeInput.value : 'normal';
 
     // Get selected icon
     const selectedIconEl = document.querySelector('.picker-icon.selected');
@@ -2764,7 +2782,8 @@ elements.addContainerBtn.addEventListener('click', () => {
         id: Date.now().toString(),
         name: name,
         color: color,
-        icon: icon
+        icon: icon,
+        mode: mode
     };
 
     if (!settings.accountContainers) settings.accountContainers = [];
@@ -3508,16 +3527,17 @@ elements.playerBackgroundType.addEventListener('change', (e) => {
 
 elements.playerLinkBehavior.addEventListener('change', (e) => {
     settings.playerLinkBehavior = e.target.value;
-    elements.playerNewTabModeRow.classList.toggle('hidden', settings.playerLinkBehavior !== 'newTab');
     saveSettings();
     updatePlayerSandbox(); // Cập nhật sandbox ngay lập tức
-    notify(`Link behavior: ${settings.playerLinkBehavior === 'inside' ? 'Inside Player' : 'New Tab'}`, 'success');
+    
+    let notifyMsg = `Link behavior: ${e.target.options[e.target.selectedIndex].text}`;
+    notify(notifyMsg, 'success');
 });
 
-elements.playerNewTabMode.addEventListener('change', (e) => {
-    settings.playerNewTabMode = e.target.value;
+elements.playerLinkFilter.addEventListener('change', (e) => {
+    settings.playerLinkFilter = e.target.value;
     saveSettings();
-    notify(`New tab mode: ${settings.playerNewTabMode === 'main' ? 'Main Browser' : 'Incognito'}`, 'success');
+    notify(`Link filter: ${e.target.options[e.target.selectedIndex].text}`, 'success');
 });
 
 elements.addCustomBgBtn.addEventListener('click', () => {
@@ -3885,13 +3905,18 @@ function updatePlayerSandbox() {
     const { stealthPlayer } = elements;
     if (!stealthPlayer) return;
 
-    // Các quyền cơ bản
-    let sandbox = ['allow-scripts', 'allow-same-origin', 'allow-forms'];
-    
-    // Nếu cài đặt là mở trong Tab mới, ta cần allow-popups
-    if (settings.playerLinkBehavior === 'newTab') {
-        sandbox.push('allow-popups');
-    }
+    // Các quyền cơ bản để trang web hoạt động bình thường
+    // allow-popups: Quan trọng cho Cốc Cốc và nhiều trang khác khi click link
+    // allow-popups-to-escape-sandbox: Hỗ trợ các link mở ra tab mới thực sự
+    // allow-downloads: Nếu người dùng muốn tải gì đó
+    let sandbox = [
+        'allow-scripts', 
+        'allow-same-origin', 
+        'allow-forms', 
+        'allow-popups', 
+        'allow-popups-to-escape-sandbox',
+        'allow-downloads'
+    ];
     
     stealthPlayer.setAttribute('sandbox', sandbox.join(' '));
 }
@@ -4563,42 +4588,50 @@ async function restoreSession(session) {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'privacyPlayerLinkClicked') {
         const url = message.url;
+        const action = message.action;
         
-        if (settings.playerLinkBehavior === 'newTab') {
-            if (settings.playerNewTabMode === 'incognito') {
-                chrome.extension.isAllowedIncognitoAccess((isAllowed) => {
-                    chrome.windows.create({
-                        url: url,
-                        type: 'popup',
-                        width: 800,
-                        height: 600,
-                        incognito: isAllowed
-                    });
-                    if (!isAllowed) {
-                        notify('Incognito access required for Incognito mode. Opened in normal window.', 'warning');
-                    } else {
-                        notify('Opened in Incognito Stealth Window!', 'success');
-                    }
-                });
-            } else {
-                chrome.tabs.create({ url: url });
-                notify('Opened in new tab!', 'success');
-            }
-        } else {
-            // Default: Open inside player
-            elements.stealthPlayer.src = url;
-            elements.stealthUrl.value = url;
-            
-            // Cập nhật History Stack nội bộ
-            if (url !== playerHistory[currentUrlIndex]) {
-                playerHistory = playerHistory.slice(0, currentUrlIndex + 1);
-                playerHistory.push(url);
-                currentUrlIndex = playerHistory.length - 1;
-                updatePlayerNavState();
-            }
-            
-            notify('Navigating inside player...', 'success');
+        if (action === 'block') {
+            notify('Link click blocked by settings', 'warning');
+            return;
         }
+
+        if (action === 'newTab') {
+            chrome.tabs.create({ url: url });
+            notify('Opened in new tab!', 'success');
+            return;
+        }
+
+        if (action === 'incognito') {
+            chrome.extension.isAllowedIncognitoAccess((isAllowed) => {
+                chrome.windows.create({
+                    url: url,
+                    type: 'popup',
+                    width: 800,
+                    height: 600,
+                    incognito: isAllowed
+                });
+                if (!isAllowed) {
+                    notify('Incognito access required. Opened in normal window.', 'warning');
+                } else {
+                    notify('Opened in Incognito Window!', 'success');
+                }
+            });
+            return;
+        }
+
+        // Default / action === 'inside'
+        elements.stealthPlayer.src = url;
+        elements.stealthUrl.value = url;
+        
+        // Cập nhật History Stack nội bộ
+        if (url !== playerHistory[currentUrlIndex]) {
+            playerHistory = playerHistory.slice(0, currentUrlIndex + 1);
+            playerHistory.push(url);
+            currentUrlIndex = playerHistory.length - 1;
+            updatePlayerNavState();
+        }
+        
+        notify('Navigating inside player...', 'success');
     }
 });
 

@@ -850,6 +850,59 @@ body.dark-mode .multi-account-section {
     background: #2d2d2d;
 }
 
+/* Suggestions & Hints */
+.behavior-suggestion-box {
+    background: rgba(121, 40, 202, 0.05) !important;
+    border-left: 4px solid #7928ca !important;
+    margin-top: 15px;
+    padding: 12px 15px !important;
+    border-radius: var(--radius-md);
+}
+
+.behavior-suggestion-box h4 {
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.behavior-suggestion-box p {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+}
+
+.suggestion-list {
+    list-style: none;
+    margin: 8px 0;
+    padding-left: 5px;
+}
+
+.suggestion-list li {
+    font-size: 0.8rem;
+    color: var(--text-main);
+    margin-bottom: 4px;
+    line-height: 1.4;
+}
+
+.suggestion-footer {
+    font-size: 0.75rem !important;
+    font-style: italic;
+    opacity: 0.8;
+    margin-top: 8px;
+}
+
+body.dark-mode .behavior-suggestion-box {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-left-color: #ff0080 !important;
+}
+
+body.dark-mode .behavior-suggestion-box h4 {
+    color: #fbc2eb;
+}
+
 /* Settings Search Styles */
 .settings-search-container {
     margin-bottom: 20px;
@@ -3290,7 +3343,7 @@ body.dark-mode .telegram-info {
     height: 100%;
     border: none;
     z-index: 2;
-    background: transparent;
+    background: #ffffff; /* Đảm bảo nền trắng để không bị lộ hình nền Player */
 }
 
 .player-container:not(.has-content) #stealthPlayer {

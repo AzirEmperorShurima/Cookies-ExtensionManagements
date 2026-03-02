@@ -3,7 +3,7 @@
     "author": "Justinan - DrakeDev",
     "name": "Privacy & Cookies Manager",
     "version": "1.5.0",
-    "description": "Extension for managing cookies and privacy settings \n in this extension you can manage your cookies \n enable/disable third-party cookies, \nview your cookies,\n copy , paste and export your cookies \n and delete cookies data.",
+    "description": "Comprehensive Privacy & Cookie Manager: Manage cookies (view, copy, paste, delete), Privacy Player for isolated video viewing, secure Vault for sensitive links, Panic Button, and Multi-Account Containers support.",
     "permissions": [
         "cookies",
         "tabs",
