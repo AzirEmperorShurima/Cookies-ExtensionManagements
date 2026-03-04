@@ -89,30 +89,45 @@
         </div>
         
         <div class="stats-grid">
-            <div class="stat-card">
-                <span class="stat-value" id="statCookies">0</span>
-                <span class="stat-label" data-i18n="totalCookies">Total Cookies</span>
+            <div class="stat-card clickable-card" id="cardCookies">
+                <div class="stat-icon-bg"><img src="icons/cookie.png" width="24" height="24"></div>
+                <div class="stat-content">
+                    <span class="stat-value" id="statCookies">0</span>
+                    <span class="stat-label" data-i18n="totalCookies">Total Cookies</span>
+                </div>
             </div>
-            <div class="stat-card">
-                <span class="stat-value" id="statTrackers">0</span>
-                <span class="stat-label" data-i18n="trackersBlocked">Trackers Blocked</span>
+            <div class="stat-card clickable-card" id="cardTrackers">
+                <div class="stat-icon-bg"><img src="icons/tracking_protection.png" width="24" height="24"></div>
+                <div class="stat-content">
+                    <span class="stat-value" id="statTrackers">0</span>
+                    <span class="stat-label" data-i18n="trackersBlocked">Trackers Blocked</span>
+                </div>
             </div>
-            <div class="stat-card">
-                <span class="stat-value" id="statExtensions">0</span>
-                <span class="stat-label" data-i18n="activeExts">Active Exts</span>
+            <div class="stat-card clickable-card" id="cardExtensions">
+                <div class="stat-icon-bg"><img src="icons/extension.png" width="24" height="24"></div>
+                <div class="stat-content">
+                    <span class="stat-value" id="statExtensions">0</span>
+                    <span class="stat-label" data-i18n="activeExts">Active Exts</span>
+                </div>
             </div>
-            <div class="stat-card grade-card">
-                <span data-i18n="privacyGrade">Privacy Grade</span>
-                <div class="grade-container">
-                    <div id="privacyGradeValue" class="grade-circle">B+</div>
-                    <div class="grade-info">
-                        <div id="healthScoreText" class="score-text">85/100</div>
-                        <div id="healthStatusText" class="status-text">Good</div>
+            <div class="stat-card grade-card-modern">
+                <div class="grade-header">
+                    <span class="grade-title" data-i18n="privacyGrade">Privacy Grade</span>
+                    <span id="healthStatusText" class="status-badge">Good</span>
+                </div>
+                <div class="grade-main">
+                    <div id="privacyGradeValue" class="grade-letter">A+</div>
+                    <div class="grade-progress-container">
+                        <div class="grade-score-row">
+                            <span id="healthScoreText" class="score-number">85/100</span>
+                            <span class="score-label" data-i18n="securityScore">Security Score</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div id="healthBarFill" class="progress-bar-fill" style="width: 85%;"></div>
+                        </div>
                     </div>
                 </div>
-                <div class="health-bar-container">
-                    <div id="healthBarFill" class="health-bar-fill" style="width: 85%;"></div>
-                </div>
+                <button id="fixPrivacyBtn" class="fix-btn hidden" data-i18n="fixNow">⚡ Fix Now</button>
             </div>
         </div>
 
@@ -917,6 +932,20 @@
                 </div>
                 <div class="guide-content">
                     <p data-i18n="multiAccountDetailedTip">Multi-Account Containers allow you to separate different login sessions on the same website. Each 'Container' you create has its own Cookie storage, enabling you to log in to multiple Facebook, Gmail, or Shopee accounts simultaneously without needing incognito tabs or different browsers.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="trackerModal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 data-i18n="trackersBlockedDetail">Trackers Blocked Detail 🛡️</h3>
+                <button id="closeTrackerModal" class="close-modal-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="trackerList" class="tracker-details-list">
+                    <!-- Tracker list items will be populated here -->
                 </div>
             </div>
         </div>

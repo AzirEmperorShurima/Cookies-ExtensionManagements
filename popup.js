@@ -84,6 +84,9 @@ const elements = {
     statCookies: document.getElementById('statCookies'),
     statExtensions: document.getElementById('statExtensions'),
     statTrackers: document.getElementById('statTrackers'),
+    trackerModal: document.getElementById('trackerModal'),
+    closeTrackerModal: document.getElementById('closeTrackerModal'),
+    trackerDetailsList: document.querySelector('.tracker-details-list'),
     privacyScore: document.getElementById('privacyScore'),
     privacyGradeValue: document.getElementById('privacyGradeValue'),
     healthScoreText: document.getElementById('healthScoreText'),
@@ -96,6 +99,10 @@ const elements = {
     sessionCount: document.getElementById('sessionCount'),
     quickFocusMode: document.getElementById('quickFocusMode'),
     quickClearAll: document.getElementById('quickClearAll'),
+    fixPrivacyBtn: document.getElementById('fixPrivacyBtn'),
+    cardCookies: document.getElementById('cardCookies'),
+    cardTrackers: document.getElementById('cardTrackers'),
+    cardExtensions: document.getElementById('cardExtensions'),
     
     // Vault
     vaultBtn: document.getElementById('vaultBtn'),
@@ -473,8 +480,8 @@ function updateUILanguage() {
         updatePanicDescription(settings.panicAction || 'closeIncognito');
     }
 
-    // Update Privacy Health Score UI
-    updatePrivacyHealthScore();
+    // Update Privacy Grade
+    calculatePrivacyGrade();
 
     // Cập nhật các thông báo trống (empty messages)
     const sessionsList = document.getElementById('sessionsList');
@@ -665,7 +672,7 @@ function getInstallTypeInfo(installType) {
 }
 
 /**
- * Tạo HTML cho extension card
+ * Tạo HTML cho extension card (Optimized with innerHTML and minimal DOM calls)
  * @param {Object} ext - Thông tin extension
  * @returns {string} Chuỗi HTML
  */
@@ -673,7 +680,6 @@ function createExtensionCardHTML(ext) {
     const iconUrl = ext.icons?.length ? ext.icons[ext.icons.length - 1].url : 'icons/extension-default.png';
     const { icon, tooltip } = getInstallTypeInfo(ext.installType);
     
-    // Định nghĩa tên đầy đủ cho từng loại cài đặt
     const typeMapping = {
         'development': 'Development Mode',
         'normal': 'Chrome Web Store',
@@ -689,120 +695,47 @@ function createExtensionCardHTML(ext) {
     const card = document.createElement('div');
     card.className = 'extension-card';
 
-    const top = document.createElement('div');
-    top.className = 'extension-top';
+    const permissionsTags = ext.permissions.length 
+        ? ext.permissions.map(p => `<span class="permission-tag">${p}</span>`).join('')
+        : '<span class="permission-tag">None</span>';
 
-    const largeIconContainer = document.createElement('div');
-    largeIconContainer.className = 'extension-large-icon-container';
-    const largeIcon = document.createElement('img');
-    largeIcon.src = iconUrl;
-    largeIcon.alt = ext.name;
-    largeIcon.className = 'extension-large-icon';
-    largeIconContainer.appendChild(largeIcon);
-    top.appendChild(largeIconContainer);
-
-    const info = document.createElement('div');
-    info.className = 'extension-info';
-    const name = document.createElement('h3');
-    name.className = 'extension-name';
-    name.textContent = ext.name;
-    const version = document.createElement('span');
-    version.className = 'extension-version';
-    version.textContent = `v${ext.version}`;
-    info.appendChild(name);
-    info.appendChild(version);
-    top.appendChild(info);
-    card.appendChild(top);
-
-    const statusBar = document.createElement('div');
-    statusBar.className = `extension-status-bar ${ext.enabled ? 'enabled' : 'disabled'}`;
-    const label = document.createElement('label');
-    label.className = 'switch';
-    const input = document.createElement('input');
-    input.type = 'checkbox';
-    input.checked = ext.enabled;
-    const slider = document.createElement('span');
-    slider.className = 'slider round';
-    label.appendChild(input);
-    label.appendChild(slider);
-    statusBar.appendChild(label);
-
-    const statusText = document.createElement('span');
-    statusText.className = 'status-text';
-    statusText.textContent = ext.enabled ? 'Enabled' : 'Disabled';
-    statusBar.appendChild(statusText);
-
-    const removeButton = document.createElement('button');
-    removeButton.className = 'remove-extension';
-    removeButton.textContent = 'Remove';
-    statusBar.appendChild(removeButton);
-    card.appendChild(statusBar);
-
-    const performance = document.createElement('div');
-    performance.className = 'extension-performance';
-
-    const ramItem = document.createElement('div');
-    ramItem.className = 'perf-item';
-    const ramLabel = document.createElement('span');
-    ramLabel.className = 'perf-label';
-    ramLabel.textContent = 'RAM:';
-    const ramValue = document.createElement('span');
-    ramValue.className = 'perf-value';
-    ramValue.textContent = `${ext.enabled ? randomMemory + 'MB' : '0MB'}`;
-    ramItem.appendChild(ramLabel);
-    ramItem.appendChild(ramValue);
-    performance.appendChild(ramItem);
-
-    const cpuItem = document.createElement('div');
-    cpuItem.className = 'perf-item';
-    const cpuLabel = document.createElement('span');
-    cpuLabel.className = 'perf-label';
-    cpuLabel.textContent = 'CPU:';
-    const cpuValue = document.createElement('span');
-    cpuValue.className = 'perf-value';
-    cpuValue.textContent = `${ext.enabled ? randomCPU + '%' : '0%'}`;
-    cpuItem.appendChild(cpuLabel);
-    cpuItem.appendChild(cpuValue);
-    performance.appendChild(cpuItem);
-    card.appendChild(performance);
-
-    const meta = document.createElement('div');
-    meta.className = 'extension-meta';
-    const strongType = document.createElement('strong');
-    strongType.textContent = 'Type: ';
-    meta.appendChild(strongType);
-    meta.appendChild(document.createTextNode(typeLabel));
-    const typeMiniIcon = document.createElement('img');
-    typeMiniIcon.src = icon;
-    typeMiniIcon.title = tooltip;
-    typeMiniIcon.alt = tooltip;
-    typeMiniIcon.className = 'type-mini-icon';
-    meta.appendChild(typeMiniIcon);
-    card.appendChild(meta);
-
-    const permissionsBox = document.createElement('div');
-    permissionsBox.className = 'extension-permissions-box';
-    const strongPermissions = document.createElement('strong');
-    strongPermissions.textContent = 'Permissions:';
-    permissionsBox.appendChild(strongPermissions);
-
-    const permissionsTagContainer = document.createElement('div');
-    permissionsTagContainer.className = 'permissions-tag-container';
-    if (ext.permissions.length) {
-        ext.permissions.forEach(p => {
-            const span = document.createElement('span');
-            span.className = 'permission-tag';
-            span.textContent = p;
-            permissionsTagContainer.appendChild(span);
-        });
-    } else {
-        const span = document.createElement('span');
-        span.className = 'permission-tag';
-        span.textContent = 'None';
-        permissionsTagContainer.appendChild(span);
-    }
-    permissionsBox.appendChild(permissionsTagContainer);
-    card.appendChild(permissionsBox);
+    card.innerHTML = `
+        <div class="extension-top">
+            <div class="extension-large-icon-container">
+                <img src="${iconUrl}" alt="${ext.name}" class="extension-large-icon">
+            </div>
+            <div class="extension-info">
+                <h3 class="extension-name">${ext.name}</h3>
+                <span class="extension-version">v${ext.version}</span>
+            </div>
+        </div>
+        <div class="extension-status-bar ${ext.enabled ? 'enabled' : 'disabled'}">
+            <label class="switch">
+                <input type="checkbox" ${ext.enabled ? 'checked' : ''}>
+                <span class="slider round"></span>
+            </label>
+            <span class="status-text">${ext.enabled ? 'Enabled' : 'Disabled'}</span>
+            <button class="remove-extension">Remove</button>
+        </div>
+        <div class="extension-performance">
+            <div class="perf-item">
+                <span class="perf-label">RAM:</span>
+                <span class="perf-value">${ext.enabled ? randomMemory + 'MB' : '0MB'}</span>
+            </div>
+            <div class="perf-item">
+                <span class="perf-label">CPU:</span>
+                <span class="perf-value">${ext.enabled ? randomCPU + '%' : '0%'}</span>
+            </div>
+        </div>
+        <div class="extension-meta">
+            <strong>Type: </strong>${typeLabel}
+            <img src="${icon}" title="${tooltip}" alt="${tooltip}" class="type-mini-icon">
+        </div>
+        <div class="extension-permissions-box">
+            <strong>Permissions:</strong>
+            <div class="permissions-tag-container">${permissionsTags}</div>
+        </div>
+    `;
 
     return card;
 }
@@ -940,12 +873,12 @@ function renderExtensions() {
 }
 
 /**
- * Tải và hiển thị cookies
+ * Tải và hiển thị cookies (Optimized with DocumentFragment)
  * @param {string} [filter=''] - Bộ lọc theo tên hoặc domain
  */
 async function loadCookies(filter = '') {
     const { cookieTableContainer, totalCookies } = elements;
-    cookieTableContainer.innerHTML = '';
+    
     const cookies = await chrome.cookies.getAll({});
     const cookiesByDomain = {};
 
@@ -961,11 +894,14 @@ async function loadCookies(filter = '') {
     const totalCookiesCount = Object.values(cookiesByDomain).reduce((count, cookies) => count + cookies.length, 0);
 
     if (totalDomains === 0) {
+        cookieTableContainer.innerHTML = '';
         totalCookies.textContent = `No results found for "${filter}"`;
         return;
     }
 
     totalCookies.textContent = `${totalDomains} Domains · ${totalCookiesCount} Cookies`;
+
+    const fragment = document.createDocumentFragment();
 
     Object.keys(cookiesByDomain).forEach((domain) => {
         const domainSection = document.createElement('div');
@@ -985,18 +921,18 @@ async function loadCookies(filter = '') {
         const copyIcon = document.createElement('img');
         copyIcon.src = 'icons/copy.png';
         copyIcon.title = 'Copy Domain Cookies';
-        copyIcon.addEventListener('click', () => {
+        copyIcon.onclick = () => {
             const cookiesParser = JSON.stringify(cookiesByDomain[domain], null, 2)
             navigator.clipboard.writeText(cookiesParser);
             notify(`Copied ${domain} cookies`, 'success');
-        });
+        };
 
         const clearIcon = document.createElement('img');
         clearIcon.src = 'icons/clear.png';
         clearIcon.title = 'Clear Domain Cookies';
-        clearIcon.addEventListener('click', () => {
+        clearIcon.onclick = () => {
             deleteCookiesInDomain(domain, filter);
-        });
+        };
 
         actionsContainer.appendChild(copyIcon);
         actionsContainer.appendChild(clearIcon);
@@ -1006,80 +942,55 @@ async function loadCookies(filter = '') {
         const tableContainer = document.createElement('div');
         tableContainer.style.overflowX = 'auto';
         
-        const table = document.createElement('table');
-        const thead = document.createElement('thead');
-        const tbody = document.createElement('tbody');
-
-        const headerRow = document.createElement('tr');
-        ['Name', 'Value', 'Path', 'Expires', 'Expand'].forEach(headerText => {
-            const th = document.createElement('th');
-            th.textContent = headerText;
-            headerRow.appendChild(th);
-        });
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
+        let tableHTML = `
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Value</th>
+                        <th>Path</th>
+                        <th>Expires</th>
+                        <th>Expand</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
 
         cookiesByDomain[domain].forEach(cookie => {
-            const row = document.createElement('tr');
-            row.className = 'cookie-row';
-
-            const nameCell = document.createElement('td');
-            const nameSpan = document.createElement('span');
-            nameSpan.className = 'cookie-text-container';
-            nameSpan.title = cookie.name;
-            nameSpan.textContent = cookie.name;
-            nameCell.appendChild(nameSpan);
-            row.appendChild(nameCell);
-
-            const valueCell = document.createElement('td');
-            const valueSpan = document.createElement('span');
-            valueSpan.className = 'cookie-text-container';
-            valueSpan.title = cookie.value;
-            valueSpan.textContent = cookie.value;
-            valueCell.appendChild(valueSpan);
-            row.appendChild(valueCell);
-
-            const pathCell = document.createElement('td');
-            const pathSpan = document.createElement('span');
-            pathSpan.className = 'cookie-text-container';
-            pathSpan.title = cookie.path;
-            pathSpan.textContent = cookie.path;
-            pathCell.appendChild(pathSpan);
-            row.appendChild(pathCell);
-
-            const expiresCell = document.createElement('td');
-            const expiresSpan = document.createElement('span');
-            expiresSpan.className = 'cookie-text-container';
             const expiresText = cookie.expirationDate ? new Date(cookie.expirationDate * 1000).toLocaleString() : 'Session';
-            expiresSpan.title = expiresText;
-            expiresSpan.textContent = expiresText;
-            expiresCell.appendChild(expiresSpan);
-            row.appendChild(expiresCell);
-
-            const expandCell = document.createElement('td');
             const isLongValue = cookie.value.length > 30 || cookie.name.length > 20 || cookie.path.length > 15;
-            if (isLongValue) {
-                const expandBtn = document.createElement('button');
-                expandBtn.className = 'row-expand-btn';
-                expandBtn.title = 'Expand Row';
-                expandBtn.textContent = '...';
-                expandBtn.addEventListener('click', (e) => {
-                    const targetRow = e.target.closest('.cookie-row');
-                    targetRow.classList.toggle('expanded');
-                    e.target.classList.toggle('active');
-                });
-                expandCell.appendChild(expandBtn);
-            }
-            row.appendChild(expandCell);
-
-            tbody.appendChild(row);
+            
+            tableHTML += `
+                <tr class="cookie-row">
+                    <td><span class="cookie-text-container" title="${cookie.name}">${cookie.name}</span></td>
+                    <td><span class="cookie-text-container" title="${cookie.value}">${cookie.value}</span></td>
+                    <td><span class="cookie-text-container" title="${cookie.path}">${cookie.path}</span></td>
+                    <td><span class="cookie-text-container" title="${expiresText}">${expiresText}</span></td>
+                    <td>
+                        ${isLongValue ? '<button class="row-expand-btn" title="Expand Row">...</button>' : ''}
+                    </td>
+                </tr>
+            `;
         });
-        table.appendChild(tbody);
 
-        tableContainer.appendChild(table);
+        tableHTML += `</tbody></table>`;
+        tableContainer.innerHTML = tableHTML;
+
+        // Thêm sự kiện cho nút expand sau khi innerHTML được gán
+        tableContainer.querySelectorAll('.row-expand-btn').forEach(btn => {
+            btn.onclick = (e) => {
+                const targetRow = e.target.closest('.cookie-row');
+                targetRow.classList.toggle('expanded');
+                e.target.classList.toggle('active');
+            };
+        });
+
         domainSection.appendChild(tableContainer);
-        cookieTableContainer.appendChild(domainSection);
+        fragment.appendChild(domainSection);
     });
+
+    cookieTableContainer.innerHTML = '';
+    cookieTableContainer.appendChild(fragment);
 }
 
 /**
@@ -1396,6 +1307,51 @@ function toggleSection(section) {
     }
 }
 
+/**
+ * Hiển thị chi tiết các tracker trong modal
+ */
+function showTrackerDetails(trackers) {
+    const { trackerModal, trackerDetailsList } = elements;
+    trackerDetailsList.innerHTML = '';
+
+    if (!trackers || trackers.length === 0) {
+        trackerDetailsList.innerHTML = '<p class="empty-msg">No trackers detected on this page.</p>';
+    } else {
+        // Sắp xếp theo số lượng phát hiện giảm dần
+        const sortedTrackers = [...trackers].sort((a, b) => b.count - a.count);
+        
+        sortedTrackers.forEach(t => {
+            const item = document.createElement('div');
+            item.className = 'tracker-detail-item';
+            
+            const lastSeenTime = new Date(t.lastSeen).toLocaleTimeString();
+            
+            item.innerHTML = `
+                <div class="tracker-info">
+                    <span class="tracker-domain">${t.domain}</span>
+                    <span class="tracker-time">Last seen: ${lastSeenTime}</span>
+                </div>
+                <span class="tracker-count-badge">${t.count}</span>
+            `;
+            trackerDetailsList.appendChild(item);
+        });
+    }
+
+    trackerModal.classList.remove('hidden');
+}
+
+// Thêm sự kiện đóng modal
+elements.closeTrackerModal.addEventListener('click', () => {
+    elements.trackerModal.classList.add('hidden');
+});
+
+// Đóng modal khi nhấn ra ngoài
+elements.trackerModal.addEventListener('click', (e) => {
+    if (e.target === elements.trackerModal) {
+        elements.trackerModal.classList.add('hidden');
+    }
+});
+
 // Lắng nghe thay đổi trạng thái extension từ bên ngoài (ví dụ: từ Focus Mode)
 chrome.management.onEnabled.addListener((info) => {
     if (elements.extensionsList.classList.contains('show')) {
@@ -1451,6 +1407,14 @@ elements.appSettingsBtn.addEventListener('click', () => toggleSection('settings'
 elements.telegramDownloaderBtn.addEventListener('click', () => toggleSection('telegram'));
 elements.videoDownloaderBtn.addEventListener('click', () => toggleSection('video'));
 elements.multiAccountBtn.addEventListener('click', () => toggleSection('multiAccount'));
+
+// Dashboard Card Navigation
+if (elements.cardCookies) elements.cardCookies.addEventListener('click', () => toggleSection('cookies'));
+if (elements.cardTrackers) elements.cardTrackers.addEventListener('click', () => {
+    // Luôn hiển thị modal chi tiết tracker khi nhấn vào thẻ này
+    showTrackerDetails(settings.currentTrackers || []);
+});
+if (elements.cardExtensions) elements.cardExtensions.addEventListener('click', () => toggleSection('extensions'));
 
 /**
  * Kiểm tra xem URL có bị hạn chế truy cập bởi Extension không (chrome://, edge://, v.v.)
@@ -2078,96 +2042,6 @@ elements.vaultInput.addEventListener('keypress', (e) => {
 });
 
 /**
- * Cập nhật Privacy Health Score trên Dashboard
- */
-async function updatePrivacyHealthScore() {
-    if (!elements.healthScoreText) return;
-
-    let score = 0;
-    const insights = [];
-    const lang = settings.language || 'vi';
-    const dict = translations[lang] || translations.vi;
-
-    // 1. Kiểm tra Tracking Protection (20đ)
-    try {
-        const { value } = await chrome.privacy.websites.doNotTrackEnabled.get({});
-        if (value) {
-            score += 20;
-        } else {
-            insights.push(dict.insightTracking || "Bật Chống theo dõi để bảo vệ quyền riêng tư.");
-        }
-    } catch (e) {}
-
-    // 2. Kiểm tra Mật khẩu Vault/Stealth (20đ)
-    if (settings.requireStrongPassword) {
-        score += 20;
-    } else {
-        insights.push(dict.insightStrongPass || "Sử dụng mật khẩu mạnh cho Vault để tăng bảo mật.");
-    }
-
-    // 3. Kiểm tra Protection Level (20đ)
-    if (settings.protectionLevel === 'enhanced' || settings.protectionLevel === 'noscript') {
-        score += 20;
-    } else {
-        insights.push(dict.insightProtection || "Nâng cấp mức độ bảo vệ lên Nâng cao.");
-    }
-
-    // 4. Kiểm tra Real-time Protection & Security (20đ)
-    if (settings.realTimeProtection && settings.blockClickjacking && settings.blockCryptoMining) {
-        score += 20;
-    } else {
-        insights.push(dict.insightSecurity || "Bật bảo vệ thời gian thực và chặn đào tiền ảo.");
-    }
-
-    // 5. Kiểm tra Cookies (20đ - Giảm điểm nếu có quá nhiều cookie theo dõi)
-    const cookies = await chrome.cookies.getAll({});
-    const permanentCount = cookies.filter(c => !c.session).length;
-    if (permanentCount < 50) {
-        score += 20;
-    } else if (permanentCount < 150) {
-        score += 10;
-        insights.push(dict.insightCookies || "Bạn có nhiều cookie theo dõi, hãy dọn dẹp chúng.");
-    }
-
-    // Cập nhật UI
-    elements.healthScoreText.textContent = `${score}/100`;
-    elements.healthBarFill.style.width = `${score}%`;
-    
-    // Tính Grade
-    let grade = 'F';
-    let status = 'Critical';
-    let color = '#e53e3e';
-
-    if (score >= 90) { grade = 'A+'; status = 'Excellent'; color = '#38a169'; }
-    else if (score >= 80) { grade = 'A'; status = 'Very Good'; color = '#38a169'; }
-    else if (score >= 70) { grade = 'B+'; status = 'Good'; color = '#3182ce'; }
-    else if (score >= 60) { grade = 'B'; status = 'Fair'; color = '#3182ce'; }
-    else if (score >= 50) { grade = 'C'; status = 'Average'; color = '#d69e2e'; }
-    else if (score >= 40) { grade = 'D'; status = 'Poor'; color = '#e53e3e'; }
-
-    elements.privacyGradeValue.textContent = grade;
-    elements.healthStatusText.textContent = status;
-    elements.healthStatusText.style.color = color;
-    elements.healthBarFill.style.background = color;
-
-    // Render Insights
-    if (elements.privacyInsightsList) {
-        elements.privacyInsightsList.innerHTML = '';
-        if (insights.length === 0) {
-            const li = document.createElement('li');
-            li.textContent = "🛡️ " + (dict.allSecure || "Mọi thứ đều an toàn!");
-            elements.privacyInsightsList.appendChild(li);
-        } else {
-            insights.slice(0, 3).forEach(text => {
-                const li = document.createElement('li');
-                li.textContent = "💡 " + text;
-                elements.privacyInsightsList.appendChild(li);
-            });
-        }
-    }
-}
-
-/**
  * Load and display vault items
  */
 /**
@@ -2499,110 +2373,199 @@ elements.quickFocusMode.addEventListener('click', () => {
 /**
  * Cập nhật số liệu trên Dashboard (Nâng cấp thành Smart Dashboard)
  */
+let dashboardUpdateTimeout = null;
 async function updateDashboard() {
-    const { statCookies, statExtensions, statTrackers, privacyScore, permanentBar, sessionBar, permanentCount, sessionCount, privacyInsightsList } = elements;
+    if (dashboardUpdateTimeout) clearTimeout(dashboardUpdateTimeout);
     
-    // 1. Cookies count and age analysis
-    chrome.cookies.getAll({}, (cookies) => {
-        const total = cookies.length;
-        statCookies.textContent = total;
+    dashboardUpdateTimeout = setTimeout(async () => {
+        const { statCookies, statExtensions, statTrackers, permanentBar, sessionBar, permanentCount, sessionCount, privacyInsightsList } = elements;
         
-        // Age analysis
-        let permanent = 0;
-        let session = 0;
-        const now = Date.now() / 1000;
-        const oneWeekInSeconds = 7 * 24 * 60 * 60;
+        // 1. Cookies count and age analysis
+        chrome.cookies.getAll({}, (cookies) => {
+            const total = cookies.length;
+            statCookies.textContent = total;
+            
+            // Age analysis
+            let permanent = 0;
+            let session = 0;
+            const now = Date.now() / 1000;
+            const oneWeekInSeconds = 7 * 24 * 60 * 60;
 
-        cookies.forEach(c => {
-            if (c.session || (c.expirationDate && (c.expirationDate - now) < oneWeekInSeconds)) {
-                session++;
+            cookies.forEach(c => {
+                if (c.session || (c.expirationDate && (c.expirationDate - now) < oneWeekInSeconds)) {
+                    session++;
+                } else {
+                    permanent++;
+                }
+            });
+
+            permanentCount.textContent = permanent;
+            sessionCount.textContent = session;
+            
+            if (total > 0) {
+                const permanentPercent = (permanent / total) * 100;
+                const sessionPercent = (session / total) * 100;
+                permanentBar.style.width = `${permanentPercent}%`;
+                sessionBar.style.width = `${sessionPercent}%`;
             } else {
-                permanent++;
+                permanentBar.style.width = '0%';
+                sessionBar.style.width = '0%';
+            }
+
+            // Generate Insights
+            renderInsights(total, permanent, settings.trackerCount || 0);
+        });
+
+        // 2. Extensions count
+        chrome.management.getAll((extensions) => {
+            const activeExts = extensions.filter(ext => ext.enabled && ext.type === 'extension').length;
+            statExtensions.textContent = activeExts;
+        });
+
+        // 3. Trackers count
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0]) {
+                chrome.runtime.sendMessage({ type: 'getTrackerCount', tabId: tabs[0].id }, (response) => {
+                    const count = response ? response.count : 0;
+                    const list = response ? response.list : [];
+                    statTrackers.textContent = count;
+                    settings.trackerCount = count; 
+                    settings.currentTrackers = list; // Lưu trữ danh sách tracker hiện tại
+                });
             }
         });
 
-        permanentCount.textContent = permanent;
-        sessionCount.textContent = session;
-        
-        if (total > 0) {
-            const permanentPercent = (permanent / total) * 100;
-            const sessionPercent = (session / total) * 100;
-            permanentBar.style.width = `${permanentPercent}%`;
-            sessionBar.style.width = `${sessionPercent}%`;
-        } else {
-            permanentBar.style.width = '0%';
-            sessionBar.style.width = '0%';
-        }
-
-        // Generate Insights
-        renderInsights(total, permanent, settings.trackerCount || 0);
-    });
-
-    // 2. Extensions count
-    chrome.management.getAll((extensions) => {
-        const activeExts = extensions.filter(ext => ext.enabled && ext.type === 'extension').length;
-        statExtensions.textContent = activeExts;
-    });
-
-    // 3. Trackers count
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs[0]) {
-            chrome.runtime.sendMessage({ type: 'getTrackerCount', tabId: tabs[0].id }, (response) => {
-                const count = response ? response.count : 0;
-                statTrackers.textContent = count;
-                settings.trackerCount = count; // Cache for insights
-            });
-        }
-    });
-
-    // 4. Privacy Grade
-    calculatePrivacyGrade();
+        // 4. Privacy Grade
+        calculatePrivacyGrade();
+    }, 100); // Debounce 100ms
 }
 
 /**
- * Tính toán điểm số bảo mật dựa trên dữ liệu hiện tại
+ * Cập nhật điểm số bảo mật (Smart Dashboard logic)
  */
-function calculatePrivacyGrade() {
-    const { statCookies, statExtensions, statTrackers, privacyScore } = elements;
+async function calculatePrivacyGrade() {
+    const { statCookies, statExtensions, statTrackers, privacyGradeValue, healthScoreText, healthStatusText, healthBarFill, fixPrivacyBtn } = elements;
     
-    // Đợi các dữ liệu được cập nhật xong (do chrome.cookies.getAll là async)
-    setTimeout(() => {
-        const cookieCount = parseInt(statCookies.textContent) || 0;
-        const extCount = parseInt(statExtensions.textContent) || 0;
-        const trackerCount = parseInt(statTrackers.textContent) || 0;
-        
-        let score = "A+";
-        
-        // Logic tính điểm
-        if (cookieCount > 500 || trackerCount > 10) score = "B";
-        if (cookieCount > 1000 || trackerCount > 20) score = "C";
-        if (extCount > 15) score = "B-";
-        if (extCount > 25) score = "C+";
-        
-        // Bonus nếu có các tính năng bảo mật đang bật
-        if (settings.cookieDestroyer) {
-            if (score === "B") score = "A-";
-            else if (score === "C") score = "B";
-        }
-        
-        if (settings.hibernationEnabled) {
-            if (score.endsWith('-')) score = score.slice(0, -1);
-            else if (!score.endsWith('+')) score += '+';
-        }
+    const cookieCount = parseInt(statCookies.textContent) || 0;
+    const extCount = parseInt(statExtensions.textContent) || 0;
+    const trackerCount = parseInt(statTrackers.textContent) || 0;
+    
+    let score = 100;
+    const issues = [];
 
-        if (elements.privacyScore) {
-            elements.privacyScore.textContent = score;
-            
-            // Màu sắc tương ứng
-            if (score.startsWith('A')) {
-                elements.privacyScore.style.color = '#10b981'; // Green
-            } else if (score.startsWith('B')) {
-                elements.privacyScore.style.color = '#f59e0b'; // Orange
-            } else {
-                elements.privacyScore.style.color = '#ef4444'; // Red
-            }
+    // 1. Phân tích Cookies & Trackers
+    if (cookieCount > 200) score -= 10;
+    if (cookieCount > 800) score -= 15;
+    if (trackerCount > 0) score -= Math.min(30, trackerCount * 5);
+
+    // 2. Kiểm tra các thiết lập bảo mật hiện tại
+    if (!settings.cookieDestroyer) {
+        score -= 10;
+        issues.push('enableAutoCleanup');
+    }
+    if (!settings.realTimeProtection) {
+        score -= 10;
+        issues.push('enableRealTime');
+    }
+    if (!settings.blockClickjacking || !settings.blockCryptoMining) {
+        score -= 10;
+        issues.push('enableAdvancedBlocking');
+    }
+    if (settings.protectionLevel !== 'enhanced') {
+        score -= 10;
+        issues.push('upgradeProtectionLevel');
+    }
+    if (!settings.autoClearStealth) {
+        score -= 5;
+        issues.push('enableAutoClearStealth');
+    }
+
+    // 3. Kiểm tra Chrome Privacy API (nếu có thể)
+    try {
+        const dnt = await chrome.privacy.websites.doNotTrackEnabled.get({});
+        if (!dnt.value) {
+            score -= 5;
+            issues.push('enableDNT');
         }
-    }, 500);
+    } catch (e) {}
+
+    // Giới hạn điểm từ 0 - 100
+    score = Math.max(0, Math.min(100, score));
+
+    // Xác định Xếp hạng & Trạng thái
+    let grade = 'F';
+    let status = 'Critical';
+    let color = '#ef4444'; // Red
+
+    if (score >= 90) { grade = 'A+'; status = 'Excellent'; color = '#10b981'; }
+    else if (score >= 80) { grade = 'A'; status = 'Very Good'; color = '#10b981'; }
+    else if (score >= 70) { grade = 'B+'; status = 'Good'; color = '#3b82f6'; }
+    else if (score >= 60) { grade = 'B'; status = 'Fair'; color = '#3b82f6'; }
+    else if (score >= 50) { grade = 'C'; status = 'Average'; color = '#f59e0b'; }
+    else if (score >= 40) { grade = 'D'; status = 'Poor'; color = '#ef4444'; }
+
+    // Cập nhật giao diện
+    if (privacyGradeValue) privacyGradeValue.textContent = grade;
+    if (healthScoreText) healthScoreText.textContent = `${score}/100`;
+    if (healthStatusText) {
+        healthStatusText.textContent = status;
+        healthStatusText.style.background = color;
+    }
+    if (healthBarFill) {
+        healthBarFill.style.width = `${score}%`;
+        healthBarFill.style.background = color;
+    }
+
+    // Hiển thị/Ẩn nút Fix Now
+    if (fixPrivacyBtn) {
+        if (score < 90 && issues.length > 0) {
+            fixPrivacyBtn.classList.remove('hidden');
+            fixPrivacyBtn.onclick = () => fixPrivacyIssues(issues);
+        } else {
+            fixPrivacyBtn.classList.add('hidden');
+        }
+    }
+}
+
+/**
+ * Tự động khắc phục các vấn đề bảo mật (Thực sự nâng cấp Privacy)
+ */
+async function fixPrivacyIssues(issues) {
+    const lang = settings.language || 'vi';
+    const dict = translations[lang] || translations.vi;
+    
+    for (const issue of issues) {
+        switch (issue) {
+            case 'enableAutoCleanup':
+                settings.cookieDestroyer = true;
+                break;
+            case 'enableRealTime':
+                settings.realTimeProtection = true;
+                break;
+            case 'enableAdvancedBlocking':
+                settings.blockClickjacking = true;
+                settings.blockCryptoMining = true;
+                break;
+            case 'upgradeProtectionLevel':
+                settings.protectionLevel = 'enhanced';
+                break;
+            case 'enableAutoClearStealth':
+                settings.autoClearStealth = true;
+                break;
+            case 'enableDNT':
+                try {
+                    await chrome.privacy.websites.doNotTrackEnabled.set({ value: true });
+                } catch (e) {}
+                break;
+        }
+    }
+    
+    saveSettings();
+    updateUILanguage(); // Cập nhật lại UI đồng bộ
+    notify(dict.fixSuccess || 'Privacy upgraded successfully!', 'success');
+    
+    // Đợi 1 chút để các hiệu ứng mượt mà
+    setTimeout(() => calculatePrivacyGrade(), 500);
 }
 
 /**
@@ -2967,7 +2930,7 @@ async function loadReadingList() {
 }
 
 /**
- * Create a unified UI item for History, Bookmarks, and Reading List
+ * Tạo một UI item thống nhất cho Lịch sử, Dấu trang và Danh sách đọc (Optimized)
  */
 function createHistoryItemUI(item, type) {
     const div = document.createElement('div');
@@ -2977,75 +2940,43 @@ function createHistoryItemUI(item, type) {
     try { hostname = new URL(item.url).hostname; } catch(e) {}
     
     const favicon = `https://www.google.com/s2/favicons?domain=${hostname}`;
-    const img = document.createElement('img');
-    img.src = favicon;
-    img.className = 'history-icon';
-    img.onerror = function() { this.src = 'icons/extension.png'; };
-    div.appendChild(img);
-
-    const infoDiv = document.createElement('div');
-    infoDiv.className = 'history-info';
-
-    const topLineDiv = document.createElement('div');
-    topLineDiv.className = 'history-top-line';
-
-    const titleSpan = document.createElement('span');
-    titleSpan.className = 'history-title';
-    titleSpan.title = item.title || item.url;
-    titleSpan.textContent = item.title || 'No Title';
-    topLineDiv.appendChild(titleSpan);
-
-    if (item.lastVisitTime) {
-        const visitDate = new Date(item.lastVisitTime);
-        const visitTime = visitDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-        const timeSpan = document.createElement('span');
-        timeSpan.className = 'history-time';
-        timeSpan.textContent = visitTime;
-        topLineDiv.appendChild(timeSpan);
-    }
-    infoDiv.appendChild(topLineDiv);
-
-    const urlSpan = document.createElement('span');
-    urlSpan.className = 'history-url';
-    urlSpan.textContent = item.url;
-    infoDiv.appendChild(urlSpan);
-    div.appendChild(infoDiv);
-
-    // Add Action Buttons
-    const actionsDiv = document.createElement('div');
-    actionsDiv.className = 'history-item-actions';
-    
-    // 1. Play in Privacy Player
-    const playBtn = document.createElement('button');
-    playBtn.innerHTML = '🛡️';
-    playBtn.className = 'history-play-btn';
+    const visitDate = item.lastVisitTime ? new Date(item.lastVisitTime) : null;
+    const visitTime = visitDate ? visitDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : '';
     
     const lang = settings.language || 'vi';
     const dict = translations[lang] || translations.vi;
-    playBtn.title = dict.openInPrivacyPlayer || 'Open in Privacy Player';
-    
-    playBtn.onclick = (e) => {
+
+    div.innerHTML = `
+        <img src="${favicon}" class="history-icon" onerror="this.src='icons/extension.png'">
+        <div class="history-info">
+            <div class="history-top-line">
+                <span class="history-title" title="${item.title || item.url}">${item.title || 'No Title'}</span>
+                ${visitTime ? `<span class="history-time">${visitTime}</span>` : ''}
+            </div>
+            <span class="history-url">${item.url}</span>
+        </div>
+        <div class="history-item-actions">
+            <button class="history-play-btn" title="${dict.openInPrivacyPlayer || 'Open in Privacy Player'}">🛡️</button>
+            <button class="history-copy-btn" title="Copy Link">🔗</button>
+            <button class="history-delete-btn" title="Delete">🗑️</button>
+        </div>
+    `;
+
+    // Gán sự kiện sau khi innerHTML được tạo
+    div.querySelector('.history-play-btn').onclick = (e) => {
         e.stopPropagation();
         elements.stealthUrl.value = item.url;
         toggleSection('player');
         elements.loadStealth.click();
     };
-    
-    // 2. Copy Link
-    const copyBtn = document.createElement('button');
-    copyBtn.innerHTML = '🔗';
-    copyBtn.title = 'Copy Link';
-    copyBtn.onclick = (e) => {
+
+    div.querySelector('.history-copy-btn').onclick = (e) => {
         e.stopPropagation();
         navigator.clipboard.writeText(item.url);
         notify('Link copied to clipboard', 'success');
     };
 
-    // 3. Delete from History/Bookmarks/Reading List
-    const deleteBtn = document.createElement('button');
-    deleteBtn.innerHTML = '🗑️';
-    deleteBtn.title = 'Delete';
-    deleteBtn.onclick = (e) => {
+    div.querySelector('.history-delete-btn').onclick = (e) => {
         e.stopPropagation();
         if (confirm('Are you sure you want to delete this item?')) {
             if (type === 'history') {
@@ -3067,19 +2998,14 @@ function createHistoryItemUI(item, type) {
         }
     };
 
-    actionsDiv.appendChild(playBtn);
-    actionsDiv.appendChild(copyBtn);
-    actionsDiv.appendChild(deleteBtn);
-    div.appendChild(actionsDiv);
-
-    div.addEventListener('click', () => {
+    div.onclick = () => {
         if (settings.historyIncognito) {
             chrome.windows.create({ url: item.url, incognito: true, type: 'normal' });
             notify('Opening in Incognito window...', 'success');
         } else {
             chrome.tabs.create({ url: item.url });
         }
-    });
+    };
     
     return div;
 }
@@ -4586,7 +4512,17 @@ async function restoreSession(session) {
 
 // Listen for link click messages from Privacy Player iframe
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.type === 'privacyPlayerLinkClicked') {
+    if (message.type === 'updateTrackerCount') {
+        const { statTrackers, trackerModal } = elements;
+        statTrackers.textContent = message.count;
+        settings.trackerCount = message.count;
+        settings.currentTrackers = message.list;
+
+        // Nếu modal đang mở, cập nhật danh sách ngay lập tức
+        if (!trackerModal.classList.contains('hidden')) {
+            showTrackerDetails(message.list);
+        }
+    } else if (message.type === 'privacyPlayerLinkClicked') {
         const url = message.url;
         const action = message.action;
         

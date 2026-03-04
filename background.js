@@ -1,6 +1,8 @@
 importScripts('email.min.js');
 // Lưu trữ số lượng tracker theo tab
 let trackerCount = {};
+// Lưu trữ danh sách tracker chi tiết theo tab (mới)
+let trackerList = {}; 
 // Lưu trữ video phát hiện được theo tab
 let detectedVideos = {};
 let videoDetectionEnabled = false;
@@ -38,11 +40,30 @@ chrome.webRequest.onBeforeRequest.addListener(
         const isTracker = TRACKER_DOMAINS.some(domain => url.hostname.includes(domain));
         
         if (isTracker) {
+            const domain = url.hostname;
+            
+            // Cập nhật danh sách chi tiết
+            if (!trackerList[details.tabId]) trackerList[details.tabId] = [];
+            const existing = trackerList[details.tabId].find(t => t.domain === domain);
+            if (existing) {
+                existing.count++;
+                existing.lastSeen = Date.now();
+            } else {
+                trackerList[details.tabId].push({
+                    domain: domain,
+                    firstSeen: Date.now(),
+                    lastSeen: Date.now(),
+                    count: 1
+                });
+            }
+
+            // Cập nhật tổng số lượng
             trackerCount[details.tabId] = (trackerCount[details.tabId] || 0) + 1;
             chrome.runtime.sendMessage({
                 type: 'updateTrackerCount',
                 tabId: details.tabId,
-                count: trackerCount[details.tabId]
+                count: trackerCount[details.tabId],
+                list: trackerList[details.tabId] // Gửi kèm danh sách để popup cập nhật real-time
             }).catch(() => {});
         }
 
@@ -249,6 +270,7 @@ chrome.webNavigation.onReferenceFragmentUpdated.addListener(handleIframeNavigati
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (changeInfo.status === 'loading') {
         trackerCount[tabId] = 0;
+        trackerList[tabId] = []; // Reset danh sách
         detectedVideos[tabId] = [];
         // Reset badge
         chrome.action.setBadgeText({ text: '', tabId: tabId });
@@ -291,6 +313,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
     });
 
     delete trackerCount[tabId];
+    delete trackerList[tabId]; // Xóa danh sách chi tiết
     delete detectedVideos[tabId];
     delete tabLastActive[tabId];
 });
@@ -326,7 +349,10 @@ setInterval(() => {
 // Thêm vào message listener để popup lấy số liệu
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'getTrackerCount') {
-        sendResponse({ count: trackerCount[request.tabId] || 0 });
+        sendResponse({ 
+            count: trackerCount[request.tabId] || 0,
+            list: trackerList[request.tabId] || []
+        });
     } else if (request.type === 'getDetectedVideos') {
         sendResponse({ videos: detectedVideos[request.tabId] || [] });
     } else if (request.type === 'toggleVideoDetection') {
