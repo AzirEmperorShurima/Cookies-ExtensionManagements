@@ -103,6 +103,7 @@ const elements = {
     cardCookies: document.getElementById('cardCookies'),
     cardTrackers: document.getElementById('cardTrackers'),
     cardExtensions: document.getElementById('cardExtensions'),
+    gradeCard: document.querySelector('.grade-card-modern'),
     
     // Vault
     vaultBtn: document.getElementById('vaultBtn'),
@@ -202,7 +203,14 @@ const elements = {
     masterSyncKeyInput: document.getElementById('masterSyncKeyInput'),
     copyMasterKeyBtn: document.getElementById('copyMasterKeyBtn'),
     manualMasterKeyInput: document.getElementById('manualMasterKeyInput'),
-    saveMasterKeyBtn: document.getElementById('saveMasterKeyBtn')
+    saveMasterKeyBtn: document.getElementById('saveMasterKeyBtn'),
+    
+    // Telegram Stats
+    telegramStats: document.getElementById('telegramStats'),
+    statParallel: document.getElementById('statParallel'),
+    statChunkSize: document.getElementById('statChunkSize'),
+    statRetries: document.getElementById('statRetries'),
+    statSpeed: document.getElementById('statSpeed'),
 };
 
 // Secret state
@@ -225,7 +233,7 @@ let lastRenderedDate = '';
 
 let settings = {
     darkMode: false,
-    autoClear: true,
+    autoClearStealth: true,
     showNotifications: true,
     cookieDestroyer: false,
     historyIncognito: false,
@@ -257,7 +265,9 @@ let settings = {
     whitelist: ['google.com', 'facebook.com', 'gmail.com', 'youtube.com', 'github.com'], // Default whitelist
     alwaysRequirePassword: true, // New setting: default to true for security
     vaultSyncEnabled: false,
-    masterSyncKey: null // Encrypted Master Key
+    masterSyncKey: null, // Encrypted Master Key
+    linkClickBehavior: 'player', // Default to player
+    appliedLinkType: 'all' // Default to all
 };
 
 // Security Helpers
@@ -277,6 +287,20 @@ async function generateMasterKey() {
 
 // Global state for session password
 let secretCode = null; // Will be set upon successful unlock
+
+// Lắng nghe thông số Telegram Downloader từ background
+chrome.runtime.onMessage.addListener((request) => {
+    if (request.type === 'tg_stats_update') {
+        const { stats } = request;
+        if (elements.telegramStats) {
+            elements.telegramStats.classList.remove('hidden');
+            elements.statParallel.textContent = stats.parallelChunks;
+            elements.statChunkSize.textContent = (stats.chunkSize / 1024 / 1024).toFixed(1) + ' MB';
+            elements.statRetries.textContent = stats.retries || 0;
+            elements.statSpeed.textContent = stats.speed || '--';
+        }
+    }
+});
 
 chrome.storage.local.get(['stealthPasswordHash', 'stealthSalt', 'appSettings'], async (result) => {
     if (result.appSettings) {
@@ -315,7 +339,7 @@ function applySettings() {
     elements.darkModeToggle.checked = settings.darkMode;
     
     // Set other toggles
-    elements.autoClearToggle.checked = settings.autoClear;
+    elements.autoClearToggle.checked = settings.autoClearStealth;
     elements.showNotifyToggle.checked = settings.showNotifications;
     elements.cookieDestroyerToggle.checked = settings.cookieDestroyer;
     elements.historyIncognitoToggle.checked = settings.historyIncognito;
@@ -396,6 +420,40 @@ function applySettings() {
     // Khởi tạo mô tả Panic và phím tắt
     updatePanicDescription(settings.panicAction || 'closeIncognito');
     updateCurrentShortcutDisplay();
+}
+
+/**
+ * Tải nội dung cho Privacy Player (Stealth Player)
+ */
+function loadPlayerContent() {
+    const { stealthUrl, stealthPlayer } = elements;
+    let url = stealthUrl.value.trim();
+    
+    // Nếu ô nhập liệu trống, thử lấy URL cuối cùng đã lưu
+    if (!url) {
+        chrome.storage.local.get(['lastPlayerUrl'], (result) => {
+            if (result.lastPlayerUrl) {
+                stealthUrl.value = result.lastPlayerUrl;
+                stealthPlayer.src = result.lastPlayerUrl;
+                notify('Privacy Player: Restored last session', 'success');
+            } else {
+                stealthPlayer.src = 'about:blank';
+            }
+        });
+        return;
+    }
+
+    if (url && isValidUrl(url)) {
+        stealthPlayer.src = url;
+        notify('Privacy Player: Loading URL...', 'success');
+    } else if (url) {
+        // Nếu không phải URL hợp lệ, thử tìm kiếm qua Google
+        const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(url)}`;
+        stealthPlayer.src = searchUrl;
+        notify('Privacy Player: Searching...', 'success');
+    } else {
+        stealthPlayer.src = 'about:blank';
+    }
 }
 
 /**
@@ -1196,7 +1254,7 @@ function toggleSection(section) {
             if (chrome.storage.session) chrome.storage.session.remove('sessionPassword');
         }
         
-        if (settings.autoClear && stealthPlayer.src !== 'about:blank' && stealthPlayer.src !== '') {
+        if (settings.autoClearStealth && stealthPlayer.src !== 'about:blank' && stealthPlayer.src !== '') {
             chrome.history.deleteUrl({ url: stealthPlayer.src });
         }
         // Reset player size if not following default and moving away from player
@@ -1747,7 +1805,10 @@ chrome.runtime.onMessage.addListener((request) => {
                     const url = new URL(u);
                     // Bỏ qua các tham số tracking phổ biến hoặc các URL rác/ping
                     const path = url.pathname.toLowerCase();
-                    const ignoredPaths = ['/analytics', '/pixel', '/collect', '/telemetry', '/beacon', '/event', '/track', '/tr/'];
+                    const ignoredPaths = [
+                        '/analytics', '/pixel', '/collect', '/telemetry', '/beacon', '/event', '/track', '/tr/',
+                        '/ads/', '/advertising/', '/doubleclick/', '/gtm/', '/gtag/'
+                    ];
                     if (ignoredPaths.some(p => path.includes(p))) {
                         return null; 
                     }
@@ -1759,8 +1820,24 @@ chrome.runtime.onMessage.addListener((request) => {
 
                     // Bỏ qua các định dạng file không phải trang web (ảnh, css, v.v.)
                     const ext = path.split('.').pop();
-                    const ignoredExts = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'css', 'js', 'ico', 'woff', 'woff2'];
+                    const ignoredExts = [
+                        'png', 'jpg', 'jpeg', 'gif', 'svg', 'css', 'js', 'ico', 'woff', 'woff2', 
+                        'mp4', 'webm', 'ogg', 'mp3', 'wav', 'flac', 'm3u8', 'ts', 'mpd'
+                    ];
                     if (ignoredExts.includes(ext)) {
+                        return null;
+                    }
+
+                    // Bỏ qua các URL là embed video (thường là rác cho thanh địa chỉ chính)
+                    const isEmbedUrl = (
+                        (url.hostname.includes('youtube.com') && path.includes('/embed/')) ||
+                        (url.hostname.includes('vimeo.com') && path.includes('/video/')) ||
+                        (url.hostname.includes('vlstream.net') && path.includes('/embed/')) ||
+                        (url.hostname.includes('dailymotion.com') && path.includes('/embed/')) ||
+                        (path.includes('/embed/')) || (path.includes('/player/'))
+                    );
+                    
+                    if (isEmbedUrl) {
                         return null;
                     }
 
@@ -1776,12 +1853,13 @@ chrome.runtime.onMessage.addListener((request) => {
             // Nếu URL là link rác (normalize trả về null), bỏ qua
             if (normTarget === null) return;
 
-            // Cập nhật thanh địa chỉ ngay lập tức để người dùng thấy
-            elements.stealthUrl.value = targetUrl;
-
+            // Cập nhật thanh địa chỉ và lịch sử
             if (normTarget !== normCurrent) {
                 // Nếu không phải đang trong quá trình nhấn Back/Forward và không phải load lại chính nó
                 if (!isNavigating) {
+                    // Cập nhật thanh địa chỉ để người dùng thấy
+                    elements.stealthUrl.value = targetUrl;
+
                     // Tránh push duplicate liên tục nếu trang có nhiều redirect nhỏ
                     if (playerHistory.length > 0 && normalize(playerHistory[currentUrlIndex]) === normTarget) {
                         return;
@@ -1809,153 +1887,278 @@ chrome.runtime.onMessage.addListener((request) => {
 elements.scanTelegramMediaBtn.addEventListener('click', async () => {
     try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        
         if (!tab) return;
 
-        if (isRestrictedUrl(tab.url)) {
-            notify('Không thể quét media trên trang hệ thống.', 'warning');
-            return;
-        }
+        const isTelegram = ['web.telegram.org', 'webk.telegram.org', 'webz.telegram.org']
+            .some(h => tab.url?.includes(h));
 
-        if (!tab.url.includes('web.telegram.org')) {
+        if (!isTelegram) {
             notify('Vui lòng mở Telegram Web trước!', 'warning');
-            if (confirm('Bạn có muốn mở Telegram Web ngay bây giờ không?')) {
+            if (confirm('Mở web.telegram.org ngay bây giờ?')) {
                 chrome.tabs.create({ url: 'https://web.telegram.org/' });
             }
             return;
         }
 
-        notify('Đang quét media...', 'success');
-        
-        // Inject script để lấy danh sách media
-        chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            func: () => {
-                const mediaItems = [];
-                
-                // Tìm tất cả video
-                document.querySelectorAll('video').forEach((v, idx) => {
-                    const src = v.src || v.currentSrc || v.querySelector('source')?.src;
-                    if (src) {
-                        mediaItems.push({
-                            type: 'video',
-                            url: src,
-                            title: `Video #${idx + 1}`
-                        });
-                    }
-                });
+        notify('Đang quét media...', 'info');
 
-                // Tìm tất cả ảnh
-                document.querySelectorAll('img').forEach((img, idx) => {
-                    if (img.src && (img.src.startsWith('blob:') || img.src.includes('web.telegram.org'))) {
-                        if (img.naturalWidth > 100 || img.width > 100) {
-                            mediaItems.push({
-                                type: 'image',
-                                url: img.src,
-                                title: `Ảnh #${idx + 1}`,
-                                thumb: img.src
-                            });
-                        }
-                    }
-                });
+        // Luôn inject lại để tránh "Extension context invalidated"
+        // (xảy ra khi extension reload/update trong khi tab vẫn mở)
+        try {
+            await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                files: ['telegram_content.js']
+            });
+        } catch(e) {
+            notify('Lỗi inject script: ' + e.message, 'error');
+            return;
+        }
 
-                return mediaItems;
-            }
-        }, (results) => {
-            if (results && results[0] && results[0].result) {
-                const items = results[0].result;
-                renderTelegramMediaList(items);
-                if (items.length > 0) {
-                    notify(`Tìm thấy ${items.length} file media!`, 'success');
-                } else {
-                    notify('Không tìm thấy media nào trên trang này.', 'warning');
-                }
-            }
-        });
+        // Thêm delay nhỏ để script đăng ký listener xong
+        await new Promise(r => setTimeout(r, 100));
+
+        let response;
+        try {
+            response = await chrome.tabs.sendMessage(tab.id, { type: 'tg_scan' });
+        } catch(e) {
+            notify('Không thể kết nối script. Hãy thử lại.', 'error');
+            return;
+        }
+
+        const items = response?.items || [];
+        renderTelegramMediaList(items, tab.id);
+
+        const vCount = items.filter(i => i.type === 'video').length;
+        const iCount = items.filter(i => i.type === 'image').length;
+        const needsPlay = items.filter(i => i.needsPlay).length;
+
+        if (items.length > 0) {
+            let msg = `Tìm thấy ${vCount} video, ${iCount} ảnh!`;
+            if (needsPlay > 0) msg += ` (${needsPlay} video cần bấm phát trước)`;
+            notify(msg, 'success');
+        } else {
+            notify('Không tìm thấy media. Hãy mở chat có ảnh/video.', 'warning');
+        }
     } catch (error) {
-        notify('Lỗi quét: ' + error.message, 'error');
+        notify('Lỗi: ' + error.message, 'error');
     }
 });
 
-function renderTelegramMediaList(items) {
+function renderTelegramMediaList(items, tabId) {
     const listContainer = elements.telegramMediaList;
     const itemsContainer = elements.telegramMediaItems;
-    
     itemsContainer.innerHTML = '';
-    
-    if (items.length === 0) {
+
+    if (!items.length) {
         listContainer.classList.add('hidden');
         return;
     }
-
     listContainer.classList.remove('hidden');
 
     items.forEach((item) => {
         const card = document.createElement('div');
         card.className = 'telegram-media-card';
-        
+
+        // Preview
         const preview = document.createElement('div');
         preview.className = 'media-card-preview';
-        if (item.type === 'video') {
-            preview.innerHTML = '<span class="play-icon">▶</span>';
-            preview.style.background = '#000';
-        } else if (item.thumb) {
+        preview.style.position = 'relative';
+        preview.style.overflow = 'hidden';
+
+        if (item.thumbnail) {
             const img = document.createElement('img');
-            img.src = item.thumb;
+            img.src = item.thumbnail;
+            img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+            img.onerror = () => { preview.innerHTML = item.type === 'video' ? '🎬' : '🖼️'; };
             preview.appendChild(img);
         } else {
-            preview.innerHTML = '🖼';
+            preview.textContent = item.type === 'video' ? '🎬' : '🖼️';
+            preview.style.background = '#1a1a2e';
+            preview.style.display = 'flex';
+            preview.style.alignItems = 'center';
+            preview.style.justifyContent = 'center';
+            preview.style.fontSize = '2rem';
         }
 
+        if (item.type === 'video') {
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
+                position:absolute; top:0; left:0; right:0; bottom:0;
+                display:flex; align-items:center; justify-content:center;
+                background:rgba(0,0,0,0.3);
+            `;
+            overlay.innerHTML = '<span style="font-size:1.6rem;color:#fff;text-shadow:0 0 8px rgba(0,0,0,.9);">▶</span>';
+            preview.appendChild(overlay);
+
+            if (item.duration) {
+                const dur = document.createElement('span');
+                dur.style.cssText = 'position:absolute;bottom:4px;right:6px;font-size:0.7rem;color:#fff;background:rgba(0,0,0,.6);padding:1px 4px;border-radius:3px;';
+                dur.textContent = item.duration;
+                preview.appendChild(dur);
+            }
+        }
+
+        // Info
         const info = document.createElement('div');
         info.className = 'media-card-info';
-        info.innerHTML = `<strong>${item.title}</strong><br><small>${item.type.toUpperCase()}</small>`;
+        let html = `<strong style="font-size:0.8rem;word-break:break-all;">${item.title || item.filename}</strong>`;
+        html += `<br><small style="color:#aaa;">${item.type.toUpperCase()}`;
+        if (item.size) html += ` · ${(item.size / 1024 / 1024).toFixed(1)} MB`;
+        html += '</small>';
+        if (item.needsPlay) {
+            html += `<br><small style="color:#ffb74d;">⚠ Cần bấm phát trước</small>`;
+        }
+        info.innerHTML = html;
 
+        // Button
         const actions = document.createElement('div');
         actions.className = 'media-card-actions';
+        const btn = document.createElement('button');
+        btn.className = 'mini-btn';
 
-        const downloadBtn = document.createElement('button');
-        downloadBtn.className = 'mini-btn';
-        downloadBtn.textContent = '📥 Tải';
-        downloadBtn.onclick = () => startTelegramDownload(item.url, item.type);
+        if (item.url || item.needsPlay) {
+            btn.textContent = '📥 Tải';
+            btn.onclick = () => startTelegramDownload(item, tabId, btn);
+        } else {
+            btn.textContent = '❌ Không có URL';
+            btn.disabled = true;
+        }
 
-        actions.appendChild(downloadBtn);
-        card.appendChild(preview);
-        card.appendChild(info);
-        card.appendChild(actions);
+        actions.appendChild(btn);
+        card.append(preview, info, actions);
         itemsContainer.appendChild(card);
     });
 }
 
 // Hàm tải xuống media (Hỗ trợ chunked download cho blob/private)
-async function startTelegramDownload(url, type) {
-    notify('Đang chuẩn bị tải xuống...', 'success');
-    
-    if (url.startsWith('blob:')) {
+async function startTelegramDownload(item, tabId, btn) {
+    const { url, filename, type, isBlob, isStream, mimeType, needsPlay, dataMid } = item;
+
+    // Vô hiệu hóa nút trong lúc tải
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Đang tải...'; }
+
+    const needsInternalFetch = isBlob || isStream || needsPlay || (url && url.includes('/stream/'));
+
+    if (needsInternalFetch) {
+        // Fetch phải thực hiện từ trong tab Telegram (có Service Worker + cookie)
+        const videoId = 'tg_' + Date.now();
+
+        // Register listener trước khi gửi lệnh
+        _listenForDownloadResult(videoId, filename, btn);
+
         try {
-            const response = await fetch(url);
-            const blob = await response.blob();
-            const downloadUrl = URL.createObjectURL(blob);
-            
-            chrome.downloads.download({
-                url: downloadUrl,
-                filename: `telegram_${Date.now()}.${type === 'video' ? 'mp4' : 'jpg'}`,
-                saveAs: true
-            }, () => {
-                URL.revokeObjectURL(downloadUrl);
-                notify('Đã bắt đầu tải xuống!', 'success');
+            // Inject lại để đảm bảo script mới nhất
+            await chrome.scripting.executeScript({
+                target: { tabId },
+                files: ['telegram_content.js']
             });
-        } catch (e) {
-            notify('Lỗi tải blob. Vui lòng thử chuột phải trực tiếp trên Telegram.', 'error');
+            await new Promise(r => setTimeout(r, 100));
+
+            if (needsPlay) {
+                await chrome.tabs.sendMessage(tabId, {
+                    type: 'tg_play_and_download',
+                    dataMid,
+                    filename: filename || `telegram_video_${Date.now()}.mp4`,
+                    videoId
+                });
+                notify('Đang mở video và chuẩn bị tải...', 'info');
+            } else {
+                await chrome.tabs.sendMessage(tabId, {
+                    type: 'tg_download_stream',
+                    url,
+                    filename: filename || `telegram_video_${Date.now()}.mp4`,
+                    videoId
+                });
+                notify('Đang tải video... Vui lòng chờ', 'info');
+            }
+        } catch(e) {
+            if (btn) { btn.disabled = false; btn.textContent = '📥 Tải'; }
+            notify('Lỗi: ' + e.message, 'error');
         }
     } else {
+        // URL thường (https, không phải stream) → chrome.downloads thẳng
+        const ext = type === 'video' ? 'mp4' : 'jpg';
         chrome.downloads.download({
-            url: url,
-            filename: `telegram_${Date.now()}.${type === 'video' ? 'mp4' : 'jpg'}`,
+            url,
+            filename: filename || `telegram_media_${Date.now()}.${ext}`,
             saveAs: true
+        }, (dlId) => {
+            if (btn) { btn.disabled = false; btn.textContent = '📥 Tải'; }
+            if (chrome.runtime.lastError) {
+                notify('Lỗi: ' + chrome.runtime.lastError.message, 'error');
+            } else {
+                notify('Bắt đầu tải xuống!', 'success');
+            }
         });
-        notify('Đã bắt đầu tải xuống!', 'success');
     }
+}
+function _listenForDownloadResult(videoId, filename, btn) {
+    const handler = (msg) => {
+        if (msg.videoId !== videoId) return;
+
+        if (msg.type === 'telegramDownloadProgress') {
+            const pct = msg.progress;
+            notify(`⏳ Đang tải ${msg.filename || filename}: ${pct}%`, 'info');
+            if (btn) btn.textContent = `⏳ ${pct}%`;
+        }
+
+        if (msg.type === 'telegramDownloadDone') {
+            chrome.runtime.onMessage.removeListener(handler);
+            if (btn) { btn.disabled = false; btn.textContent = '📥 Tải'; }
+
+            if (msg.directDownloaded) {
+                // File lớn đã được download trực tiếp trong tab Telegram
+                const sizeMB = msg.size ? (msg.size / 1024 / 1024).toFixed(1) : '?';
+                notify(`✅ Tải xong: ${msg.filename || filename} (${sizeMB} MB)`, 'success');
+                return;
+            }
+
+            if (!msg.blobDataUrl) {
+                notify('Lỗi: không nhận được data.', 'error');
+                return;
+            }
+
+            // Convert dataURL → Blob → chrome.downloads
+            fetch(msg.blobDataUrl)
+                .then(r => r.blob())
+                .then(blob => {
+                    const blobUrl = URL.createObjectURL(blob);
+                    const dlFilename = msg.filename || filename;
+                    chrome.downloads.download({
+                        url: blobUrl,
+                        filename: dlFilename,
+                        saveAs: true
+                    }, (dlId) => {
+                        // Revoke sau 60s (đủ thời gian chrome.downloads copy file)
+                        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+                        if (chrome.runtime.lastError) {
+                            notify('Lỗi lưu file: ' + chrome.runtime.lastError.message, 'error');
+                        } else {
+                            const sizeMB = msg.size ? (msg.size / 1024 / 1024).toFixed(1) + ' MB' : '';
+                            notify(`✅ Tải xong: ${dlFilename} ${sizeMB}`, 'success');
+                        }
+                    });
+                })
+                .catch(e => notify('Lỗi tạo file: ' + e.message, 'error'));
+        }
+
+        if (msg.type === 'telegramDownloadError') {
+            chrome.runtime.onMessage.removeListener(handler);
+            if (btn) { btn.disabled = false; btn.textContent = '📥 Tải'; }
+            notify(`❌ Lỗi tải: ${msg.error}`, 'error');
+        }
+    };
+
+    chrome.runtime.onMessage.addListener(handler);
+
+    // Timeout 5 phút phòng trường hợp content script crash
+    setTimeout(() => {
+        chrome.runtime.onMessage.removeListener(handler);
+        if (btn?.textContent?.startsWith('⏳')) {
+            btn.disabled = false;
+            btn.textContent = '📥 Tải';
+        }
+    }, 5 * 60 * 1000);
 }
 
 elements.extractTelegramBtn.addEventListener('click', async () => {
@@ -2518,11 +2721,33 @@ async function calculatePrivacyGrade() {
 
     // Hiển thị/Ẩn nút Fix Now
     if (fixPrivacyBtn) {
+        const lang = settings.language || 'vi';
+        const dict = translations[lang] || translations.vi;
+
         if (score < 90 && issues.length > 0) {
             fixPrivacyBtn.classList.remove('hidden');
+            
+            // Thêm danh sách chi tiết các vấn đề vào Grade Card
+            let issuesContainer = elements.gradeCard.querySelector('.grade-issues-list');
+            if (!issuesContainer) {
+                issuesContainer = document.createElement('div');
+                issuesContainer.className = 'grade-issues-list';
+                elements.gradeCard.appendChild(issuesContainer);
+            }
+            
+            issuesContainer.innerHTML = `<div class="fix-summary">${dict.fixSummary || 'Cần khắc phục'}:</div>`;
+            issues.forEach(issue => {
+                const item = document.createElement('div');
+                item.className = 'issue-item';
+                item.innerHTML = `<span class="issue-dot"></span> <span>${dict[issue] || issue}</span>`;
+                issuesContainer.appendChild(item);
+            });
+
             fixPrivacyBtn.onclick = () => fixPrivacyIssues(issues);
         } else {
             fixPrivacyBtn.classList.add('hidden');
+            const issuesContainer = elements.gradeCard.querySelector('.grade-issues-list');
+            if (issuesContainer) issuesContainer.remove();
         }
     }
 }
@@ -3223,9 +3448,9 @@ elements.darkModeToggle.addEventListener('change', (e) => {
 });
 
 elements.autoClearToggle.addEventListener('change', (e) => {
-    settings.autoClear = e.target.checked;
+    settings.autoClearStealth = e.target.checked;
     saveSettings();
-    notify(`Auto-clear history ${settings.autoClear ? 'on' : 'off'}`, 'success');
+    notify(`Auto-clear history ${settings.autoClearStealth ? 'on' : 'off'}`, 'success');
 });
 
 elements.showNotifyToggle.addEventListener('change', (e) => {
@@ -3289,6 +3514,7 @@ elements.telegramDownloaderToggle.addEventListener('change', (e) => {
     settings.telegramDownloaderEnabled = e.target.checked;
     saveSettings();
     elements.telegramDownloaderBtn.classList.toggle('hidden', !settings.telegramDownloaderEnabled);
+    chrome.runtime.sendMessage({ type: 'tg_toggle_changed', enabled: settings.telegramDownloaderEnabled });
     notify(`Telegram Downloader ${settings.telegramDownloaderEnabled ? 'enabled' : 'disabled'}`, 'success');
 });
 
@@ -3787,6 +4013,21 @@ elements.loadStealth.addEventListener('click', () => {
             case 'coccoc':
                 targetUrl = `https://coccoc.com/search?query=${encodedQuery}`;
                 break;
+            case 'yandex':
+                targetUrl = `https://yandex.com/search/?text=${encodedQuery}`;
+                break;
+            case 'bing':
+                targetUrl = `https://www.bing.com/search?q=${encodedQuery}`;
+                break;
+            case 'baidu':
+                targetUrl = `https://www.baidu.com/s?wd=${encodedQuery}`;
+                break;
+            case 'qwant':
+                targetUrl = `https://www.qwant.com/?q=${encodedQuery}`;
+                break;
+            case 'yahoo':
+                targetUrl = `https://search.yahoo.com/search?p=${encodedQuery}`;
+                break;
             case 'tor': // Using DuckDuckGo for Tor search simulation
                 targetUrl = `https://duckduckgo.com/?q=${encodedQuery}`;
                 break;
@@ -3852,7 +4093,11 @@ updatePlayerSandbox();
 
 // Listener để cập nhật trạng thái khi iframe load xong (chỉ dùng cho hiệu ứng UI, không cập nhật URL)
 elements.stealthPlayer.addEventListener('load', () => {
-    isNavigating = false;
+    // Chỉ reset isNavigating sau một khoảng delay ngắn để tránh bắt các link redirect/embed ngay sau khi load
+    setTimeout(() => {
+        isNavigating = false;
+    }, 500);
+    
     // Ẩn placeholder khi có nội dung
     if (elements.stealthPlayer.src !== 'about:blank' && elements.stealthPlayer.src !== '') {
         elements.playerContainer.classList.add('has-content');
@@ -3997,7 +4242,8 @@ elements.goBackPlayer.addEventListener('click', () => {
         updatePlayerNavState();
         notify('Going back...', 'success');
         // Reset flag after a short delay to allow iframe to start loading
-        setTimeout(() => { isNavigating = false; }, 500);
+        // Tăng thời gian delay lên 1500ms để đảm bảo trang load xong link chính trước khi bắt link embed rác
+        setTimeout(() => { isNavigating = false; }, 1500);
     } else {
         notify('No more history to go back', 'warning');
     }
@@ -4012,7 +4258,8 @@ elements.goForwardPlayer.addEventListener('click', () => {
         elements.stealthUrl.value = nextUrl;
         updatePlayerNavState();
         notify('Going forward...', 'success');
-        setTimeout(() => { isNavigating = false; }, 500);
+        // Tăng thời gian delay lên 1500ms
+        setTimeout(() => { isNavigating = false; }, 1500);
     } else {
         notify('No more history to go forward', 'warning');
     }
@@ -4556,6 +4803,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
 
         // Default / action === 'inside'
+        isNavigating = true;
         elements.stealthPlayer.src = url;
         elements.stealthUrl.value = url;
         
@@ -4568,6 +4816,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
         
         notify('Navigating inside player...', 'success');
+        // Tăng thời gian delay lên 1500ms
+        setTimeout(() => { isNavigating = false; }, 1500);
     }
 });
 

@@ -45,7 +45,18 @@
     "background": {
         "service_worker": "background.js"
     },
+    "web_accessible_resources": [
+        {
+            "resources": ["telegram_content.js", "template/TelegramAdaptiveEngine.js"],
+            "matches": ["https://web.telegram.org/*", "https://webk.telegram.org/*", "https://webz.telegram.org/*"]
+        }
+    ],
     "content_scripts": [
+        {
+            "matches": ["https://web.telegram.org/*", "https://webk.telegram.org/*", "https://webz.telegram.org/*"],
+            "js": ["telegram_content.js"],
+            "run_at": "document_idle"
+        },
         {
             "matches": ["<all_urls>"],
             "js": ["videoDetector.js", "iframe_content_script.js"],

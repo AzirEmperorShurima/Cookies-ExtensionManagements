@@ -30,7 +30,47 @@ const TRACKER_DOMAINS = [
 
 // Các định dạng video cần phát hiện
 const VIDEO_EXTENSIONS = ['mp4', 'mkv', 'webm', 'avi', 'mov', 'flv', 'wmv', 'm3u8', 'ts', 'mpd', 'm4v', '3gp', 'ogv', 'm4s'];
+const TELEGRAM_STREAM_PATTERN = [
+    'https://web.telegram.org/stream/*',
+    'https://webk.telegram.org/stream/*',
+    'https://webz.telegram.org/stream/*'
+];
 
+// Thêm listener này vào background.js
+function setupTelegramStreamDetection() {
+    chrome.webRequest.onBeforeRequest.addListener(
+        (details) => {
+            if (!videoDetectionEnabled) return;
+            if (details.tabId === -1) return;
+
+            const url = details.url;
+            if (!url.includes('/stream/')) return;
+
+            try {
+                // Decode và parse JSON từ URL
+                const encoded = url.split('/stream/')[1];
+                const meta = JSON.parse(decodeURIComponent(encoded));
+
+                const filename = meta.fileName || 'telegram_video.mp4';
+                const size = meta.size ? (meta.size / 1024 / 1024).toFixed(1) + ' MB' : 'Streaming';
+
+                addDetectedVideo(
+                    details.tabId,
+                    url,          // Absolute URL có thể fetch được
+                    meta.mimeType || 'video/mp4',
+                    size,
+                    details.initiator,
+                    ''
+                );
+            } catch(e) {
+                // Không parse được, vẫn add với thông tin cơ bản
+                addDetectedVideo(details.tabId, url, 'video/mp4', 'Telegram Stream', details.initiator, '');
+            }
+        },
+        { urls: TELEGRAM_STREAM_PATTERN },
+        ['requestBody']
+    );
+}
 chrome.webRequest.onBeforeRequest.addListener(
     (details) => {
         if (details.tabId === -1) return;
@@ -178,15 +218,20 @@ function addDetectedVideo(tabId, url, type, size = 'Unknown size', initiator = '
         detectedVideos[tabId] = [];
     }
 
-    // Bỏ qua các yêu cầu từ chính extension
     if (initiator && initiator.includes(chrome.runtime.id)) return;
+    
+    // FIX: Bỏ qua relative URL và stream URL dạng không phải absolute HTTP
+    // Telegram stream URL khi được bắt qua webRequest đã là absolute,
+    // nhưng nếu không thì bỏ qua để tránh crash
+    if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('blob:')) {
+        console.warn('[Video Detector] Bỏ qua URL không hợp lệ:', url.substring(0, 80));
+        return;
+    }
 
-    // Chuẩn hóa URL để kiểm tra trùng lặp
     const normalizedUrl = url.split('?')[0];
     const existingIndex = detectedVideos[tabId].findIndex(v => v.url.split('?')[0] === normalizedUrl);
 
     if (existingIndex !== -1) {
-        // Nếu đã tồn tại, cập nhật thêm thông tin tốt hơn
         const existing = detectedVideos[tabId][existingIndex];
         if (title && (!existing.filename || existing.filename.length < title.length)) {
             existing.filename = decodeURIComponent(title);
@@ -201,11 +246,25 @@ function addDetectedVideo(tabId, url, type, size = 'Unknown size', initiator = '
     if (url.startsWith('blob:')) {
         filename = title || `streaming_video_${Date.now()}`;
     } else {
-        const urlObj = new URL(url);
-        filename = title || urlObj.pathname.split('/').pop() || 'video_file';
+        try {
+            const urlObj = new URL(url);
+            // Với Telegram stream URL, lấy tên từ JSON metadata thay vì pathname
+            if (url.includes('/stream/')) {
+                try {
+                    const meta = JSON.parse(decodeURIComponent(urlObj.pathname.split('/stream/')[1] || '{}'));
+                    filename = title || meta.fileName || `telegram_stream_${Date.now()}.mp4`;
+                } catch(e) {
+                    filename = title || `telegram_stream_${Date.now()}.mp4`;
+                }
+            } else {
+                filename = title || urlObj.pathname.split('/').pop() || 'video_file';
+            }
+        } catch(e) {
+            // URL không parse được, dùng title hoặc fallback
+            filename = title || `video_${Date.now()}`;
+        }
     }
 
-    // Làm sạch filename
     filename = filename.replace(/[<>:"/\\|?*]/g, '_').trim();
     if (!filename.includes('.')) {
         let ext = 'mp4';
@@ -215,27 +274,18 @@ function addDetectedVideo(tabId, url, type, size = 'Unknown size', initiator = '
     }
 
     const videoData = {
-        url: url,
-        type: type,
-        size: size,
+        url, type, size,
         filename: decodeURIComponent(filename),
         thumbnail: thumb,
-        tabId: tabId,
-        frameId: frameId,
+        tabId, frameId,
         timestamp: Date.now()
     };
-    
-    detectedVideos[tabId].push(videoData);
-    
-    // Cập nhật Badge số lượng video
-    chrome.action.setBadgeText({
-        text: detectedVideos[tabId].length.toString(),
-        tabId: tabId
-    });
-    chrome.action.setBadgeBackgroundColor({ color: '#e53e3e' });
 
-    // Thông báo cho popup
-    chrome.runtime.sendMessage({ type: 'newVideoDetected', tabId: tabId, video: videoData }).catch(() => {});
+    detectedVideos[tabId].push(videoData);
+
+    chrome.action.setBadgeText({ text: detectedVideos[tabId].length.toString(), tabId });
+    chrome.action.setBadgeBackgroundColor({ color: '#e53e3e' });
+    chrome.runtime.sendMessage({ type: 'newVideoDetected', tabId, video: videoData }).catch(() => {});
 }
 
 // Lắng nghe các thay đổi URL trong iframe để cập nhật cho popup
@@ -252,9 +302,10 @@ function handleIframeNavigation(details) {
     }).catch(() => {});
 }
 
-// Bắt cả các yêu cầu mạng để cập nhật URL nhanh hơn
+// Bắt các yêu cầu mạng từ Privacy Player (iframe chính) để cập nhật URL nhanh hơn
 chrome.webRequest.onBeforeRequest.addListener(
     (details) => {
+        // Chỉ xử lý nếu là sub_frame (iframe của Privacy Player) và initiator là chính extension
         if (details.type === 'sub_frame' && details.initiator && details.initiator.startsWith('chrome-extension://')) {
             handleIframeNavigation(details);
         }
@@ -262,9 +313,9 @@ chrome.webRequest.onBeforeRequest.addListener(
     { urls: ["<all_urls>"] }
 );
 
-chrome.webNavigation.onCommitted.addListener(handleIframeNavigation, { url: [{ urlPrefix: 'http' }, { urlPrefix: 'https' }] });
-chrome.webNavigation.onHistoryStateUpdated.addListener(handleIframeNavigation, { url: [{ urlPrefix: 'http' }, { urlPrefix: 'https' }] });
-chrome.webNavigation.onReferenceFragmentUpdated.addListener(handleIframeNavigation, { url: [{ urlPrefix: 'http' }, { urlPrefix: 'https' }] });
+// LƯU Ý: Không sử dụng chrome.webNavigation.onCommitted một cách global vì nó sẽ bắt tất cả các tab trong trình duyệt,
+// gây nhiễu cho Privacy Player và làm chậm hệ thống. 
+// Việc cập nhật URL chi tiết hơn đã được xử lý bởi iframe_content_script.js (chỉ khi window.parent === window.top).
 
 // Reset tracker và video khi tab load lại hoặc đóng
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
@@ -681,53 +732,208 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
 // Lắng nghe sự kiện đóng tab để xóa cookie
 chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
-    chrome.storage.local.get(['appSettings', 'tabUrlMapping'], (result) => {
+    chrome.storage.local.get(['appSettings', 'tabUrlMapping', 'privacyPlayerTabId'], (result) => {
         const settings = result.appSettings || {};
         const mapping = result.tabUrlMapping || {};
+        const playerTabId = result.privacyPlayerTabId;
         
-        if (settings.cookieDestroyer && mapping[tabId]) {
-            const urlString = mapping[tabId];
-            try {
-                const url = new URL(urlString);
-                const domain = url.hostname;
-                
-                // Xóa tất cả cookie của domain này
-                chrome.cookies.getAll({ domain: domain }, (cookies) => {
-                    cookies.forEach(c => {
-                        const cookieUrl = `http${c.secure ? 's' : ''}://${c.domain}${c.path}`;
-                        chrome.cookies.remove({ url: cookieUrl, name: c.name });
-                    });
-                });
-                
-                // Xóa mapping cũ
-                delete mapping[tabId];
-                chrome.storage.local.set({ tabUrlMapping: mapping });
-                
-                console.log(`Auto-Cookie Destroyer: Cleared cookies for ${domain}`);
-            } catch (e) {
-                console.error('Auto-Cookie Destroyer Error:', e);
+        // Nếu đây là tab Privacy Player bị đóng
+        if (tabId === playerTabId) {
+            // Xóa ID tab player khỏi storage
+            chrome.storage.local.remove('privacyPlayerTabId');
+            
+            // Xử lý dọn dẹp lịch sử/URL cuối cùng nếu bật Auto-clear
+            if (settings.autoClearStealth) {
+                chrome.storage.local.remove('lastPlayerUrl');
+                console.log('Privacy Player: Auto-clear Stealth History (lastPlayerUrl removed)');
             }
+        }
+
+        // Xử lý dọn dẹp Cookie/Mapping
+        if (mapping[tabId]) {
+            // Chỉ xóa Cookie nếu bật cookieDestroyer
+            if (settings.cookieDestroyer) {
+                const urlString = mapping[tabId];
+                try {
+                    const url = new URL(urlString);
+                    const domain = url.hostname;
+                    
+                    chrome.cookies.getAll({ domain: domain }, (cookies) => {
+                        cookies.forEach(c => {
+                            const cookieUrl = `http${c.secure ? 's' : ''}://${c.domain}${c.path}`;
+                            chrome.cookies.remove({ url: cookieUrl, name: c.name });
+                        });
+                    });
+                    console.log(`Auto-Cookie Destroyer: Cleared cookies for ${domain}`);
+                } catch (e) {
+                    console.error('Auto-Cookie Destroyer Error:', e);
+                }
+            }
+            
+            // Luôn xóa mapping của tab khi tab đó đóng để tránh rác storage
+            delete mapping[tabId];
+            chrome.storage.local.set({ tabUrlMapping: mapping });
         }
     });
 });
 
 // Cập nhật mapping khi tab thay đổi URL hoặc tab mới được tạo
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    if (changeInfo.url) {
-        chrome.storage.local.get(['tabUrlMapping'], (result) => {
-            const mapping = result.tabUrlMapping || {};
-            mapping[tabId] = changeInfo.url;
-            chrome.storage.local.set({ tabUrlMapping: mapping });
-        });
+    // Chỉ lưu URL vào tabUrlMapping nếu đây là tab Privacy Player
+    chrome.storage.local.get(['privacyPlayerTabId', 'appSettings'], (result) => {
+        const playerTabId = result.privacyPlayerTabId;
+        const settings = result.appSettings || {};
+
+        if (tabId === playerTabId && changeInfo.url) {
+            // Đây là URL của chính trang privacy_player.html, không phải iframe bên trong
+            // Ta không cần lưu URL này vào tabUrlMapping hay lastPlayerUrl vì nó sẽ làm hỏng khôi phục
+            console.log('Privacy Player Container updated (ignoring URL update)');
+        }
+    });
+
+    // Tự động tiêm telegram_content.js khi vào Telegram Web
+    if (changeInfo.status === 'complete' && tab.url) {
+        const isTelegram = ['web.telegram.org', 'webk.telegram.org', 'webz.telegram.org']
+            .some(h => tab.url.includes(h));
+            
+        if (isTelegram) {
+            chrome.storage.local.get(['appSettings'], (result) => {
+                const settings = result.appSettings || {};
+                if (settings.telegramDownloaderEnabled) {
+                    chrome.scripting.executeScript({
+                        target: { tabId },
+                        files: ['telegram_content.js']
+                    }).catch(err => console.error('Auto-inject Telegram error:', err));
+                }
+            });
+        }
     }
 });
 
+chrome.tabs.onCreated.addListener((tab) => {
+    chrome.storage.local.get(['appSettings', 'privacyPlayerTabId'], (result) => {
+        const settings = result.appSettings || {};
+        const playerTabId = result.privacyPlayerTabId;
+
+        // Nếu tab mới được tạo từ Privacy Player (openerTabId trùng khớp)
+        // HOẶC nếu Link Click Behavior là 'player' (All Links) hoặc 'block'
+        const isFromPlayer = tab.openerTabId && tab.openerTabId === playerTabId;
+        
+        if ((settings.linkClickBehavior === 'player' || settings.linkClickBehavior === 'block') && isFromPlayer) {
+            // Ngay lập tức đóng tab này để không để lại dấu vết trên trình duyệt chính
+            chrome.tabs.remove(tab.id);
+            
+            const targetUrl = tab.pendingUrl || tab.url;
+            if (targetUrl && !targetUrl.startsWith('chrome://')) {
+                if (settings.linkClickBehavior === 'player' && playerTabId) {
+                    // Gửi tin nhắn cho Privacy Player để load URL này vào iframe của nó
+                    chrome.tabs.sendMessage(parseInt(playerTabId), {
+                        type: 'loadUrlInPlayer',
+                        url: targetUrl
+                    }).catch(() => {
+                        console.log('Failed to redirect to Privacy Player.');
+                    });
+                } else {
+                    console.log(`[Privacy Player] Blocked popup from player: ${targetUrl}`);
+                }
+            }
+        }
+    });
+});
+
+// Chặn ngay lập tức các yêu cầu điều hướng từ tab mới tạo ra từ Player
+chrome.webNavigation.onBeforeNavigate.addListener((details) => {
+    if (details.frameId !== 0) return; // Chỉ quan tâm đến main frame của tab mới
+
+    chrome.storage.local.get(['appSettings', 'privacyPlayerTabId'], (result) => {
+        const settings = result.appSettings || {};
+        const playerTabId = result.privacyPlayerTabId;
+
+        if ((settings.linkClickBehavior === 'player' || settings.linkClickBehavior === 'block') && playerTabId) {
+            chrome.tabs.get(details.tabId, (tab) => {
+                if (chrome.runtime.lastError) return;
+                
+                if (tab && tab.openerTabId === playerTabId) {
+                    // Đóng tab ngay khi nó bắt đầu điều hướng
+                    chrome.tabs.remove(details.tabId);
+                    
+                    if (settings.linkClickBehavior === 'player') {
+                        chrome.tabs.sendMessage(parseInt(playerTabId), {
+                            type: 'loadUrlInPlayer',
+                            url: details.url
+                        }).catch(() => {});
+                    }
+                }
+            });
+        }
+    });
+});
+
+// Lắng nghe các tin nhắn từ iframe của Privacy Player
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.type === 'iframeNavigated') {
+        const url = request.url;
+        
+        // Luôn lưu lastPlayerUrl cho mục đích khôi phục session
+        chrome.storage.local.set({ lastPlayerUrl: url });
+
+        if (sender.tab) {
+            chrome.storage.local.get(['privacyPlayerTabId'], (result) => {
+                if (result.privacyPlayerTabId === sender.tab.id) {
+                    // Đây là điều hướng bên trong iframe chính của Privacy Player (Tab mode)
+                    chrome.storage.local.get(['tabUrlMapping'], (mappingResult) => {
+                        const mapping = mappingResult.tabUrlMapping || {};
+                        mapping[sender.tab.id] = url;
+                        chrome.storage.local.set({ tabUrlMapping: mapping });
+                    });
+                }
+            });
+        } else {
+            // Đây là điều hướng bên trong Popup mode (không có sender.tab)
+            // Lấy tab đang hoạt động để gán mapping
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                const activeTab = tabs[0];
+                if (activeTab) {
+                    chrome.storage.local.get(['tabUrlMapping'], (mappingResult) => {
+                        const mapping = mappingResult.tabUrlMapping || {};
+                        mapping[activeTab.id] = url;
+                        chrome.storage.local.set({ tabUrlMapping: mapping });
+                    });
+                }
+            });
+        }
+    }
+    
+    // Giữ nguyên các handler khác...
+    if (request.type === 'tg_stats_update') {
+        // Chuyển tiếp thông số tới popup nếu đang mở
+        chrome.runtime.sendMessage(request).catch(() => {});
+    }
+
     if (request.type === 'createNotification') {
         chrome.notifications.create(request.options);
     } else if (request.type === 'updateSecurityRules') {
         updateSecurityRules();
+    } else if (request.type === 'setPrivacyPlayerTabId') {
+        chrome.storage.local.set({ privacyPlayerTabId: sender.tab.id });
+    } else if (request.type === 'tg_toggle_changed') {
+        if (request.enabled) {
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                const tab = tabs[0];
+                if (tab && tab.url) {
+                    const isTelegram = ['web.telegram.org', 'webk.telegram.org', 'webz.telegram.org']
+                        .some(h => tab.url.includes(h));
+                    if (isTelegram) {
+                        chrome.scripting.executeScript({
+                            target: { tabId: tab.id },
+                            files: ['telegram_content.js']
+                        }).catch(() => {});
+                    }
+                }
+            });
+        }
     }
+    return true; // Để hỗ trợ sendResponse bất đồng bộ
 });
 
 // Hàm cập nhật quy tắc bảo mật động (Clickjacking & Real-time Protection)
@@ -736,7 +942,7 @@ async function updateSecurityRules() {
     const settings = result.appSettings || {};
     
     const rulesToAdd = [];
-    const ruleIdsToRemove = [1001, 1002, 1003]; // IDs cho Clickjacking, Real-time và NoScript rules
+    const ruleIdsToRemove = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008]; // Xóa tất cả IDs cũ trước khi thêm mới
 
     // 1. Clickjacking Protection Rule
     if (settings.blockClickjacking || settings.protectionLevel === 'enhanced' || settings.protectionLevel === 'noscript') {
@@ -777,7 +983,16 @@ async function updateSecurityRules() {
             },
             condition: {
                 urlFilter: '*',
-                resourceTypes: ['main_frame', 'sub_frame']
+                resourceTypes: ['main_frame', 'sub_frame'],
+                // Loại trừ các domain bảo mật/captcha để tránh làm hỏng xác minh (như Cloudflare Turnstile)
+                excludedRequestDomains: [
+                    'challenges.cloudflare.com',
+                    'cloudflare.com',
+                    'gstatic.com',
+                    'google.com',
+                    'hcaptcha.com',
+                    'recaptcha.net'
+                ]
             }
         });
     }
@@ -795,10 +1010,35 @@ async function updateSecurityRules() {
         });
     }
 
+    // 4. Chặn Popup quảng cáo cứng đầu (như miss.ai/pop và Tsyndicate)
+    if (settings.linkClickBehavior === 'block' || settings.linkClickBehavior === 'player') {
+        const adBlockRules = [
+            { id: 1004, filter: '*miss.ai/pop*' },
+            { id: 1005, filter: '*tsyndicate.com*' },
+            { id: 1006, filter: '*tsyndicate.net*' },
+            { id: 1007, filter: '*trafficstars.com*' },
+            { id: 1008, filter: '*exoclick.com*' },
+            { id: 1009, filter: '*tsyndicate.io*' },
+            { id: 1010, filter: '*tsyndicads.com*' }
+        ];
+
+        adBlockRules.forEach(rule => {
+            rulesToAdd.push({
+                id: rule.id,
+                priority: 3,
+                action: { type: 'block' },
+                condition: {
+                    urlFilter: rule.filter,
+                    resourceTypes: ['main_frame', 'sub_frame', 'script', 'xmlhttprequest', 'image', 'other']
+                }
+            });
+        });
+    }
+
     // Áp dụng các quy tắc mới
     try {
         await chrome.declarativeNetRequest.updateDynamicRules({
-            removeRuleIds: ruleIdsToRemove,
+            removeRuleIds: [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010],
             addRules: rulesToAdd
         });
         console.log('Security rules updated successfully');

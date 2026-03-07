@@ -1153,6 +1153,131 @@ body.dark-mode .clickable-card:hover {
     background: #2d2d44;
 }
 
+/* Setup Suggestions for Search Engines Modern Design */
+.behavior-suggestion-box {
+    background: #fdf2f8; /* Nền hồng rất nhạt */
+    border: none;
+    border-left: 5px solid #9d7df3; /* Viền trái tím nhạt */
+    border-radius: var(--radius-md);
+    padding: 20px;
+    margin: 20px 0;
+    box-shadow: 0 4px 15px rgba(157, 125, 243, 0.08);
+    transition: var(--transition-smooth);
+}
+
+body.dark-mode .behavior-suggestion-box {
+    background: rgba(157, 125, 243, 0.05);
+    border-left-color: #ff6a97;
+}
+
+.suggestion-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
+.suggestion-icon {
+    font-size: 1.4rem;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+}
+
+.suggestion-header h4 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 800;
+    color: #4a0e4e; /* Màu tím đậm */
+    letter-spacing: 0.5px;
+}
+
+body.dark-mode .suggestion-header h4 {
+    color: #fbc2eb;
+}
+
+.suggestion-content p {
+    font-size: 0.95rem;
+    color: #6b21a8; /* Tím trung bình */
+    margin-bottom: 12px;
+    line-height: 1.5;
+}
+
+body.dark-mode .suggestion-content p {
+    color: #a6c1ee;
+}
+
+.suggestion-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 15px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.suggestion-list li {
+    font-size: 0.9rem;
+    color: #7c3aed;
+    padding-left: 0;
+    position: relative;
+}
+
+body.dark-mode .suggestion-list li {
+    color: #d8b4fe;
+}
+
+.suggestion-footer {
+    font-size: 0.85rem !important;
+    font-style: italic;
+    color: #9333ea !important;
+    opacity: 0.8;
+    border-top: 1px dashed rgba(157, 125, 243, 0.2);
+    padding-top: 12px;
+    margin: 0 !important;
+}
+
+body.dark-mode .suggestion-footer {
+    color: #c084fc !important;
+}
+
+/* Privacy Grade Issues List */
+.grade-issues-list {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+body.dark-mode .grade-issues-list {
+    border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+.issue-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.issue-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #ff6a97;
+    flex-shrink: 0;
+}
+
+.fix-summary {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #ff6a97;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
 /* Multi-Account Redesign */
 .multi-account-content {
     display: flex;
@@ -3431,6 +3556,67 @@ body.dark-mode .media-preview {
 body.dark-mode .telegram-info {
     background: #1e3a8a;
     color: #bfdbfe;
+}
+
+/* Telegram Downloader Adaptive Stats */
+.telegram-stats-container {
+    margin-top: 20px;
+    padding: var(--spacing-md);
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--glass-shadow);
+    animation: fadeIn 0.4s ease-out;
+}
+
+.telegram-stats-container h3 {
+    font-size: 1rem;
+    margin-bottom: var(--spacing-md);
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.stat-box {
+    padding: 10px;
+    background: var(--bg-main);
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-color);
+    transition: var(--transition-smooth);
+}
+
+.stat-box:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    font-weight: 600;
+}
+
+.stat-value {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--text-main);
+    font-family: 'Courier New', Courier, monospace;
+}
+
+body.dark-mode .stat-box {
+    background: #3d3d3d;
 }
 
 /* Existing styles... */

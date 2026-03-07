@@ -3,6 +3,18 @@
 
 // Only run this script if it's inside an iframe (not the top-level document)
 if (window.self !== window.top) {
+    // Notify the extension about the current URL of the iframe
+    // ONLY if this is the direct child of the popup (the main Privacy Player iframe)
+    // This prevents sub-iframes (like video embeds) from cluttering history/address bar
+    if (window.parent === window.top) {
+        chrome.runtime.sendMessage({
+            type: 'iframeNavigated',
+            url: window.location.href,
+            frameId: 0, // In this context, it's the main frame of the player
+            timestamp: Date.now()
+        }).catch(() => {});
+    }
+
     let settings = {
         playerLinkBehavior: 'inside', // Default
         playerLinkFilter: 'all' // Default
@@ -71,16 +83,16 @@ if (window.self !== window.top) {
                 let effectiveApply = settings.playerLinkFilter === 'all' || requiresNewTab;
 
                 // 2. Cốc Cốc Specific Override Logic
-                if (isCoccocBrowser && isCoccocSearchPage) {
-                    // Special rule for Cốc Cốc: Bypass block if settings are (Block + New Tab Links Only)
+                // Cốc Cốc Search often forces target="_blank" on results. 
+                // If user sets (Block + New Tab Links Only), it would block all results.
+                // We override this to allow results to open INSIDE the player.
+                if (isCoccocSearchPage) {
                     if (effectiveBehavior === 'block' && settings.playerLinkFilter === 'newTabOnly') {
-                        // Force internal navigation instead of blocking
-                        effectiveApply = false;
-                    }
-                    // For other settings on Cốc Cốc search, we generally prefer internal navigation
-                    // to keep the user inside the Privacy Player environment.
-                    else if (effectiveBehavior === 'inside' || settings.playerLinkFilter === 'newTabOnly') {
-                        effectiveApply = false;
+                        effectiveApply = false; // Don't block, open inside
+                        effectiveBehavior = 'inside';
+                    } else if (settings.playerLinkFilter === 'newTabOnly') {
+                        effectiveApply = false; // Always force inside for search results
+                        effectiveBehavior = 'inside';
                     }
                 } 
                 // 3. Handling for other Search Engines (Google, Bing, etc.)
@@ -170,19 +182,55 @@ if (window.self !== window.top) {
     });
 
     function togglePip() {
-        const video = document.querySelector('video');
-        if (!video) {
+        // Tìm video phù hợp nhất (lớn nhất và đang phát)
+        const videos = Array.from(document.querySelectorAll('video'));
+        if (videos.length === 0) {
             console.log('Privacy Player: No video element found for PiP.');
+            // Thử tìm trong các iframe con (nếu cùng origin)
+            const iframes = document.querySelectorAll('iframe');
+            iframes.forEach(iframe => {
+                try {
+                    const innerVideo = iframe.contentDocument.querySelector('video');
+                    if (innerVideo) {
+                        requestPip(innerVideo);
+                    }
+                } catch (e) {
+                    // Cross-origin iframe, không can thiệp được trực tiếp
+                }
+            });
             return;
         }
 
+        // Ưu tiên video đang phát
+        const playingVideo = videos.find(v => !v.paused && !v.ended);
+        const targetVideo = playingVideo || videos[0];
+
+        requestPip(targetVideo);
+    }
+
+    function requestPip(video) {
         if (document.pictureInPictureElement) {
             document.exitPictureInPicture();
         } else {
             if (document.pictureInPictureEnabled) {
-                video.requestPictureInPicture().catch(error => {
-                    console.error('Privacy Player: PiP failed', error);
-                });
+                // Đảm bảo video đã sẵn sàng
+                if (video.readyState >= 2) { // HAVE_CURRENT_DATA
+                    video.requestPictureInPicture().catch(error => {
+                        console.error('Privacy Player: PiP failed', error);
+                        // Thử lại sau khi video metadata đã load (nếu chưa)
+                        if (error.name === 'InvalidStateError') {
+                            video.addEventListener('loadedmetadata', () => {
+                                video.requestPictureInPicture();
+                            }, { once: true });
+                        }
+                    });
+                } else {
+                    video.addEventListener('loadedmetadata', () => {
+                        video.requestPictureInPicture();
+                    }, { once: true });
+                }
+            } else {
+                console.warn('Privacy Player: PiP is not enabled in this browser.');
             }
         }
     }

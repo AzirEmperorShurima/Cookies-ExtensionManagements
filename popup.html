@@ -297,6 +297,24 @@
                     <option value="custom" data-i18n="playerBackground_custom">Custom URL</option>
                 </select>
             </div>
+            <div id="customBgUrlRow" class="settings-group hidden" style="margin-top: 10px; padding: 10px; border: 1px dashed var(--border-color);">
+                <div class="setting-item" style="border-bottom: none; flex-direction: column; align-items: stretch; gap: 10px;">
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <span data-i18n="addCustomBg">Add BG URL</span>
+                        <input type="text" id="customBgUrlInput" placeholder="https://example.com/image.jpg" style="flex-grow: 1;">
+                        <button id="addCustomBgBtn" class="action-btn" style="padding: 6px 12px;">Add</button>
+                    </div>
+                    
+                    <div id="bgPreviewContainer" class="bg-preview-container">
+                        <img id="bgPreviewImg" src="" alt="Preview" class="bg-preview-img hidden">
+                        <div id="bgPreviewPlaceholder" class="bg-preview-placeholder">No Image Selected</div>
+                    </div>
+
+                    <div id="customBgList" class="custom-bg-list">
+                        <!-- Custom backgrounds will be populated here -->
+                    </div>
+                </div>
+            </div>
             <div class="setting-item">
                 <span data-i18n="playerLinkBehavior">Link Click Behavior</span>
                 <button class="info-icon" data-info="Chọn cách xử lý khi bạn nhấn vào các liên kết bên trong Privacy Player.">ℹ️</button>
@@ -317,30 +335,17 @@
             </div>
             <!-- Suggestions for Behavior Settings -->
             <div id="behaviorSuggestions" class="setting-hint-box behavior-suggestion-box">
-                <h4 data-i18n="behavior_suggestion_title">💡 Gợi ý thiết lập cho Search Engine</h4>
-                <p data-i18n="behavior_suggestion_coccoc">Đối với **Cốc Cốc Search**, bạn nên để:</p>
-                <ul class="suggestion-list">
-                    <li data-i18n="behavior_suggestion_coccoc_item1">- **Link Click Behavior**: 'Mở trong Tab mới' hoặc 'Mở bên trong Player'.</li>
-                    <li data-i18n="behavior_suggestion_coccoc_item2">- **Applied Link Type**: 'Tất cả các link' để tối ưu hóa trải nghiệm tìm kiếm.</li>
-                </ul>
-                <p class="suggestion-footer" data-i18n="behavior_suggestion_general">Thiết lập này giúp bạn giữ được trang kết quả tìm kiếm trong khi xem nội dung video hoặc trang web con một cách liền mạch.</p>
-            </div>
-            <div id="customBgUrlRow" class="settings-group hidden" style="margin-top: 10px; padding: 10px; border: 1px dashed var(--border-color);">
-                <div class="setting-item" style="border-bottom: none; flex-direction: column; align-items: stretch; gap: 10px;">
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                        <span data-i18n="addCustomBg">Add BG URL</span>
-                        <input type="text" id="customBgUrlInput" placeholder="https://example.com/image.jpg" style="flex-grow: 1;">
-                        <button id="addCustomBgBtn" class="action-btn" style="padding: 6px 12px;">Add</button>
-                    </div>
-                    
-                    <div id="bgPreviewContainer" class="bg-preview-container">
-                        <img id="bgPreviewImg" src="" alt="Preview" class="bg-preview-img hidden">
-                        <div id="bgPreviewPlaceholder" class="bg-preview-placeholder">No Image Selected</div>
-                    </div>
-
-                    <div id="customBgList" class="custom-bg-list">
-                        <!-- Custom backgrounds will be populated here -->
-                    </div>
+                <div class="suggestion-header">
+                    <span class="suggestion-icon">💡</span>
+                    <h4 data-i18n="behavior_suggestion_title">Setup Suggestions for Search Engines</h4>
+                </div>
+                <div class="suggestion-content">
+                    <p data-i18n="behavior_suggestion_coccoc">For **Cốc Cốc Search**, we recommend:</p>
+                    <ul class="suggestion-list">
+                        <li data-i18n="behavior_suggestion_coccoc_item1">- **Link Click Behavior**: 'Open in New Tab' or 'Open Inside Player'.</li>
+                        <li data-i18n="behavior_suggestion_coccoc_item2">- **Applied Link Type**: 'All Links' to optimize the search experience.</li>
+                    </ul>
+                    <p class="suggestion-footer" data-i18n="behavior_suggestion_general">This setting helps you keep the search results page while viewing video content or subpages seamlessly.</p>
                 </div>
             </div>
         </div>
@@ -583,6 +588,11 @@
                     <option value="google" data-i18n="searchEngine_google">Google</option>
                     <option value="duckduckgo" data-i18n="searchEngine_duckduckgo">DuckDuckGo</option>
                     <option value="brave" data-i18n="searchEngine_brave">Brave Search</option>
+                    <option value="bing" data-i18n="searchEngine_bing">Microsoft Bing</option>
+                    <option value="yahoo" data-i18n="searchEngine_yahoo">Yahoo Search</option>
+                    <option value="yandex" data-i18n="searchEngine_yandex">Yandex</option>
+                    <option value="baidu" data-i18n="searchEngine_baidu">Baidu</option>
+                    <option value="qwant" data-i18n="searchEngine_qwant">Qwant</option>
                     <option value="coccoc" data-i18n="searchEngine_coccoc">Cốc Cốc Search</option>
                     <option value="tor" data-i18n="searchEngine_tor">Tor Search (DuckDuckGo via Tor)</option>
                 </select>
@@ -783,7 +793,7 @@
             </div>
         </div>
         <div class="player-container">
-            <iframe id="stealthPlayer" frameborder="0" allowfullscreen sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+            <iframe id="stealthPlayer" frameborder="0" allowfullscreen sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-downloads allow-top-navigation-by-user-activation"></iframe>
         </div>
     </div>
 
@@ -823,6 +833,29 @@
                     <li data-i18n="telegramStep2">Nhấn <b>"Quét Media"</b> để lấy danh sách video/ảnh đang hiện.</li>
                     <li data-i18n="telegramStep3">Chọn file và nhấn <b>Tải xuống</b> (Hỗ trợ tải cả kênh bị cấm).</li>
                 </ul>
+            </div>
+
+            <!-- Telegram Downloader Adaptive Stats -->
+            <div id="telegramStats" class="telegram-stats-container hidden">
+                <h3 data-i18n="adaptiveStats">Telegram Adaptive Engine Stats ⚡</h3>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <span class="stat-label">Parallel Chunks</span>
+                        <span id="statParallel" class="stat-value">--</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Chunk Size</span>
+                        <span id="statChunkSize" class="stat-value">--</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Retries</span>
+                        <span id="statRetries" class="stat-value">--</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Speed</span>
+                        <span id="statSpeed" class="stat-value">--</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

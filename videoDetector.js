@@ -24,7 +24,143 @@
             scanForVideos();
             startObserver();
         }
+
+        // Kiểm tra xem có đang ở trong Privacy Player không
+        if (window.location.href.includes('privacy_player.html')) {
+            chrome.runtime.sendMessage({ type: 'setPrivacyPlayerTabId' });
+            setupLinkInterception(settings);
+        }
     });
+
+    function setupLinkInterception(settings) {
+        if (settings.linkClickBehavior !== 'player' && settings.linkClickBehavior !== 'block') return;
+
+        // TIÊM SCRIPT VÀO MAIN WORLD ĐỂ HOOK WINDOW.OPEN VÀ CLICK TRỰC TIẾP
+        const script = document.createElement('script');
+        script.textContent = `
+            (function() {
+                const behavior = '${settings.linkClickBehavior}';
+                const origin = window.location.origin;
+                
+                // 1. Hook window.open (Bắt quảng cáo popup bằng JS)
+                const originalOpen = window.open;
+                window.open = function(url, target, features) {
+                    console.log('[Privacy Player] Intercepted window.open:', url);
+                    
+                    // Kiểm tra URL đáng ngờ (quảng cáo popunder)
+                    const isSuspicious = url && typeof url === 'string' && (
+                        url.includes('tsyndicate') || 
+                        url.includes('tsyndicads') ||
+                        url.includes('/pop?') || 
+                        url.includes('adserver') ||
+                        url.includes('trafficstars') ||
+                        url.includes('exoclick') ||
+                        (url.includes('missav') && url.includes('ad')) ||
+                        (!url.startsWith('about:') && !url.startsWith(origin) && !url.startsWith('http'))
+                    );
+
+                    if (isSuspicious || behavior === 'block') {
+                        console.log('[Privacy Player] Blocked suspicious/all popup:', url);
+                        return null;
+                    }
+
+                    if (behavior === 'player') {
+                        // Gửi URL về iframe cha (Privacy Player)
+                        window.parent.postMessage({ type: 'loadUrlInPlayer', url: url }, '*');
+                        return null;
+                    }
+                    
+                    return originalOpen.apply(this, arguments);
+                };
+
+                // 2. Hook click (Bắt các thẻ <a> có target="_blank" hoặc click nặc danh)
+                document.addEventListener('click', (e) => {
+                    const link = e.target.closest('a');
+                    
+                    // Chặn click nặc danh vào body/document (kỹ thuật mở popunder)
+                    if (!link && !e.target.closest('button, video, input, [role="button"]')) {
+                        console.log('[Privacy Player] Blocked document-level click popunder attempt');
+                        e.stopPropagation();
+                        e.preventDefault();
+                        return;
+                    }
+
+                    if (link && link.href && !link.href.startsWith('javascript:')) {
+                        const target = link.getAttribute('target');
+                        const isExternal = !link.href.startsWith(origin) && link.href.startsWith('http');
+
+                        if (target === '_blank' || e.ctrlKey || e.metaKey || isExternal) {
+                            if (behavior === 'player') {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                window.parent.postMessage({ type: 'loadUrlInPlayer', url: link.href }, '*');
+                            } else if (behavior === 'block') {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log('[Privacy Player] Blocked link click:', link.href);
+                            }
+                        }
+                    }
+                }, true); // Capture phase để chặn sớm nhất
+
+                // 3. Override setTimeout/setInterval (Chặn delay mở popup)
+                const originalSetTimeout = window.setTimeout;
+                window.setTimeout = function(callback, delay, ...args) {
+                    if (typeof callback === 'function' && delay > 100) {
+                        const str = callback.toString();
+                        if (str.includes('window.open(') || str.includes('open(') || str.includes('tsyndicate') || str.includes('pop') || str.includes('ad')) {
+                            console.log('[Privacy Player] Blocked suspicious setTimeout popunder attempt');
+                            return null;
+                        }
+                    }
+                    return originalSetTimeout.apply(this, [callback, delay, ...args]);
+                };
+
+                const originalSetInterval = window.setInterval;
+                window.setInterval = function(callback, delay, ...args) {
+                    if (typeof callback === 'function') {
+                        const str = callback.toString();
+                        if (str.includes('window.open(') || str.includes('open(') || str.includes('tsyndicate') || str.includes('pop') || str.includes('ad')) {
+                            console.log('[Privacy Player] Blocked suspicious setInterval popunder attempt');
+                            return null;
+                        }
+                    }
+                    return originalSetInterval.apply(this, [callback, delay, ...args]);
+                };
+
+                // 4. Triệt tiêu các sự kiện popup đặc thù (Dựa trên MissAV AdBlocker)
+                function neutralizePopups() {
+                    const popElements = document.querySelectorAll('[\\\\@click*="pop()"], [\\\\@keyup.space.window*="pop()"]');
+                    popElements.forEach(el => {
+                        el.removeAttribute('@click');
+                        el.removeAttribute('@keyup.space.window');
+                        el.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                        }, true);
+                    });
+
+                    if (typeof window.pop === 'function') {
+                        window.pop = function() { return false; };
+                    }
+
+                    // 5. Chặn popunder bằng cách override beforeunload (ngăn redirect chain)
+                    window.addEventListener('beforeunload', function(e) {
+                        if (document.referrer.includes('tsyndicate') || location.href.includes('/pop?url=')) {
+                            e.preventDefault();
+                            e.returnValue = '';
+                        }
+                    });
+                }
+
+                neutralizePopups();
+                const observer = new MutationObserver(neutralizePopups);
+                observer.observe(document.documentElement, { childList: true, subtree: true });
+            })();
+        `;
+        (document.head || document.documentElement).appendChild(script);
+        script.remove();
+    }
 
     // Theo dõi thay đổi URL trong SPA (YouTube, v.v.)
     window.addEventListener('popstate', reportNavigation);
@@ -40,12 +176,8 @@
      * Báo cáo URL hiện tại của frame
      */
     function reportNavigation() {
-        // Trong context của Extension Popup:
-        // window.top là cửa sổ popup
-        // window.parent là cửa sổ cha trực tiếp
-        // Đối với trang web chính trong Privacy Player, window.parent === window.top
-        // Đối với các iframe con (như quảng cáo), window.parent !== window.top
-        if (window.parent === window.top) {
+        // Kiểm tra chrome.runtime và chrome.runtime.id để tránh lỗi context invalidated
+        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id && window.parent === window.top) {
             chrome.runtime.sendMessage({
                 type: 'pageNavigatedInFrame',
                 url: window.location.href,
@@ -55,18 +187,20 @@
     }
 
     // Lắng nghe thay đổi cài đặt
-    chrome.storage.onChanged.addListener((changes, area) => {
-        if (area === 'local' && changes.appSettings) {
-            const newSettings = changes.appSettings.newValue || {};
-            videoDetectionEnabled = newSettings.videoDownloaderEnabled || false;
-            if (videoDetectionEnabled) {
-                scanForVideos();
-                startObserver();
-            } else if (observer) {
-                observer.disconnect();
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+        chrome.storage.onChanged.addListener((changes, area) => {
+            if (area === 'local' && changes.appSettings) {
+                const newSettings = changes.appSettings.newValue || {};
+                videoDetectionEnabled = newSettings.videoDownloaderEnabled || false;
+                if (videoDetectionEnabled) {
+                    scanForVideos();
+                    startObserver();
+                } else if (observer) {
+                    observer.disconnect();
+                }
             }
-        }
-    });
+        });
+    }
 
     /**
      * Quét các thẻ video hiện có
@@ -94,6 +228,30 @@
                     }
                 }
             } catch (e) {}
+        }
+
+        function scanTelegramStreamVideos_ADDITION() {
+            // Telegram Web dùng src dạng: stream/{JSON encoded}
+            // Cần resolve relative URL thành absolute
+            const allVideos = document.querySelectorAll('video[src]');
+            allVideos.forEach((video, idx) => {
+                const rawSrc = video.src; // Đã được browser resolve thành absolute
+                // Kiểm tra nếu là Telegram stream URL
+                if (rawSrc && (rawSrc.includes('/stream/') || rawSrc.includes('stream/%7B'))) {
+                    try {
+                        // Decode URL để lấy JSON metadata
+                        const encoded = rawSrc.split('/stream/')[1];
+                        const meta = JSON.parse(decodeURIComponent(encoded));
+                        const name = meta.fileName || document.title || `Telegram Video ${idx+1}`;
+                        const thumb = video.poster || '';
+                        // Báo cáo với full absolute URL
+                        reportVideo(rawSrc, 'Telegram Stream', name, false, thumb);
+                    } catch(e) {
+                        // Báo cáo bình thường nếu parse thất bại
+                        processVideoElement(video, `Telegram Video #${idx+1}`);
+                    }
+                }
+            });
         }
     }
 
@@ -130,6 +288,12 @@
     function reportVideo(url, type, filename, isBlob = false, thumb = '') {
         if (!url || url.startsWith('data:')) return;
 
+        // Kiểm tra Extension Context trước khi gửi tin nhắn
+        if (!chrome.runtime?.id) {
+            console.warn('[VideoDetector] Extension context invalidated. Skipping report.');
+            return;
+        }
+
         chrome.runtime.sendMessage({
             type: 'newVideoDetectedFromContent',
             video: {
@@ -143,7 +307,9 @@
                 // Báo cáo URL hiện tại của frame để hỗ trợ đồng bộ thanh địa chỉ
                 currentFrameUrl: window.location.href
             }
-        }).catch(() => {});
+        }).catch(() => {
+            // Im lặng nếu context bị hủy
+        });
     }
 
     let observer = null;
