@@ -13,6 +13,197 @@ let hibernationTimeout = 30; // minutes
 let tabLastActive = {}; // tabId -> timestamp
 let tabUrls = {}; // tabId -> url (for auto-cleanup)
 
+// Khởi tạo context menu
+async function initContextMenus() {
+    // Xóa tất cả menu cũ để tránh trùng lặp
+    chrome.contextMenus.removeAll(() => {
+        chrome.contextMenus.create({
+            id: "sessionManager",
+            title: "📋 Session Manager",
+            contexts: ["page", "link"]
+        });
+
+        chrome.contextMenus.create({
+            id: "saveAllTabs",
+            parentId: "sessionManager",
+            title: "💾 Lưu tất cả tab",
+            contexts: ["page", "link"]
+        });
+
+        chrome.contextMenus.create({
+            id: "saveNormalTabs",
+            parentId: "sessionManager",
+            title: "🌐 Lưu các tab thường",
+            contexts: ["page", "link"]
+        });
+
+        chrome.contextMenus.create({
+            id: "saveIncognitoTabs",
+            parentId: "sessionManager",
+            title: "🔒 Lưu các tab ẩn danh",
+            contexts: ["page", "link"]
+        });
+
+        chrome.contextMenus.create({
+            id: "saveCurrentTab",
+            parentId: "sessionManager",
+            title: "📄 Lưu tab hiện tại",
+            contexts: ["page", "link"]
+        });
+
+        // Thêm vạch kẻ phân cách bên trong menu
+        chrome.contextMenus.create({
+            id: "separator_session",
+            parentId: "sessionManager",
+            type: "separator",
+            contexts: ["page", "link"]
+        });
+
+        // Menu khôi phục phiên
+        chrome.contextMenus.create({
+            id: "restoreSessionParent",
+            parentId: "sessionManager",
+            title: "📂 Khôi phục phiên...",
+            contexts: ["page", "link"]
+        });
+
+        // Lấy danh sách phiên từ storage để tạo menu con
+        chrome.storage.local.get(['appSettings'], (result) => {
+            const settings = result.appSettings || {};
+            const sessions = settings.savedSessions || [];
+            
+            if (sessions.length === 0) {
+                chrome.contextMenus.create({
+                    id: "noSessions",
+                    parentId: "restoreSessionParent",
+                    title: "(Chưa có phiên nào)",
+                    enabled: false,
+                    contexts: ["page", "link"]
+                });
+            } else {
+                // Hiển thị tối đa 5 phiên gần nhất
+                sessions.slice(0, 5).forEach((session, index) => {
+                    chrome.contextMenus.create({
+                        id: `restoreSession_${session.id}`,
+                        parentId: "restoreSessionParent",
+                        title: `${index + 1}. ${session.name}`,
+                        contexts: ["page", "link"]
+                    });
+                });
+            }
+        });
+    });
+}
+
+chrome.runtime.onInstalled.addListener(initContextMenus);
+chrome.runtime.onStartup.addListener(initContextMenus);
+
+// Cập nhật menu khi storage thay đổi (để cập nhật danh sách phiên khôi phục)
+chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes.appSettings) {
+        // Chỉ cập nhật nếu danh sách savedSessions thay đổi
+        const oldSessions = changes.appSettings.oldValue?.savedSessions || [];
+        const newSessions = changes.appSettings.newValue?.savedSessions || [];
+        if (JSON.stringify(oldSessions) !== JSON.stringify(newSessions)) {
+            initContextMenus();
+        }
+    }
+});
+
+// Xử lý click context menu
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+    if (info.menuItemId.startsWith("save")) {
+        const mode = info.menuItemId;
+        const allTabs = await chrome.tabs.query({});
+        let tabsToSave = [];
+
+        if (mode === "saveAllTabs") {
+            tabsToSave = allTabs;
+        } else if (mode === "saveNormalTabs") {
+            tabsToSave = allTabs.filter(t => !t.incognito);
+        } else if (mode === "saveIncognitoTabs") {
+            tabsToSave = allTabs.filter(t => t.incognito);
+        } else if (mode === "saveCurrentTab") {
+            tabsToSave = [tab];
+        }
+
+        if (tabsToSave.length === 0) {
+            chrome.notifications.create({
+                type: 'basic',
+                iconUrl: 'icons/icon128.png',
+                title: 'Session Manager',
+                message: 'Không tìm thấy tab nào phù hợp để lưu.'
+            });
+            return;
+        }
+
+        const timestamp = new Date().toLocaleString();
+        const sessionName = `Quick Session (${timestamp})`;
+
+        const sessionData = {
+            id: Date.now(),
+            name: sessionName,
+            date: new Date().toISOString(),
+            tabType: mode.replace("save", "").toLowerCase(),
+            tabs: tabsToSave.map(t => ({
+                url: t.url,
+                title: t.title,
+                incognito: t.incognito
+            }))
+        };
+
+        const result = await chrome.storage.local.get(['appSettings']);
+        const settings = result.appSettings || {};
+        if (!settings.savedSessions) settings.savedSessions = [];
+        settings.savedSessions.unshift(sessionData);
+        
+        await chrome.storage.local.set({ appSettings: settings });
+
+        chrome.notifications.create({
+            type: 'basic',
+            iconUrl: 'icons/icon128.png',
+            title: 'Session Manager',
+            message: `Đã lưu phiên "${sessionName}" với ${tabsToSave.length} tab.`
+        });
+    } else if (info.menuItemId.startsWith("restoreSession_")) {
+        const sessionId = parseInt(info.menuItemId.split("_")[1]);
+        const result = await chrome.storage.local.get(['appSettings']);
+        const settings = result.appSettings || {};
+        const sessions = settings.savedSessions || [];
+        const session = sessions.find(s => s.id === sessionId);
+
+        if (session) {
+            // Nhóm các tab theo incognito
+            const normalTabs = session.tabs.filter(t => !t.incognito);
+            const incognitoTabs = session.tabs.filter(t => t.incognito);
+
+            if (normalTabs.length > 0) {
+                chrome.windows.create({
+                    url: normalTabs.map(t => t.url),
+                    incognito: false
+                });
+            }
+
+            if (incognitoTabs.length > 0) {
+                chrome.extension.isAllowedIncognitoAccess((isAllowed) => {
+                    if (isAllowed) {
+                        chrome.windows.create({
+                            url: incognitoTabs.map(t => t.url),
+                            incognito: true
+                        });
+                    } else {
+                        // Mở ở cửa sổ thường nếu không được phép
+                        chrome.windows.create({
+                            url: incognitoTabs.map(t => t.url),
+                            incognito: false
+                        });
+                    }
+                });
+            }
+        }
+    }
+});
+
 // Khởi tạo trạng thái ban đầu cho settings
 chrome.storage.local.get(['appSettings'], (result) => {
     const settings = result.appSettings || {};

@@ -154,6 +154,12 @@ const elements = {
     sessionTabTypeSelect: document.getElementById('sessionTabTypeSelect'),
     saveSessionBtn: document.getElementById('saveSessionBtn'),
     sessionsList: document.getElementById('sessionsList'),
+    tabSelectionArea: document.getElementById('tabSelectionArea'),
+    tabListContainer: document.getElementById('tabListContainer'),
+    confirmSaveSessionBtn: document.getElementById('confirmSaveSessionBtn'),
+    selectAllTabsBtn: document.getElementById('selectAllTabsBtn'),
+    deselectAllTabsBtn: document.getElementById('deselectAllTabsBtn'),
+    cancelSaveSessionBtn: document.getElementById('cancelSaveSessionBtn'),
     
     // Features Sections
     telegramDownloaderBtn: document.getElementById('telegramDownloaderBtn'),
@@ -4601,6 +4607,8 @@ elements.safeUrlsList.addEventListener('click', (e) => {
 });
 
 // Session Manager Logic
+let currentTabsToSave = [];
+
 elements.saveSessionBtn.addEventListener('click', async () => {
     const sessionName = elements.sessionNameInput.value.trim();
     if (!sessionName) {
@@ -4611,46 +4619,125 @@ elements.saveSessionBtn.addEventListener('click', async () => {
     try {
         const tabType = elements.sessionTabTypeSelect.value;
         let queryOptions = {};
-        if (tabType === 'normal') queryOptions.incognito = false;
-        else if (tabType === 'incognito') queryOptions.incognito = true;
+        // Sửa lỗi: chrome.tabs.query không hỗ trợ 'incognito' trực tiếp trong queryInfo ở một số phiên bản/ngữ cảnh
+        // Ta sẽ lấy tất cả và lọc thủ công để an toàn
+        const allTabs = await chrome.tabs.query({});
+        
+        currentTabsToSave = allTabs.filter(tab => {
+            if (tabType === 'normal') return !tab.incognito;
+            if (tabType === 'incognito') return tab.incognito;
+            return true; // 'all'
+        });
 
-        const tabs = await chrome.tabs.query(queryOptions);
-        if (tabs.length === 0) {
+        if (currentTabsToSave.length === 0) {
             notify('Không tìm thấy tab nào để lưu!', 'warning');
             return;
         }
 
-        const sessionData = {
-            id: Date.now(),
-            name: sessionName,
-            date: new Date().toISOString(),
-            tabType: tabType,
-            tabs: tabs.map(t => ({
-                url: t.url,
-                title: t.title,
-                incognito: t.incognito
-            }))
-        };
-
-        if (!settings.savedSessions) settings.savedSessions = [];
-        settings.savedSessions.unshift(sessionData);
-        saveSettings();
-        renderSessions();
-        elements.sessionNameInput.value = '';
+        // Hiển thị giao diện chọn tab
+        renderTabSelection();
+        elements.tabSelectionArea.classList.remove('hidden');
+        elements.saveSessionBtn.disabled = true;
         
-        if (confirm(`Đã lưu "${sessionName}" với ${tabs.length} tab. Bạn có muốn đóng tất cả các tab hiện tại không?`)) {
-             // Mở một tab trống mới để tránh đóng trình duyệt hoàn toàn nếu là cửa sổ duy nhất
-             chrome.tabs.create({}, () => {
-                 tabs.forEach(t => {
-                     chrome.tabs.remove(t.id);
-                 });
-             });
-         }
-        
-        notify(`Đã lưu phiên: ${sessionName}`, 'success');
+        notify('Vui lòng chọn các tab bạn muốn lưu', 'success');
     } catch (error) {
-        notify('Lỗi khi lưu phiên: ' + error.message, 'error');
+        notify('Lỗi khi lấy danh sách tab: ' + error.message, 'error');
     }
+});
+
+function renderTabSelection() {
+    const { tabListContainer } = elements;
+    tabListContainer.innerHTML = '';
+
+    currentTabsToSave.forEach((tab, index) => {
+        const div = document.createElement('div');
+        div.style.display = 'flex';
+        div.style.alignItems = 'center';
+        div.style.gap = '8px';
+        div.style.padding = '4px';
+        div.style.borderBottom = '1px solid rgba(0,0,0,0.05)';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `tab-chk-${index}`;
+        checkbox.checked = true;
+        checkbox.dataset.index = index;
+        checkbox.className = 'tab-selection-checkbox';
+
+        const label = document.createElement('label');
+        label.htmlFor = `tab-chk-${index}`;
+        label.style.fontSize = '11px';
+        label.style.whiteSpace = 'nowrap';
+        label.style.overflow = 'hidden';
+        label.style.textOverflow = 'ellipsis';
+        label.style.cursor = 'pointer';
+        label.style.flex = '1';
+        label.title = tab.url;
+        
+        const icon = tab.favIconUrl ? `<img src="${tab.favIconUrl}" width="12" height="12" style="margin-right: 5px; vertical-align: middle;">` : '🌐 ';
+        label.innerHTML = `${icon}${tab.incognito ? '🔒 ' : ''}${tab.title || tab.url}`;
+
+        div.appendChild(checkbox);
+        div.appendChild(label);
+        tabListContainer.appendChild(div);
+    });
+}
+
+elements.selectAllTabsBtn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-selection-checkbox').forEach(cb => cb.checked = true);
+});
+
+elements.deselectAllTabsBtn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-selection-checkbox').forEach(cb => cb.checked = false);
+});
+
+elements.cancelSaveSessionBtn.addEventListener('click', () => {
+    elements.tabSelectionArea.classList.add('hidden');
+    elements.saveSessionBtn.disabled = false;
+    currentTabsToSave = [];
+    notify('Đã hủy thao tác lưu phiên', 'warning');
+});
+
+elements.confirmSaveSessionBtn.addEventListener('click', () => {
+    const sessionName = elements.sessionNameInput.value.trim();
+    const selectedCheckboxes = document.querySelectorAll('.tab-selection-checkbox:checked');
+    
+    if (selectedCheckboxes.length === 0) {
+        notify('Vui lòng chọn ít nhất một tab để lưu!', 'warning');
+        return;
+    }
+
+    const selectedTabs = Array.from(selectedCheckboxes).map(cb => currentTabsToSave[parseInt(cb.dataset.index)]);
+    
+    const sessionData = {
+        id: Date.now(),
+        name: sessionName,
+        date: new Date().toISOString(),
+        tabType: elements.sessionTabTypeSelect.value,
+        tabs: selectedTabs.map(t => ({
+            url: t.url,
+            title: t.title,
+            incognito: t.incognito
+        }))
+    };
+
+    if (!settings.savedSessions) settings.savedSessions = [];
+    settings.savedSessions.unshift(sessionData);
+    saveSettings();
+    renderSessions();
+    
+    // Reset giao diện
+    elements.sessionNameInput.value = '';
+    elements.tabSelectionArea.classList.add('hidden');
+    elements.saveSessionBtn.disabled = false;
+    
+    if (confirm(`Đã lưu "${sessionName}" với ${selectedTabs.length} tab. Bạn có muốn đóng các tab đã chọn không?`)) {
+        selectedTabs.forEach(t => {
+            chrome.tabs.remove(t.id).catch(() => {});
+        });
+    }
+    
+    notify(`Đã lưu phiên: ${sessionName}`, 'success');
 });
 
 function renderSessions() {
@@ -4665,6 +4752,10 @@ function renderSessions() {
     }
 
     settings.savedSessions.forEach((session, index) => {
+        const sessionContainer = document.createElement('div');
+        sessionContainer.className = 'session-container-wrapper';
+        sessionContainer.style.marginBottom = '8px';
+
         const div = document.createElement('div');
         div.className = 'favorite-item session-item'; // Reusing favorite-item style
 
@@ -4694,17 +4785,27 @@ function renderSessions() {
         const actionsDiv = document.createElement('div');
         actionsDiv.className = 'favorite-actions';
 
+        const expandBtn = document.createElement('button');
+        expandBtn.className = 'favorite-go-btn';
+        expandBtn.title = 'Xem danh sách tab';
+        expandBtn.textContent = '🔽';
+        expandBtn.style.fontSize = '10px';
+        
         const restoreBtn = document.createElement('button');
         restoreBtn.className = 'favorite-go-btn';
         restoreBtn.title = 'Khôi phục phiên';
         restoreBtn.textContent = '📂';
-        restoreBtn.onclick = () => restoreSession(session);
+        restoreBtn.onclick = (e) => {
+            e.stopPropagation();
+            restoreSession(session);
+        };
         
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'favorite-delete-btn';
         deleteBtn.title = 'Xóa phiên';
         deleteBtn.textContent = '🗑️';
-        deleteBtn.onclick = () => {
+        deleteBtn.onclick = (e) => {
+            e.stopPropagation();
             if (confirm(`Xóa phiên "${session.name}"?`)) {
                 settings.savedSessions.splice(index, 1);
                 saveSettings();
@@ -4713,10 +4814,117 @@ function renderSessions() {
             }
         };
 
+        const tabsListDiv = document.createElement('div');
+        tabsListDiv.className = 'session-tabs-list hidden';
+        tabsListDiv.style.padding = '8px';
+        tabsListDiv.style.background = 'rgba(0,0,0,0.02)';
+        tabsListDiv.style.borderRadius = '0 0 8px 8px';
+        tabsListDiv.style.border = '1px solid var(--border-color)';
+        tabsListDiv.style.borderTop = 'none';
+        tabsListDiv.style.fontSize = '10px';
+        tabsListDiv.style.maxHeight = '200px';
+        tabsListDiv.style.overflowY = 'auto';
+
+        // Nút khôi phục các tab đã chọn
+        const restoreSelectedBtn = document.createElement('button');
+        restoreSelectedBtn.className = 'action-btn primary-btn';
+        restoreSelectedBtn.style.width = '100%';
+        restoreSelectedBtn.style.padding = '4px';
+        restoreSelectedBtn.style.fontSize = '10px';
+        restoreSelectedBtn.style.marginBottom = '8px';
+        restoreSelectedBtn.textContent = 'Khôi phục các tab đã chọn';
+        restoreSelectedBtn.onclick = () => {
+            const selectedItems = tabsListDiv.querySelectorAll('.session-tab-checkbox:checked');
+            if (selectedItems.length === 0) {
+                notify('Vui lòng chọn ít nhất một tab!', 'warning');
+                return;
+            }
+            const tabsToRestore = Array.from(selectedItems).map(cb => session.tabs[parseInt(cb.dataset.tabIndex)]);
+            restoreSession({ ...session, tabs: tabsToRestore });
+        };
+        tabsListDiv.appendChild(restoreSelectedBtn);
+
+        session.tabs.forEach((tab, tabIndex) => {
+            const tabItem = document.createElement('div');
+            tabItem.style.display = 'flex';
+            tabItem.style.alignItems = 'center';
+            tabItem.style.gap = '8px';
+            tabItem.style.marginBottom = '5px';
+            tabItem.style.padding = '2px 0';
+            tabItem.style.borderBottom = '1px dashed rgba(0,0,0,0.05)';
+
+            // Checkbox chọn tab
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'session-tab-checkbox';
+            checkbox.dataset.tabIndex = tabIndex;
+            checkbox.checked = true;
+
+            const tabTitleSpan = document.createElement('span');
+            tabTitleSpan.style.flex = '1';
+            tabTitleSpan.style.whiteSpace = 'nowrap';
+            tabTitleSpan.style.overflow = 'hidden';
+            tabTitleSpan.style.textOverflow = 'ellipsis';
+            tabTitleSpan.title = tab.url;
+            const tabIcon = tab.incognito ? '🔒 ' : '🌐 ';
+            tabTitleSpan.textContent = `${tabIcon}${tab.title || tab.url}`;
+
+            // Nút khôi phục riêng lẻ
+            const tabActions = document.createElement('div');
+            tabActions.style.display = 'flex';
+            tabActions.style.gap = '4px';
+
+            const restoreNormalBtn = document.createElement('button');
+            restoreNormalBtn.title = 'Mở trong cửa sổ thường';
+            restoreNormalBtn.textContent = '🌐';
+            restoreNormalBtn.style.background = 'none';
+            restoreNormalBtn.style.border = 'none';
+            restoreNormalBtn.style.cursor = 'pointer';
+            restoreNormalBtn.style.fontSize = '12px';
+            restoreNormalBtn.onclick = () => {
+                chrome.windows.create({ url: tab.url, incognito: false });
+            };
+
+            const restoreIncognitoBtn = document.createElement('button');
+            restoreIncognitoBtn.title = 'Mở trong cửa sổ ẩn danh';
+            restoreIncognitoBtn.textContent = '🔒';
+            restoreIncognitoBtn.style.background = 'none';
+            restoreIncognitoBtn.style.border = 'none';
+            restoreIncognitoBtn.style.cursor = 'pointer';
+            restoreIncognitoBtn.style.fontSize = '12px';
+            restoreIncognitoBtn.onclick = () => {
+                chrome.extension.isAllowedIncognitoAccess((isAllowed) => {
+                    if (isAllowed) {
+                        chrome.windows.create({ url: tab.url, incognito: true });
+                    } else {
+                        notify('Cần cấp quyền Incognito', 'error');
+                    }
+                });
+            };
+
+            tabActions.appendChild(restoreNormalBtn);
+            tabActions.appendChild(restoreIncognitoBtn);
+
+            tabItem.appendChild(checkbox);
+            tabItem.appendChild(tabTitleSpan);
+            tabItem.appendChild(tabActions);
+            tabsListDiv.appendChild(tabItem);
+        });
+
+        expandBtn.onclick = () => {
+            const isHidden = tabsListDiv.classList.toggle('hidden');
+            expandBtn.textContent = isHidden ? '🔽' : '🔼';
+            div.style.borderRadius = isHidden ? 'var(--radius-md)' : '8px 8px 0 0';
+        };
+
+        actionsDiv.appendChild(expandBtn);
         actionsDiv.appendChild(restoreBtn);
         actionsDiv.appendChild(deleteBtn);
         div.appendChild(actionsDiv);
-        sessionsList.appendChild(div);
+        
+        sessionContainer.appendChild(div);
+        sessionContainer.appendChild(tabsListDiv);
+        sessionsList.appendChild(sessionContainer);
     });
 }
 

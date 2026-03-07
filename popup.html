@@ -634,6 +634,23 @@
                     <input type="text" id="sessionNameInput" placeholder="Session name (e.g., Work, Research)" data-i18n-placeholder="sessionNamePlaceholder">
                     <button id="saveSessionBtn" data-i18n="save">Save</button>
                 </div>
+
+                <!-- Tab Selection Area (Initially Hidden) -->
+                <div id="tabSelectionArea" class="hidden" style="margin-top: 10px; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; background: rgba(0,0,0,0.02);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h4 style="font-size: 12px; margin: 0;" data-i18n="selectTabsToSave">Chọn tab để lưu:</h4>
+                        <div style="display: flex; gap: 8px;">
+                            <button id="selectAllTabsBtn" style="font-size: 10px; padding: 2px 6px; cursor: pointer; background: #edf2f7; border: 1px solid #cbd5e1; border-radius: 4px;" data-i18n="selectAll">Tất cả</button>
+                            <button id="deselectAllTabsBtn" style="font-size: 10px; padding: 2px 6px; cursor: pointer; background: #edf2f7; border: 1px solid #cbd5e1; border-radius: 4px;" data-i18n="deselectAll">Bỏ chọn</button>
+                            <button id="cancelSaveSessionBtn" style="font-size: 10px; padding: 2px 6px; cursor: pointer; background: #fee2e2; border: 1px solid #fecaca; border-radius: 4px; color: #b91c1c;" data-i18n="cancel">Hủy</button>
+                        </div>
+                    </div>
+                    <div id="tabListContainer" style="max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 5px;">
+                        <!-- Tabs will be listed here with checkboxes -->
+                    </div>
+                    <button id="confirmSaveSessionBtn" class="action-btn primary-btn" style="width: 100%; margin-top: 10px;" data-i18n="confirmSave">Xác nhận lưu phiên</button>
+                </div>
+
                 <div id="sessionsList" class="favorite-list">
                     <!-- Sessions will be populated here -->
                 </div>
