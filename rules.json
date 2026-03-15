@@ -14,7 +14,16 @@
             ]
         },
         "condition": {
-            "resourceTypes": ["sub_frame"]
+            "resourceTypes": ["sub_frame"],
+            "excludedRequestDomains": [
+                "cloudflare.com",
+                "hcaptcha.com",
+                "recaptcha.net",
+                "google.com",
+                "gstatic.com",
+                "challenges.cloudflare.com",
+                "turnstile.cloudflare.com"
+            ]
         }
     },
     {

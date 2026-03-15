@@ -41,11 +41,27 @@
             (function() {
                 const behavior = '${settings.linkClickBehavior}';
                 const origin = window.location.origin;
+                const url = window.location.href;
+
+                // 0. Kiểm tra an toàn: Nếu là trang Cloudflare, hcaptcha hoặc bot-check
+                const isSecurityPage = 
+                    url.includes('cloudflare.com') || 
+                    url.includes('hcaptcha.com') || 
+                    url.includes('turnstile') ||
+                    url.includes('__cf_chl_tk') ||
+                    document.getElementById('cf-turnstile-response') ||
+                    document.querySelector('.ch-title-zone') ||
+                    window._cf_chl_opt;
+
+                if (isSecurityPage) {
+                    console.log('[Privacy Player] Bot verification detected, disabling AdBlock to allow verification');
+                    return;
+                }
                 
                 // 1. Hook window.open (Bắt quảng cáo popup bằng JS)
                 const originalOpen = window.open;
                 window.open = function(url, target, features) {
-                    console.log('[Privacy Player] Intercepted window.open:', url);
+                    // console.log('[Privacy Player] Intercepted window.open:', url);
                     
                     // Kiểm tra URL đáng ngờ (quảng cáo popunder)
                     const isSuspicious = url && typeof url === 'string' && (
@@ -64,7 +80,7 @@
                         return null;
                     }
 
-                    if (behavior === 'player') {
+                    if (behavior === 'player' && url && !url.startsWith('about:') && !url.startsWith(origin)) {
                         // Gửi URL về iframe cha (Privacy Player)
                         window.parent.postMessage({ type: 'loadUrlInPlayer', url: url }, '*');
                         return null;
@@ -78,7 +94,10 @@
                     const link = e.target.closest('a');
                     
                     // Chặn click nặc danh vào body/document (kỹ thuật mở popunder)
-                    if (!link && !e.target.closest('button, video, input, [role="button"]')) {
+                    if (!link && !e.target.closest('button, video, input, [role="button"], label, summary, .btn, .button, .cf-turnstile')) {
+                        // Kiểm tra xem đây có phải click của người dùng thật không (isTrusted)
+                        if (!e.isTrusted) return;
+
                         console.log('[Privacy Player] Blocked document-level click popunder attempt');
                         e.stopPropagation();
                         e.preventDefault();
@@ -103,33 +122,11 @@
                     }
                 }, true); // Capture phase để chặn sớm nhất
 
-                // 3. Override setTimeout/setInterval (Chặn delay mở popup)
-                const originalSetTimeout = window.setTimeout;
-                window.setTimeout = function(callback, delay, ...args) {
-                    if (typeof callback === 'function' && delay > 100) {
-                        const str = callback.toString();
-                        if (str.includes('window.open(') || str.includes('open(') || str.includes('tsyndicate') || str.includes('pop') || str.includes('ad')) {
-                            console.log('[Privacy Player] Blocked suspicious setTimeout popunder attempt');
-                            return null;
-                        }
-                    }
-                    return originalSetTimeout.apply(this, [callback, delay, ...args]);
-                };
-
-                const originalSetInterval = window.setInterval;
-                window.setInterval = function(callback, delay, ...args) {
-                    if (typeof callback === 'function') {
-                        const str = callback.toString();
-                        if (str.includes('window.open(') || str.includes('open(') || str.includes('tsyndicate') || str.includes('pop') || str.includes('ad')) {
-                            console.log('[Privacy Player] Blocked suspicious setInterval popunder attempt');
-                            return null;
-                        }
-                    }
-                    return originalSetInterval.apply(this, [callback, delay, ...args]);
-                };
-
                 // 4. Triệt tiêu các sự kiện popup đặc thù (Dựa trên MissAV AdBlocker)
                 function neutralizePopups() {
+                    // Nếu là trang bảo mật, không can thiệp DOM nữa
+                    if (window._cf_chl_opt || document.getElementById('cf-turnstile-response')) return;
+
                     const popElements = document.querySelectorAll('[\\\\@click*="pop()"], [\\\\@keyup.space.window*="pop()"]');
                     popElements.forEach(el => {
                         el.removeAttribute('@click');

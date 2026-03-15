@@ -13,61 +13,37 @@ let hibernationTimeout = 30; // minutes
 let tabLastActive = {}; // tabId -> timestamp
 let tabUrls = {}; // tabId -> url (for auto-cleanup)
 
-// Khởi tạo context menu
-async function initContextMenus() {
-    // Xóa tất cả menu cũ để tránh trùng lặp
+// Khởi tạo context menu (Resilient Manifest V3 style)
+function createAllContextMenus() {
     chrome.contextMenus.removeAll(() => {
+        // 1. Tạo menu chính
         chrome.contextMenus.create({
             id: "sessionManager",
             title: "📋 Session Manager",
             contexts: ["page", "link"]
         });
 
-        chrome.contextMenus.create({
-            id: "saveAllTabs",
-            parentId: "sessionManager",
-            title: "💾 Lưu tất cả tab",
-            contexts: ["page", "link"]
+        // 2. Tạo các item tĩnh
+        const staticItems = [
+            { id: "saveAllTabs", title: "💾 Lưu tất cả tab" },
+            { id: "saveNormalTabs", title: "🌐 Lưu các tab thường" },
+            { id: "saveIncognitoTabs", title: "🔒 Lưu các tab ẩn danh" },
+            { id: "saveCurrentTab", title: "📄 Lưu tab hiện tại" },
+            { id: "separator_session", type: "separator" },
+            { id: "restoreSessionParent", title: "📂 Khôi phục phiên..." }
+        ];
+
+        staticItems.forEach(item => {
+            chrome.contextMenus.create({
+                id: item.id,
+                parentId: "sessionManager",
+                title: item.title,
+                type: item.type || "normal",
+                contexts: ["page", "link"]
+            });
         });
 
-        chrome.contextMenus.create({
-            id: "saveNormalTabs",
-            parentId: "sessionManager",
-            title: "🌐 Lưu các tab thường",
-            contexts: ["page", "link"]
-        });
-
-        chrome.contextMenus.create({
-            id: "saveIncognitoTabs",
-            parentId: "sessionManager",
-            title: "🔒 Lưu các tab ẩn danh",
-            contexts: ["page", "link"]
-        });
-
-        chrome.contextMenus.create({
-            id: "saveCurrentTab",
-            parentId: "sessionManager",
-            title: "📄 Lưu tab hiện tại",
-            contexts: ["page", "link"]
-        });
-
-        // Thêm vạch kẻ phân cách bên trong menu
-        chrome.contextMenus.create({
-            id: "separator_session",
-            parentId: "sessionManager",
-            type: "separator",
-            contexts: ["page", "link"]
-        });
-
-        // Menu khôi phục phiên
-        chrome.contextMenus.create({
-            id: "restoreSessionParent",
-            parentId: "sessionManager",
-            title: "📂 Khôi phục phiên...",
-            contexts: ["page", "link"]
-        });
-
-        // Lấy danh sách phiên từ storage để tạo menu con
+        // 3. Cập nhật các phiên khôi phục
         chrome.storage.local.get(['appSettings'], (result) => {
             const settings = result.appSettings || {};
             const sessions = settings.savedSessions || [];
@@ -81,7 +57,6 @@ async function initContextMenus() {
                     contexts: ["page", "link"]
                 });
             } else {
-                // Hiển thị tối đa 5 phiên gần nhất
                 sessions.slice(0, 5).forEach((session, index) => {
                     chrome.contextMenus.create({
                         id: `restoreSession_${session.id}`,
@@ -95,17 +70,16 @@ async function initContextMenus() {
     });
 }
 
-chrome.runtime.onInstalled.addListener(initContextMenus);
-chrome.runtime.onStartup.addListener(initContextMenus);
+chrome.runtime.onInstalled.addListener(createAllContextMenus);
+chrome.runtime.onStartup.addListener(createAllContextMenus);
 
 // Cập nhật menu khi storage thay đổi (để cập nhật danh sách phiên khôi phục)
 chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local' && changes.appSettings) {
-        // Chỉ cập nhật nếu danh sách savedSessions thay đổi
         const oldSessions = changes.appSettings.oldValue?.savedSessions || [];
         const newSessions = changes.appSettings.newValue?.savedSessions || [];
         if (JSON.stringify(oldSessions) !== JSON.stringify(newSessions)) {
-            initContextMenus();
+            createAllContextMenus();
         }
     }
 });
@@ -1131,9 +1105,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 async function updateSecurityRules() {
     const result = await chrome.storage.local.get(['appSettings']);
     const settings = result.appSettings || {};
+    const userWhitelist = settings.whitelist || [];
+    
+    // Các domain mặc định cần loại trừ để đảm bảo tính năng bảo mật/captcha hoạt động
+    const baseExclusions = [
+        'challenges.cloudflare.com',
+        'cloudflare.com',
+        'gstatic.com',
+        'google.com',
+        'hcaptcha.com',
+        'recaptcha.net'
+    ];
+    
+    // Kết hợp với whitelist của người dùng để cho phép họ tự khắc phục các trang bị lỗi
+    const allExclusions = Array.from(new Set([...baseExclusions, ...userWhitelist]));
     
     const rulesToAdd = [];
-    const ruleIdsToRemove = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008]; // Xóa tất cả IDs cũ trước khi thêm mới
+    const ruleIdsToRemove = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010];
 
     // 1. Clickjacking Protection Rule
     if (settings.blockClickjacking || settings.protectionLevel === 'enhanced' || settings.protectionLevel === 'noscript') {
@@ -1148,7 +1136,8 @@ async function updateSecurityRules() {
             },
             condition: {
                 urlFilter: '*',
-                resourceTypes: ['main_frame']
+                resourceTypes: ['main_frame', 'sub_frame'],
+                excludedRequestDomains: allExclusions
             }
         });
     }
@@ -1157,10 +1146,10 @@ async function updateSecurityRules() {
     if (settings.realTimeProtection || settings.protectionLevel === 'enhanced' || settings.protectionLevel === 'noscript') {
         const headers = [
             { header: 'X-Content-Type-Options', operation: 'set', value: 'nosniff' },
-            { header: 'X-XSS-Protection', operation: 'set', value: '1; mode=block' },
             { header: 'Referrer-Policy', operation: 'set', value: 'strict-origin-when-cross-origin' }
         ];
 
+        // Loại bỏ X-XSS-Protection vì nó gây lỗi với Cloudflare và đã lỗi thời
         if (settings.protectionLevel === 'enhanced' || settings.protectionLevel === 'noscript') {
             headers.push({ header: 'Content-Security-Policy', operation: 'set', value: "upgrade-insecure-requests" });
         }
@@ -1175,7 +1164,26 @@ async function updateSecurityRules() {
             condition: {
                 urlFilter: '*',
                 resourceTypes: ['main_frame', 'sub_frame'],
-                // Loại trừ các domain bảo mật/captcha để tránh làm hỏng xác minh (như Cloudflare Turnstile)
+                excludedRequestDomains: allExclusions,
+                excludedInitiatorDomains: [
+                    'challenges.cloudflare.com',
+                    'cloudflare.com',
+                    'hcaptcha.com',
+                    'recaptcha.net'
+                ]
+            }
+        });
+    }
+
+    // 3. NoScript (Max Security) - Chặn tất cả các script nhưng ngoại trừ captcha
+    if (settings.protectionLevel === 'noscript') {
+        rulesToAdd.push({
+            id: 1003,
+            priority: 2,
+            action: { type: 'block' },
+            condition: {
+                urlFilter: '*',
+                resourceTypes: ['script'],
                 excludedRequestDomains: [
                     'challenges.cloudflare.com',
                     'cloudflare.com',
@@ -1184,19 +1192,6 @@ async function updateSecurityRules() {
                     'hcaptcha.com',
                     'recaptcha.net'
                 ]
-            }
-        });
-    }
-
-    // 3. NoScript (Max Security) - Chặn tất cả các script
-    if (settings.protectionLevel === 'noscript') {
-        rulesToAdd.push({
-            id: 1003,
-            priority: 2, // Ưu tiên cao hơn để chặn script
-            action: { type: 'block' },
-            condition: {
-                urlFilter: '*',
-                resourceTypes: ['script']
             }
         });
     }
@@ -1229,7 +1224,7 @@ async function updateSecurityRules() {
     // Áp dụng các quy tắc mới
     try {
         await chrome.declarativeNetRequest.updateDynamicRules({
-            removeRuleIds: [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010],
+            removeRuleIds: ruleIdsToRemove,
             addRules: rulesToAdd
         });
         console.log('Security rules updated successfully');

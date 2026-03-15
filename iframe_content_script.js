@@ -1,103 +1,121 @@
 // iframe_content_script.js
 // This script runs inside all frames and handles Privacy Player navigation.
 
-// Only run this script if it's inside an iframe (not the top-level document)
-if (window.self !== window.top) {
-    // Notify the extension about the current URL of the iframe
-    // ONLY if this is the direct child of the popup (the main Privacy Player iframe)
-    // This prevents sub-iframes (like video embeds) from cluttering history/address bar
-    if (window.parent === window.top) {
-        chrome.runtime.sendMessage({
-            type: 'iframeNavigated',
-            url: window.location.href,
-            frameId: 0, // In this context, it's the main frame of the player
-            timestamp: Date.now()
-        }).catch(() => {});
-    }
+(function() {
+    // Only run this script if it's inside an iframe (not the top-level document)
+    if (window.self !== window.top) {
+        const currentUrl = window.location.href;
+        
+        // 0. Kiểm tra an toàn: Nếu là trang Cloudflare, hcaptcha hoặc bot-check
+        const isSecurityPage = 
+            currentUrl.includes('cloudflare.com') || 
+            currentUrl.includes('hcaptcha.com') || 
+            currentUrl.includes('turnstile') ||
+            currentUrl.includes('__cf_chl_tk') ||
+            document.getElementById('cf-turnstile-response') ||
+            document.querySelector('.ch-title-zone') ||
+            window._cf_chl_opt;
 
-    let settings = {
-        playerLinkBehavior: 'inside', // Default
-        playerLinkFilter: 'all' // Default
-    };
-
-    // Fetch extension settings from storage
-    chrome.storage.local.get(['appSettings'], (result) => {
-        if (result.appSettings) {
-            settings.playerLinkBehavior = result.appSettings.playerLinkBehavior || 'inside';
-            settings.playerLinkFilter = result.appSettings.playerLinkFilter || 'all';
+        if (isSecurityPage) {
+            console.log('[Privacy Player] Safe iframe detected, skipping link interception');
+            return;
         }
-    });
 
-    // Listen for setting changes
-    chrome.storage.onChanged.addListener((changes, areaName) => {
-        if (areaName === 'local' && changes.appSettings) {
-            const newSettings = changes.appSettings.newValue;
-            settings.playerLinkBehavior = newSettings.playerLinkBehavior || 'inside';
-            settings.playerLinkFilter = newSettings.playerLinkFilter || 'all';
+        // Notify the extension about the current URL of the iframe
+        // ONLY if this is the direct child of the popup (the main Privacy Player iframe)
+        // This prevents sub-iframes (like video embeds) from cluttering history/address bar
+        if (window.parent === window.top) {
+            chrome.runtime.sendMessage({
+                type: 'iframeNavigated',
+                url: window.location.href,
+                frameId: 0, // In this context, it's the main frame of the player
+                timestamp: Date.now()
+            }).catch(() => {});
         }
-    });
 
-    document.addEventListener('click', (event) => {
-        let target = event.target;
+        let settings = {
+            playerLinkBehavior: 'inside', // Default
+            playerLinkFilter: 'all' // Default
+        };
 
-        // Traverse up the DOM tree to find an anchor tag or element with data-url
-        while (target && target !== document) {
-            const tagName = target.tagName;
-            const href = target.href || target.getAttribute('href') || target.getAttribute('data-href') || target.getAttribute('data-url');
-            
-            if ((tagName === 'A' || target.hasAttribute('data-url') || target.hasAttribute('data-href')) && href) {
-                // Ignore non-navigation links
-                if (href === '#' || href.startsWith('javascript:')) {
-                    target = target.parentNode;
-                    continue;
-                }
+        // Fetch extension settings from storage
+        chrome.storage.local.get(['appSettings'], (result) => {
+            if (result.appSettings) {
+                settings.playerLinkBehavior = result.appSettings.playerLinkBehavior || 'inside';
+                settings.playerLinkFilter = result.appSettings.playerLinkFilter || 'all';
+            }
+        });
 
-                // Resolve URL
-                let finalUrl;
-                try {
-                    finalUrl = new URL(href, window.location.href).toString();
-                } catch (e) {
-                    finalUrl = href;
-                }
+        // Listen for setting changes
+        chrome.storage.onChanged.addListener((changes, areaName) => {
+            if (areaName === 'local' && changes.appSettings) {
+                const newSettings = changes.appSettings.newValue;
+                settings.playerLinkBehavior = newSettings.playerLinkBehavior || 'inside';
+                settings.playerLinkFilter = newSettings.playerLinkFilter || 'all';
+            }
+        });
 
-                // If it's a mailto or other non-http link, let it be
-                if (!finalUrl.startsWith('http')) {
-                    return; // Let browser handle it
-                }
+        document.addEventListener('click', (event) => {
+            let target = event.target;
 
-                const requiresNewTab = target.target === '_blank' || 
-                                     event.ctrlKey || 
-                                     event.metaKey || 
-                                     event.shiftKey || 
-                                     event.button === 1;
-
-                // 1. Detection Logic for Cốc Cốc
-                const userAgent = navigator.userAgent;
-                const isCoccocBrowser = userAgent.includes('CocCoc') || userAgent.includes('coc_coc_browser');
-                const hostname = window.location.hostname;
-                const isCoccocSearchPage = (hostname.includes('coccoc.com') || hostname.includes('coccoc.vn')) && 
-                                          window.location.pathname.includes('/search');
+            // Traverse up the DOM tree to find an anchor tag or element with data-url
+            while (target && target !== document) {
+                const tagName = target.tagName;
+                const href = target.href || target.getAttribute('href') || target.getAttribute('data-href') || target.getAttribute('data-url');
                 
-                // Effective settings
-                let effectiveBehavior = settings.playerLinkBehavior;
-                let effectiveApply = settings.playerLinkFilter === 'all' || requiresNewTab;
-
-                // 2. Cốc Cốc Specific Override Logic
-                // Cốc Cốc Search often forces target="_blank" on results. 
-                // If user sets (Block + New Tab Links Only), it would block all results.
-                // We override this to allow results to open INSIDE the player.
-                if (isCoccocSearchPage) {
-                    if (effectiveBehavior === 'block' && settings.playerLinkFilter === 'newTabOnly') {
-                        effectiveApply = false; // Don't block, open inside
-                        effectiveBehavior = 'inside';
-                    } else if (settings.playerLinkFilter === 'newTabOnly') {
-                        effectiveApply = false; // Always force inside for search results
-                        effectiveBehavior = 'inside';
+                if ((tagName === 'A' || target.hasAttribute('data-url') || target.hasAttribute('data-href')) && href) {
+                    // Ignore non-navigation links
+                    if (href === '#' || href.startsWith('javascript:')) {
+                        target = target.parentNode;
+                        continue;
                     }
-                } 
-                // 3. Handling for other Search Engines (Google, Bing, etc.)
-                // These will follow the standard rules as requested, without the Cốc Cốc exception.
-                else {
+
+                    // Resolve URL
+                    let finalUrl;
+                    try {
+                        finalUrl = new URL(href, window.location.href).toString();
+                    } catch (e) {
+                        finalUrl = href;
+                    }
+
+                    // If it's a mailto or other non-http link, let it be
+                    if (!finalUrl.startsWith('http')) {
+                        return; // Let browser handle it
+                    }
+
+                    const requiresNewTab = target.target === '_blank' || 
+                                         event.ctrlKey || 
+                                         event.metaKey || 
+                                         event.shiftKey || 
+                                         event.button === 1;
+
+                    // 1. Detection Logic for Cốc Cốc
+                    const userAgent = navigator.userAgent;
+                    const isCoccocBrowser = userAgent.includes('CocCoc') || userAgent.includes('coc_coc_browser');
+                    const hostname = window.location.hostname;
+                    const isCoccocSearchPage = (hostname.includes('coccoc.com') || hostname.includes('coccoc.vn')) && 
+                                              window.location.pathname.includes('/search');
+                    
+                    // Effective settings
+                    let effectiveBehavior = settings.playerLinkBehavior;
+                    let effectiveApply = settings.playerLinkFilter === 'all' || requiresNewTab;
+
+                    // 2. Cốc Cốc Specific Override Logic
+                    // Cốc Cốc Search often forces target="_blank" on results. 
+                    // If user sets (Block + New Tab Links Only), it would block all results.
+                    // We override this to allow results to open INSIDE the player.
+                    if (isCoccocSearchPage) {
+                        if (effectiveBehavior === 'block' && settings.playerLinkFilter === 'newTabOnly') {
+                            effectiveApply = false; // Don't block, open inside
+                            effectiveBehavior = 'inside';
+                        } else if (settings.playerLinkFilter === 'newTabOnly') {
+                            effectiveApply = false; // Always force inside for search results
+                            effectiveBehavior = 'inside';
+                        }
+                    } 
+                    // 3. Handling for other Search Engines (Google, Bing, etc.)
+                    // These will follow the standard rules as requested, without the Cốc Cốc exception.
+                    else {
                     const isOtherSearchEngine = hostname.includes('google.') ||
                                               hostname.includes('duckduckgo.com') ||
                                               hostname.includes('bing.com') ||
@@ -498,3 +516,4 @@ if (window.self !== window.top) {
         document.documentElement.style.removeProperty('overflow');
     }
 }
+})();
