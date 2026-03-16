@@ -1,4 +1,26 @@
 
+// Lazy Module Loader - Performance optimization
+const ModuleLoader = {
+    loaded: new Set(),
+    
+    /**
+     * Lazy load a feature module only when needed
+     * @param {string} moduleId - Unique ID for the module
+     * @param {Function} initFn - Initialization function
+     */
+    async load(moduleId, initFn) {
+        if (this.loaded.has(moduleId)) return;
+        
+        console.log(`[LazyLoad] Initializing module: ${moduleId}`);
+        try {
+            await initFn();
+            this.loaded.add(moduleId);
+        } catch (error) {
+            console.error(`[LazyLoad] Error loading ${moduleId}:`, error);
+        }
+    }
+};
+
 // Quản lý DOM elements
 const elements = {
     cookiesManager: document.getElementById('cookiesManager'),
@@ -292,7 +314,7 @@ async function generateMasterKey() {
 }
 
 // Global state for session password
-let secretCode = null; // Will be set upon successful unlock
+let secretCode = null;
 
 // Lắng nghe thông số Telegram Downloader từ background
 chrome.runtime.onMessage.addListener((request) => {
@@ -313,7 +335,6 @@ chrome.storage.local.get(['stealthPasswordHash', 'stealthSalt', 'appSettings'], 
         settings = { ...settings, ...result.appSettings };
         applySettings();
         
-        // If sync is enabled and we have a session password, decrypt and show master key
         if (settings.vaultSyncEnabled && settings.masterSyncKey) {
             chrome.storage.session.get(['sessionPassword'], async (sessionResult) => {
                 if (sessionResult.sessionPassword) {
@@ -326,7 +347,6 @@ chrome.storage.local.get(['stealthPasswordHash', 'stealthSalt', 'appSettings'], 
     }
 });
 
-/**
 /**
  * Kiểm tra xem một chuỗi có phải là URL hợp lệ hay không.
  */
@@ -453,8 +473,8 @@ function loadPlayerContent() {
         stealthPlayer.src = url;
         notify('Privacy Player: Loading URL...', 'success');
     } else if (url) {
-        // Nếu không phải URL hợp lệ, thử tìm kiếm qua Google
-        const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(url)}`;
+        // If not a valid URL, perform a search. Use igu=1 for Google to allow embedding.
+        const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(url)}&igu=1`;
         stealthPlayer.src = searchUrl;
         notify('Privacy Player: Searching...', 'success');
     } else {
@@ -1192,7 +1212,12 @@ async function pasteCookies() {
 /**
  * Toggle visibility of main sections
  */
-function toggleSection(section) {
+/**
+ * Toggle between different UI sections
+ * Performance: Lazy loads module logic when switching to complex sections
+ * @param {string} section - The section ID to show
+ */
+async function toggleSection(section) {
     const { 
         extensionsList, cookiesList, controls, 
         extensionManager, cookiesManager, privacySettings,
@@ -1202,7 +1227,7 @@ function toggleSection(section) {
         historySection, vaultBtn, vaultSection, vaultLockScreen, vaultPassInput
     } = elements;
 
-    // Check if clicking same active tab -> go home
+    // Check if clicking same active tab -> navigate to home
     const isActive = (section === 'extensions' && extensionManager.classList.contains('active')) ||
                      (section === 'cookies' && cookiesManager.classList.contains('active')) ||
                      (section === 'player' && privacyPlayer.classList.contains('active')) ||
@@ -1213,57 +1238,41 @@ function toggleSection(section) {
                      (section === 'video' && elements.videoDownloaderBtn.classList.contains('active')) ||
                      (section === 'multiAccount' && elements.multiAccountBtn.classList.contains('active'));
 
-    // Reset all
-    extensionsList.classList.remove('show');
-    cookiesList.classList.remove('show');
-    controls.classList.remove('show');
-    privacySettings.classList.remove('show');
-    stealthSection.classList.remove('show');
-    appSettings.classList.remove('show');
-    homeSection.classList.remove('show');
-    historySection.classList.remove('show');
-    vaultSection.classList.remove('show');
-    elements.telegramSection.classList.remove('show');
-    elements.videoDownloaderSection.classList.remove('show');
-    elements.multiAccountSection.classList.remove('show');
+    // Reset all sections visibility and active states
+    const allLists = [extensionsList, cookiesList, controls, privacySettings, stealthSection, appSettings, homeSection, historySection, vaultSection, elements.telegramSection, elements.videoDownloaderSection, elements.multiAccountSection];
+    allLists.forEach(el => el.classList.remove('show'));
     
-    extensionManager.classList.remove('active');
-    cookiesManager.classList.remove('active');
-    privacyPlayer.classList.remove('active');
-    appSettingsBtn.classList.remove('active');
-    historyManagerBtn.classList.remove('active');
-    vaultBtn.classList.remove('active');
-    elements.telegramDownloaderBtn.classList.remove('active');
-    elements.videoDownloaderBtn.classList.remove('active');
-    elements.multiAccountBtn.classList.remove('active');
+    const allBtns = [extensionManager, cookiesManager, privacyPlayer, appSettingsBtn, historyManagerBtn, vaultBtn, elements.telegramDownloaderBtn, elements.videoDownloaderBtn, elements.multiAccountBtn];
+    allBtns.forEach(el => el.classList.remove('active'));
 
+    // If already active, toggle back to home
     if (isActive && section !== 'home') {
-        toggleSection('home');
+        await toggleSection('home');
         return;
     }
 
+    // Home Section logic
     if (section === 'home') {
         updateDashboard();
         homeSection.classList.add('show');
         return;
     }
 
-    // Persist state: Lock if moving away from player
+    // Stealth Player cleanup logic
     if (section !== 'player') {
-        isStealthUnlocked = false; // Re-lock
+        isStealthUnlocked = false;
         stealthLockScreen.classList.remove('show');
         stealthPassInput.value = '';
         
-        // If always require password is ON, we clear the session secret
         if (settings.alwaysRequirePassword) {
             secretCode = null;
             if (chrome.storage.session) chrome.storage.session.remove('sessionPassword');
         }
         
-        if (settings.autoClearStealth && stealthPlayer.src !== 'about:blank' && stealthPlayer.src !== '') {
+        if (settings.autoClearStealth && stealthPlayer.src && stealthPlayer.src !== 'about:blank') {
             chrome.history.deleteUrl({ url: stealthPlayer.src });
         }
-        // Reset player size if not following default and moving away from player
+        
         if (!settings.followDefaultPlayerSize) {
             playerScale = settings.defaultPlayerWidth;
             playerHeight = settings.defaultPlayerHeight;
@@ -1271,86 +1280,53 @@ function toggleSection(section) {
         }
     }
 
-    // Lock vault if moving away
+    // Secret Vault cleanup logic
     if (section !== 'vault') {
         isVaultUnlocked = false;
         vaultLockScreen.classList.remove('show');
         vaultPassInput.value = '';
         
-        // If always require password is ON, we clear the session secret
         if (settings.alwaysRequirePassword) {
             secretCode = null;
             if (chrome.storage.session) chrome.storage.session.remove('sessionPassword');
         }
     }
 
+    // Section specific logic with Lazy Loading
     if (section === 'extensions') {
-        displayExtensions();
+        await ModuleLoader.load('extensions', renderExtensions);
+        displayExtensions(); // This handles its own visibility
         privacySettings.classList.add('show');
     } else if (section === 'cookies') {
         loadCookies();
         cookiesList.classList.add('show');
         controls.classList.add('show');
         cookiesManager.classList.add('active');
-        privacySettings.classList.add('show');
     } else if (section === 'player') {
         stealthSection.classList.add('show');
         privacyPlayer.classList.add('active');
-        privacySettings.classList.add('show');
-        
-        // If always require password is ON, we reset secretCode to force lock screen
-        if (settings.alwaysRequirePassword) {
-            secretCode = null;
-            isStealthUnlocked = false;
+        if (isStealthUnlocked) {
+            loadPlayerContent();
+        } else {
             stealthLockScreen.classList.add('show');
         }
-
-        if (!secretCode) {
-            // Only try to restore from session if ALWAYS require password is OFF
-            if (!settings.alwaysRequirePassword && chrome.storage.session) {
-                chrome.storage.session.get(['sessionPassword'], (result) => {
-                    if (result.sessionPassword) {
-                        secretCode = result.sessionPassword;
-                        isStealthUnlocked = true;
-                        stealthLockScreen.classList.remove('show');
-                        loadPlayerContent();
-                    } else {
-                        stealthLockScreen.classList.add('show');
-                    }
-                });
-            } else {
-                stealthLockScreen.classList.add('show');
-            }
-        } else {
-            isStealthUnlocked = true;
-            stealthLockScreen.classList.remove('show');
-            loadPlayerContent();
-        }
-        // Apply player size when entering player section
-        if (settings.followDefaultPlayerSize) {
-            playerScale = settings.defaultPlayerWidth;
-            playerHeight = settings.defaultPlayerHeight;
-        }
-        updatePlayerSize();
     } else if (section === 'settings') {
         appSettings.classList.add('show');
         appSettingsBtn.classList.add('active');
     } else if (section === 'history') {
-        loadHistoryAndSessions();
         historySection.classList.add('show');
         historyManagerBtn.classList.add('active');
+        // Lazy load history data
+        await ModuleLoader.load('history', async () => {
+            await loadHistoryAndSessions();
+        });
     } else if (section === 'vault') {
-        // If always require password is ON, we reset secretCode to force lock screen
-        if (settings.alwaysRequirePassword) {
-            secretCode = null;
-            isVaultUnlocked = false;
-            vaultLockScreen.classList.add('show');
-        }
-        
-        loadVault();
         vaultSection.classList.add('show');
         vaultBtn.classList.add('active');
-        if (!isVaultUnlocked) {
+        if (isVaultUnlocked) {
+            // Lazy load vault items
+            await ModuleLoader.load('vault', loadVault);
+        } else {
             vaultLockScreen.classList.add('show');
         }
     } else if (section === 'telegram') {
@@ -1359,10 +1335,13 @@ function toggleSection(section) {
     } else if (section === 'video') {
         elements.videoDownloaderSection.classList.add('show');
         elements.videoDownloaderBtn.classList.add('active');
-        loadDetectedVideos();
-        // Clear badge for current tab
-        chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
-            if (tab) chrome.action.setBadgeText({ text: '', tabId: tab.id });
+        // Fetch videos from background
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0]) {
+                chrome.runtime.sendMessage({ type: 'getDetectedVideos', tabId: tabs[0].id }, (response) => {
+                    if (response && response.videos) renderVideoList(response.videos);
+                });
+            }
         });
     } else if (section === 'multiAccount') {
         elements.multiAccountSection.classList.add('show');
@@ -4039,7 +4018,8 @@ elements.loadStealth.addEventListener('click', () => {
                 break;
             case 'google':
             default:
-                targetUrl = `https://www.google.com/search?q=${encodedQuery}`;
+                // Use igu=1 to allow embedding Google search in iframe
+                targetUrl = `https://www.google.com/search?q=${encodedQuery}&igu=1`;
                 break;
         }
         notify(`Searching "${input}" on ${settings.searchEngine}...`, 'success');
@@ -4619,8 +4599,6 @@ elements.saveSessionBtn.addEventListener('click', async () => {
     try {
         const tabType = elements.sessionTabTypeSelect.value;
         let queryOptions = {};
-        // Sửa lỗi: chrome.tabs.query không hỗ trợ 'incognito' trực tiếp trong queryInfo ở một số phiên bản/ngữ cảnh
-        // Ta sẽ lấy tất cả và lọc thủ công để an toàn
         const allTabs = await chrome.tabs.query({});
         
         currentTabsToSave = allTabs.filter(tab => {
