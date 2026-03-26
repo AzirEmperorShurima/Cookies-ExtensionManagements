@@ -2,7 +2,7 @@
 // Lazy Module Loader - Performance optimization
 const ModuleLoader = {
     loaded: new Set(),
-    
+
     /**
      * Lazy load a feature module only when needed
      * @param {string} moduleId - Unique ID for the module
@@ -10,7 +10,7 @@ const ModuleLoader = {
      */
     async load(moduleId, initFn) {
         if (this.loaded.has(moduleId)) return;
-        
+
         console.log(`[LazyLoad] Initializing module: ${moduleId}`);
         try {
             await initFn();
@@ -39,7 +39,7 @@ const elements = {
     cookieTableContainer: document.getElementById('cookieTableContainer'),
     privacySettings: document.getElementById('privacySettings'),
     privacyPlayer: document.getElementById('privacyPlayer'),
-    
+
     // Stealth elements
     stealthSection: document.getElementById('stealthSection'),
     stealthUrl: document.getElementById('stealthUrl'),
@@ -51,7 +51,7 @@ const elements = {
     toggleStealthPass: document.getElementById('toggleStealthPass'),
     unlockStealth: document.getElementById('unlockStealth'),
     stealthTitle: document.getElementById('stealthTitle'),
-    
+
     // Password change elements
     appSettings: document.getElementById('appSettings'),
     oldPassInput: document.getElementById('oldPassInput'),
@@ -67,7 +67,7 @@ const elements = {
     alwaysRequirePasswordToggle: document.getElementById('alwaysRequirePasswordToggle'),
     showPasswordToggle: document.getElementById('showPasswordToggle'),
     passwordRequirementText: document.getElementById('passwordRequirementText'),
-    
+
     // Navigation and toggles
     appSettingsBtn: document.getElementById('appSettingsBtn'),
     pipToggle: document.getElementById('pipToggle'),
@@ -89,7 +89,7 @@ const elements = {
     togglePip: document.getElementById('togglePip'),
     toggleTheaterMode: document.getElementById('toggleTheaterMode'),
     playerContainer: document.querySelector('.player-container'),
-    
+
     // History
     historyManagerBtn: document.getElementById('historyManagerBtn'),
     historySection: document.getElementById('historySection'),
@@ -101,7 +101,7 @@ const elements = {
     bookmarksList: document.getElementById('bookmarksList'),
     readingListContainer: document.getElementById('readingListContainer'),
     clearHistorySearch: document.getElementById('clearHistorySearch'),
-    
+
     // Dashboard Stats
     statCookies: document.getElementById('statCookies'),
     statExtensions: document.getElementById('statExtensions'),
@@ -126,7 +126,7 @@ const elements = {
     cardTrackers: document.getElementById('cardTrackers'),
     cardExtensions: document.getElementById('cardExtensions'),
     gradeCard: document.querySelector('.grade-card-modern'),
-    
+
     // Vault
     vaultBtn: document.getElementById('vaultBtn'),
     vaultSection: document.getElementById('vaultSection'),
@@ -137,7 +137,7 @@ const elements = {
     vaultList: document.getElementById('vaultList'),
     vaultInput: document.getElementById('vaultInput'),
     vaultAddBtn: document.getElementById('vaultAddBtn'),
-    
+
     // Others
     searchEngineSelect: document.getElementById('searchEngineSelect'),
     newFavoriteName: document.getElementById('newFavoriteName'),
@@ -182,7 +182,7 @@ const elements = {
     selectAllTabsBtn: document.getElementById('selectAllTabsBtn'),
     deselectAllTabsBtn: document.getElementById('deselectAllTabsBtn'),
     cancelSaveSessionBtn: document.getElementById('cancelSaveSessionBtn'),
-    
+
     // Features Sections
     telegramDownloaderBtn: document.getElementById('telegramDownloaderBtn'),
     telegramDownloaderToggle: document.getElementById('telegramDownloaderToggle'),
@@ -198,7 +198,7 @@ const elements = {
     videoDownloaderSection: document.getElementById('videoDownloaderSection'),
     videoList: document.getElementById('videoList'),
     scanVideoBtn: document.getElementById('scanVideoBtn'),
-    
+
     // Multi Account
     multiAccountBtn: document.getElementById('multiAccountBtn'),
     multiAccountToggle: document.getElementById('multiAccountToggle'),
@@ -210,19 +210,19 @@ const elements = {
     addContainerBtn: document.getElementById('addContainerBtn'),
     quickIdentityBtn: document.getElementById('quickIdentityBtn'),
     containerList: document.getElementById('containerList'),
-    
+
     // Hibernation
     hibernationToggle: document.getElementById('hibernationToggle'),
     hibernationTimeoutSelect: document.getElementById('hibernationTimeoutSelect'),
     hibernationCustomTimeout: document.getElementById('hibernationCustomTimeout'),
     hibernationTimeoutRow: document.getElementById('hibernationTimeoutRow'),
-    
+
     // Auto-Cleanup Rules
     autoCleanupRulesSection: document.getElementById('autoCleanupRulesSection'),
     whitelistInput: document.getElementById('whitelistInput'),
     addWhitelistBtn: document.getElementById('addWhitelistBtn'),
     whitelistList: document.getElementById('whitelistList'),
-    
+
     // Sync
     vaultSyncToggle: document.getElementById('vaultSyncToggle'),
     masterSyncSection: document.getElementById('masterSyncSection'),
@@ -232,7 +232,7 @@ const elements = {
     copyMasterKeyBtn: document.getElementById('copyMasterKeyBtn'),
     manualMasterKeyInput: document.getElementById('manualMasterKeyInput'),
     saveMasterKeyBtn: document.getElementById('saveMasterKeyBtn'),
-    
+
     // Telegram Stats
     telegramStats: document.getElementById('telegramStats'),
     statParallel: document.getElementById('statParallel'),
@@ -334,7 +334,7 @@ chrome.storage.local.get(['stealthPasswordHash', 'stealthSalt', 'appSettings'], 
     if (result.appSettings) {
         settings = { ...settings, ...result.appSettings };
         applySettings();
-        
+
         if (settings.vaultSyncEnabled && settings.masterSyncKey) {
             chrome.storage.session.get(['sessionPassword'], async (sessionResult) => {
                 if (sessionResult.sessionPassword) {
@@ -363,7 +363,7 @@ function applySettings() {
     // Apply Dark Mode
     document.body.classList.toggle('dark-mode', settings.darkMode);
     elements.darkModeToggle.checked = settings.darkMode;
-    
+
     // Set other toggles
     elements.autoClearToggle.checked = settings.autoClearStealth;
     elements.showNotifyToggle.checked = settings.showNotifications;
@@ -376,7 +376,7 @@ function applySettings() {
     elements.strongPasswordToggle.checked = settings.requireStrongPassword ?? false;
     elements.alwaysRequirePasswordToggle.checked = settings.alwaysRequirePassword ?? true;
     elements.showPasswordToggle.checked = settings.showPasswordInSettings ?? true;
-    
+
     // Cập nhật trạng thái hiển thị của các nút ẩn/hiện password
     togglePasswordEyes();
 
@@ -385,7 +385,7 @@ function applySettings() {
     elements.pipToggle.checked = settings.pipEnabled || false;
     elements.multiAccountToggle.checked = settings.multiAccountEnabled || false;
     elements.hibernationToggle.checked = settings.hibernationEnabled || false;
-    
+
     // Hibernation Timeout initialization
     if (settings.hibernationTimeout && !['1', '5', '15', '30', '60'].includes(settings.hibernationTimeout.toString())) {
         elements.hibernationTimeoutSelect.value = 'custom';
@@ -395,11 +395,11 @@ function applySettings() {
         elements.hibernationTimeoutSelect.value = settings.hibernationTimeout || 30;
         elements.hibernationCustomTimeout.classList.add('hidden');
     }
-    
+
     elements.hibernationTimeoutRow.style.display = settings.hibernationEnabled ? 'flex' : 'none';
     elements.vaultSyncToggle.checked = settings.vaultSyncEnabled || false;
     elements.masterSyncSection.style.display = settings.vaultSyncEnabled ? 'block' : 'none';
-    
+
     // Auto-Cleanup Rules visibility
     elements.autoCleanupRulesSection.style.display = settings.cookieDestroyer ? 'block' : 'none';
     renderWhitelist();
@@ -438,7 +438,7 @@ function applySettings() {
     // Panic Button settings
     elements.panicActionSelect.value = settings.panicAction || 'closeIncognito';
     renderSafeUrls();
-    
+
     // Render favorite websites and sessions
     renderFavoriteWebsites();
     renderSessions();
@@ -449,24 +449,44 @@ function applySettings() {
 }
 
 /**
- * Tải nội dung cho Privacy Player (Stealth Player)
+ * Load Content for Privacy Player (Stealth Player)
  */
 function loadPlayerContent() {
     const { stealthUrl, stealthPlayer } = elements;
     let url = stealthUrl.value.trim();
-    
-    // Nếu ô nhập liệu trống, thử lấy URL cuối cùng đã lưu
+
     if (!url) {
-        chrome.storage.local.get(['lastPlayerUrl'], (result) => {
-            if (result.lastPlayerUrl) {
-                stealthUrl.value = result.lastPlayerUrl;
-                stealthPlayer.src = result.lastPlayerUrl;
-                notify('Privacy Player: Restored last session', 'success');
-            } else {
-                stealthPlayer.src = 'about:blank';
-            }
-        });
-        return;
+        if (!settings.autoClearStealth) {
+            chrome.storage.local.get(['stealthHistory', 'lastPlayerUrl', 'tabUrlMapping'], (result) => {
+                let history = result.stealthHistory || [];
+                if (history.length > 0) {
+                    playerHistory = history;
+                    currentUrlIndex = history.length - 1;
+
+                    const lastUrl = history[currentUrlIndex];
+                    stealthUrl.value = lastUrl;
+                    stealthPlayer.src = lastUrl;
+
+                    updatePlayerNavState();
+                    notify('Privacy Player: Đã khôi phục lịch sử điều hướng đầy đủ', 'success');
+                }
+                else if (result.lastPlayerUrl) {
+                    playerHistory = [result.lastPlayerUrl];
+                    currentUrlIndex = 0;
+                    stealthUrl.value = result.lastPlayerUrl;
+                    stealthPlayer.src = result.lastPlayerUrl;
+                    updatePlayerNavState();
+                }
+            });
+        }
+        else {
+            chrome.storage.local.remove(['stealthHistory', 'lastPlayerUrl']);
+            playerHistory = [];
+            currentUrlIndex = -1;
+            stealthPlayer.src = '';
+            stealthUrl.value = '';
+            updatePlayerNavState();
+        }
     }
 
     if (url && isValidUrl(url)) {
@@ -478,7 +498,7 @@ function loadPlayerContent() {
         stealthPlayer.src = searchUrl;
         notify('Privacy Player: Searching...', 'success');
     } else {
-        stealthPlayer.src = 'about:blank';
+        stealthPlayer.src = '';
     }
 }
 
@@ -489,23 +509,16 @@ function updateUILanguage() {
     const lang = settings.language || 'vi';
     const dict = translations[lang] || translations.vi;
 
-    // Cập nhật tất cả các phần tử có thuộc tính data-i18n
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
         if (dict[key]) {
-            // Tìm tất cả các thẻ con thực sự (như img, wrapper, badge)
-            // Lọc bỏ các Text Node chứa Emoji/Icon trùng lặp
-            const children = Array.from(el.childNodes).filter(node => 
+            const children = Array.from(el.childNodes).filter(node =>
                 node.nodeType === Node.ELEMENT_NODE && !node.classList.contains('beta-badge')
             );
-            
-            // Xóa sạch nội dung bên trong element
+
             el.innerHTML = '';
-            
-            // Chèn lại các thẻ con (như <img>)
+
             children.forEach(child => el.appendChild(child));
-            
-            // Thêm văn bản đã dịch (Hỗ trợ HTML nếu cần)
             const translatedText = dict[key];
             if (translatedText.includes('<') && translatedText.includes('>')) {
                 const tempSpan = document.createElement('span');
@@ -515,9 +528,6 @@ function updateUILanguage() {
                 const textNode = document.createTextNode(' ' + translatedText);
                 el.appendChild(textNode);
             }
-
-            // Xử lý riêng cho Beta Badge nếu có trong cấu trúc gốc
-            // Chúng ta không chèn lại nó bằng innerHTML vì nó sẽ bị lặp
         }
     });
 
@@ -602,7 +612,7 @@ function renderCustomBgList() {
     const lang = settings.language || 'vi';
     const dict = translations[lang] || translations.vi;
     customBgList.innerHTML = '';
-    
+
     if (!settings.customBgList || settings.customBgList.length === 0) {
         customBgList.innerHTML = `<p class="empty-msg">${dict.noCustomBg || 'No custom backgrounds added.'}</p>`;
         return;
@@ -611,20 +621,20 @@ function renderCustomBgList() {
     settings.customBgList.forEach((url, index) => {
         const item = document.createElement('div');
         item.className = `custom-bg-item ${settings.customBgUrl === url ? 'active' : ''}`;
-        
+
         const preview = document.createElement('img');
         preview.src = url;
         preview.className = 'custom-bg-item-preview';
         preview.onerror = () => { preview.src = 'icons/extension.png'; };
-        
+
         const urlSpan = document.createElement('span');
         urlSpan.className = 'custom-bg-item-url';
         urlSpan.textContent = url.length > 30 ? url.substring(0, 27) + '...' : url;
         urlSpan.title = url;
-        
+
         const actions = document.createElement('div');
         actions.className = 'custom-bg-item-actions';
-        
+
         const selectBtn = document.createElement('button');
         selectBtn.innerHTML = '✔';
         selectBtn.title = 'Select this background';
@@ -636,7 +646,7 @@ function renderCustomBgList() {
             applyPlayerBackground();
             notify('Background updated!', 'success');
         };
-        
+
         const deleteBtn = document.createElement('button');
         deleteBtn.innerHTML = '🗑';
         deleteBtn.title = 'Delete this background';
@@ -652,18 +662,18 @@ function renderCustomBgList() {
                 applyPlayerBackground();
             }
         };
-        
+
         actions.appendChild(selectBtn);
         actions.appendChild(deleteBtn);
-        
+
         item.appendChild(preview);
         item.appendChild(urlSpan);
         item.appendChild(actions);
-        
+
         item.onclick = () => {
             updateBgPreview(url);
         };
-        
+
         customBgList.appendChild(item);
     });
 }
@@ -695,14 +705,14 @@ function updateBgPreview(url) {
 function applyPlayerBackground() {
     const { playerContainer } = elements;
     const gradient = "linear-gradient(135deg, rgba(26, 26, 46, 0.4) 0%, rgba(22, 33, 62, 0.4) 100%)";
-    
+
     let bgImage;
     if (settings.playerBackgroundType === 'custom' && settings.customBgUrl) {
         bgImage = `url('${settings.customBgUrl}')`;
     } else {
         bgImage = "url('images/anh-phong-canh-66-1.jpg')";
     }
-    
+
     playerContainer.style.backgroundImage = `${gradient}, ${bgImage}`;
 }
 
@@ -711,14 +721,14 @@ function applyPlayerBackground() {
  */
 function notify(message, status) {
     if (!settings.showNotifications) return;
-    
+
     const { notification } = elements;
     const gradients = {
         success: 'var(--success-gradient)',
         warning: 'var(--secondary-gradient)',
         error: 'var(--danger-gradient)'
     };
-    
+
     notification.style.background = gradients[status] || 'var(--primary-gradient)';
     notification.textContent = message;
     notification.classList.add('show');
@@ -763,7 +773,7 @@ function getInstallTypeInfo(installType) {
 function createExtensionCardHTML(ext) {
     const iconUrl = ext.icons?.length ? ext.icons[ext.icons.length - 1].url : 'icons/extension-default.png';
     const { icon, tooltip } = getInstallTypeInfo(ext.installType);
-    
+
     const typeMapping = {
         'development': 'Development Mode',
         'normal': 'Chrome Web Store',
@@ -779,7 +789,7 @@ function createExtensionCardHTML(ext) {
     const card = document.createElement('div');
     card.className = 'extension-card';
 
-    const permissionsTags = ext.permissions.length 
+    const permissionsTags = ext.permissions.length
         ? ext.permissions.map(p => `<span class="permission-tag">${p}</span>`).join('')
         : '<span class="permission-tag">None</span>';
 
@@ -962,12 +972,12 @@ function renderExtensions() {
  */
 async function loadCookies(filter = '') {
     const { cookieTableContainer, totalCookies } = elements;
-    
+
     const cookies = await chrome.cookies.getAll({});
     const cookiesByDomain = {};
 
     cookies.forEach((cookie) => {
-        if (cookie.name.toLowerCase().includes(filter.toLowerCase()) || 
+        if (cookie.name.toLowerCase().includes(filter.toLowerCase()) ||
             cookie.domain.toLowerCase().includes(filter.toLowerCase())) {
             cookiesByDomain[cookie.domain] = cookiesByDomain[cookie.domain] || [];
             cookiesByDomain[cookie.domain].push(cookie);
@@ -993,7 +1003,7 @@ async function loadCookies(filter = '') {
 
         const domainHeader = document.createElement('div');
         domainHeader.className = 'domain-header';
-        
+
         const domainLabel = document.createElement('span');
         domainLabel.className = 'domain-label';
         domainLabel.textContent = domain;
@@ -1025,7 +1035,7 @@ async function loadCookies(filter = '') {
 
         const tableContainer = document.createElement('div');
         tableContainer.style.overflowX = 'auto';
-        
+
         let tableHTML = `
             <table>
                 <thead>
@@ -1043,7 +1053,7 @@ async function loadCookies(filter = '') {
         cookiesByDomain[domain].forEach(cookie => {
             const expiresText = cookie.expirationDate ? new Date(cookie.expirationDate * 1000).toLocaleString() : 'Session';
             const isLongValue = cookie.value.length > 30 || cookie.name.length > 20 || cookie.path.length > 15;
-            
+
             tableHTML += `
                 <tr class="cookie-row">
                     <td><span class="cookie-text-container" title="${cookie.name}">${cookie.name}</span></td>
@@ -1218,8 +1228,8 @@ async function pasteCookies() {
  * @param {string} section - The section ID to show
  */
 async function toggleSection(section) {
-    const { 
-        extensionsList, cookiesList, controls, 
+    const {
+        extensionsList, cookiesList, controls,
         extensionManager, cookiesManager, privacySettings,
         privacyPlayer, stealthSection, stealthPlayer,
         stealthLockScreen, stealthPassInput, appSettings,
@@ -1229,19 +1239,19 @@ async function toggleSection(section) {
 
     // Check if clicking same active tab -> navigate to home
     const isActive = (section === 'extensions' && extensionManager.classList.contains('active')) ||
-                     (section === 'cookies' && cookiesManager.classList.contains('active')) ||
-                     (section === 'player' && privacyPlayer.classList.contains('active')) ||
-                     (section === 'settings' && appSettingsBtn.classList.contains('active')) ||
-                     (section === 'history' && historyManagerBtn.classList.contains('active')) ||
-                     (section === 'vault' && vaultBtn.classList.contains('active')) ||
-                     (section === 'telegram' && elements.telegramDownloaderBtn.classList.contains('active')) ||
-                     (section === 'video' && elements.videoDownloaderBtn.classList.contains('active')) ||
-                     (section === 'multiAccount' && elements.multiAccountBtn.classList.contains('active'));
+        (section === 'cookies' && cookiesManager.classList.contains('active')) ||
+        (section === 'player' && privacyPlayer.classList.contains('active')) ||
+        (section === 'settings' && appSettingsBtn.classList.contains('active')) ||
+        (section === 'history' && historyManagerBtn.classList.contains('active')) ||
+        (section === 'vault' && vaultBtn.classList.contains('active')) ||
+        (section === 'telegram' && elements.telegramDownloaderBtn.classList.contains('active')) ||
+        (section === 'video' && elements.videoDownloaderBtn.classList.contains('active')) ||
+        (section === 'multiAccount' && elements.multiAccountBtn.classList.contains('active'));
 
     // Reset all sections visibility and active states
     const allLists = [extensionsList, cookiesList, controls, privacySettings, stealthSection, appSettings, homeSection, historySection, vaultSection, elements.telegramSection, elements.videoDownloaderSection, elements.multiAccountSection];
     allLists.forEach(el => el.classList.remove('show'));
-    
+
     const allBtns = [extensionManager, cookiesManager, privacyPlayer, appSettingsBtn, historyManagerBtn, vaultBtn, elements.telegramDownloaderBtn, elements.videoDownloaderBtn, elements.multiAccountBtn];
     allBtns.forEach(el => el.classList.remove('active'));
 
@@ -1263,16 +1273,16 @@ async function toggleSection(section) {
         isStealthUnlocked = false;
         stealthLockScreen.classList.remove('show');
         stealthPassInput.value = '';
-        
+
         if (settings.alwaysRequirePassword) {
             secretCode = null;
             if (chrome.storage.session) chrome.storage.session.remove('sessionPassword');
         }
-        
+
         if (settings.autoClearStealth && stealthPlayer.src && stealthPlayer.src !== 'about:blank') {
             chrome.history.deleteUrl({ url: stealthPlayer.src });
         }
-        
+
         if (!settings.followDefaultPlayerSize) {
             playerScale = settings.defaultPlayerWidth;
             playerHeight = settings.defaultPlayerHeight;
@@ -1285,7 +1295,7 @@ async function toggleSection(section) {
         isVaultUnlocked = false;
         vaultLockScreen.classList.remove('show');
         vaultPassInput.value = '';
-        
+
         if (settings.alwaysRequirePassword) {
             secretCode = null;
             if (chrome.storage.session) chrome.storage.session.remove('sessionPassword');
@@ -1305,6 +1315,9 @@ async function toggleSection(section) {
     } else if (section === 'player') {
         stealthSection.classList.add('show');
         privacyPlayer.classList.add('active');
+        if (!settings.alwaysRequirePassword) {
+            isStealthUnlocked = true
+        }
         if (isStealthUnlocked) {
             loadPlayerContent();
         } else {
@@ -1323,6 +1336,9 @@ async function toggleSection(section) {
     } else if (section === 'vault') {
         vaultSection.classList.add('show');
         vaultBtn.classList.add('active');
+        if (!settings.alwaysRequirePassword) {
+            isVaultUnlocked = true
+        }
         if (isVaultUnlocked) {
             // Lazy load vault items
             await ModuleLoader.load('vault', loadVault);
@@ -1362,13 +1378,13 @@ function showTrackerDetails(trackers) {
     } else {
         // Sắp xếp theo số lượng phát hiện giảm dần
         const sortedTrackers = [...trackers].sort((a, b) => b.count - a.count);
-        
+
         sortedTrackers.forEach(t => {
             const item = document.createElement('div');
             item.className = 'tracker-detail-item';
-            
+
             const lastSeenTime = new Date(t.lastSeen).toLocaleTimeString();
-            
+
             item.innerHTML = `
                 <div class="tracker-info">
                     <span class="tracker-domain">${t.domain}</span>
@@ -1420,7 +1436,7 @@ function setTrackStyle(element, status) {
     if (trackingIcon) {
         trackingIcon.src = status ? 'icons/skincell.png' : 'icons/tracking_protection.png';
     }
-    
+
     element.className = `tracking-button ${status ? 'enabled' : 'disabled'}`;
     element.textContent = `Tracking Protection: ${status ? 'Enabled' : 'Disabled'}`;
 }
@@ -1480,22 +1496,22 @@ elements.scanVideoBtn.addEventListener('click', async () => {
         }
 
         notify('Đang quét video trên trang...', 'success');
-        
+
         chrome.scripting.executeScript({
             target: { tabId: tab.id, allFrames: true },
             world: 'MAIN', // Chạy trong world 'MAIN' để truy cập biến global của trang (JWPlayer, v.v.)
             func: () => {
                 const videos = [];
-                
+
                 // 1. Tìm thẻ <video> (HTML5 & Blob)
                 document.querySelectorAll('video').forEach((v, i) => {
                     const src = v.src || v.currentSrc;
                     if (src) {
                         const isBlob = src.startsWith('blob:');
-                        videos.push({ 
-                            url: src, 
-                            type: isBlob ? 'Blob/HLS Stream' : 'HTML5 Video', 
-                            filename: v.title || document.title || `Video #${i+1}`,
+                        videos.push({
+                            url: src,
+                            type: isBlob ? 'Blob/HLS Stream' : 'HTML5 Video',
+                            filename: v.title || document.title || `Video #${i + 1}`,
                             thumbnail: v.poster || '',
                             isBlob: isBlob
                         });
@@ -1503,11 +1519,11 @@ elements.scanVideoBtn.addEventListener('click', async () => {
                     // Thẻ <source> trong video
                     v.querySelectorAll('source').forEach((s, si) => {
                         if (s.src) {
-                            videos.push({ url: s.src, type: 'Video Source', filename: `Video #${i+1} Source #${si+1}` });
+                            videos.push({ url: s.src, type: 'Video Source', filename: `Video #${i + 1} Source #${si + 1}` });
                         }
                     });
                 });
-                
+
                 // 2. Tìm trong JW Player (nếu có)
                 if (window.jwplayer) {
                     try {
@@ -1520,13 +1536,13 @@ elements.scanVideoBtn.addEventListener('click', async () => {
                                         videos.push({
                                             url: source.file,
                                             type: source.type || 'JWPlayer Stream',
-                                            filename: `JWPlayer Video #${i+1} (${source.label || si+1})`
+                                            filename: `JWPlayer Video #${i + 1} (${source.label || si + 1})`
                                         });
                                     });
                                 }
                             }
                         }
-                    } catch (e) {}
+                    } catch (e) { }
                 }
 
                 // 3. Tìm các biến phổ biến khác (Video.js, v.v.)
@@ -1535,10 +1551,10 @@ elements.scanVideoBtn.addEventListener('click', async () => {
                         Object.values(window.videojs.players).forEach((player, i) => {
                             const src = player.src();
                             if (src) {
-                                videos.push({ url: src, type: 'VideoJS Stream', filename: `VideoJS #${i+1}` });
+                                videos.push({ url: src, type: 'VideoJS Stream', filename: `VideoJS #${i + 1}` });
                             }
                         });
-                    } catch (e) {}
+                    } catch (e) { }
                 }
 
                 // 4. Tìm thẻ <a> có link video (mở rộng định dạng)
@@ -1552,7 +1568,7 @@ elements.scanVideoBtn.addEventListener('click', async () => {
                             if (videoExts.includes(ext)) {
                                 videos.push({ url: a.href, type: ext.toUpperCase(), filename: a.innerText.trim() || `Link ${ext}` });
                             }
-                        } catch (e) {}
+                        } catch (e) { }
                     }
                 });
 
@@ -1567,15 +1583,15 @@ elements.scanVideoBtn.addEventListener('click', async () => {
                         if (pageVideos.length > 0) {
                             totalFound += pageVideos.length;
                             pageVideos.forEach(v => {
-                                chrome.runtime.sendMessage({ 
-                                    type: 'newVideoDetected', 
-                                    tabId: tab.id, 
-                                    video: { 
-                                        ...v, 
+                                chrome.runtime.sendMessage({
+                                    type: 'newVideoDetected',
+                                    tabId: tab.id,
+                                    video: {
+                                        ...v,
                                         frameId: frameResult.frameId,
-                                        size: v.isBlob ? 'Streaming Data' : 'Scan detected', 
-                                        timestamp: Date.now() 
-                                    } 
+                                        size: v.isBlob ? 'Streaming Data' : 'Scan detected',
+                                        timestamp: Date.now()
+                                    }
                                 });
                             });
                         }
@@ -1600,7 +1616,7 @@ elements.videoDownloaderToggle.addEventListener('change', (e) => {
     saveSettings();
     elements.videoDownloaderBtn.classList.toggle('hidden', !settings.videoDownloaderEnabled);
     notify(`Video Downloader ${settings.videoDownloaderEnabled ? 'enabled' : 'disabled'}`, 'success');
-    
+
     // Notify background script to start/stop detection
     chrome.runtime.sendMessage({ type: 'toggleVideoDetection', enabled: settings.videoDownloaderEnabled });
 });
@@ -1654,7 +1670,7 @@ function renderVideoList(videos) {
         // 2. Vùng Thông tin
         const info = document.createElement('div');
         info.className = 'video-item-info';
-        
+
         const title = document.createElement('span');
         title.className = 'video-item-title';
         // Sử dụng tên phim nếu có, nếu không thì dùng filename
@@ -1682,7 +1698,7 @@ function renderVideoList(videos) {
                 try {
                     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
                     if (!tab) throw new Error('No active tab');
-                    
+
                     if (isRestrictedUrl(tab.url)) {
                         notify('Không thể truy cập blob từ trang hệ thống.', 'error');
                         return;
@@ -1742,7 +1758,7 @@ function renderVideoList(videos) {
 
         actions.appendChild(downloadBtn);
         actions.appendChild(copyBtn);
-        
+
         item.appendChild(preview);
         item.appendChild(info);
         item.appendChild(actions);
@@ -1779,11 +1795,11 @@ chrome.runtime.onMessage.addListener((request) => {
         notify('Phát hiện video mới có thể tải về!', 'info');
     } else if (request.type === 'iframeNavigated') {
         const targetUrl = request.url;
-        
+
         // Chỉ cập nhật nếu đang ở mục Privacy Player và không phải URL rỗng/hệ thống
         if (targetUrl && targetUrl !== 'about:blank' && !targetUrl.startsWith('chrome-extension://')) {
             const currentStoredUrl = playerHistory[currentUrlIndex] || '';
-            
+
             // Hàm chuẩn hóa URL để so sánh
             const normalize = (u) => {
                 try {
@@ -1795,9 +1811,9 @@ chrome.runtime.onMessage.addListener((request) => {
                         '/ads/', '/advertising/', '/doubleclick/', '/gtm/', '/gtag/'
                     ];
                     if (ignoredPaths.some(p => path.includes(p))) {
-                        return null; 
+                        return null;
                     }
-                    
+
                     // Nếu là DuckDuckGo /post (chứa tracking), bỏ qua
                     if (url.hostname.includes('duckduckgo.com') && path.includes('/post')) {
                         return null;
@@ -1806,7 +1822,7 @@ chrome.runtime.onMessage.addListener((request) => {
                     // Bỏ qua các định dạng file không phải trang web (ảnh, css, v.v.)
                     const ext = path.split('.').pop();
                     const ignoredExts = [
-                        'png', 'jpg', 'jpeg', 'gif', 'svg', 'css', 'js', 'ico', 'woff', 'woff2', 
+                        'png', 'jpg', 'jpeg', 'gif', 'svg', 'css', 'js', 'ico', 'woff', 'woff2',
                         'mp4', 'webm', 'ogg', 'mp3', 'wav', 'flac', 'm3u8', 'ts', 'mpd'
                     ];
                     if (ignoredExts.includes(ext)) {
@@ -1821,7 +1837,7 @@ chrome.runtime.onMessage.addListener((request) => {
                         (url.hostname.includes('dailymotion.com') && path.includes('/embed/')) ||
                         (path.includes('/embed/')) || (path.includes('/player/'))
                     );
-                    
+
                     if (isEmbedUrl) {
                         return null;
                     }
@@ -1829,9 +1845,9 @@ chrome.runtime.onMessage.addListener((request) => {
                     // YouTube: Lấy video ID (v=...) hoặc channel ID
                     // DuckDuckGo: Lấy query (q=...)
                     return url.origin + url.pathname + url.search;
-                } catch(e) { return u; }
+                } catch (e) { return u; }
             };
-            
+
             const normTarget = normalize(targetUrl);
             const normCurrent = normalize(currentStoredUrl);
 
@@ -1853,12 +1869,12 @@ chrome.runtime.onMessage.addListener((request) => {
                     // Thêm vào lịch sử và xóa phần forward cũ
                     playerHistory = playerHistory.slice(0, currentUrlIndex + 1);
                     playerHistory.push(targetUrl);
-                    
+
                     // Giới hạn lịch sử tối đa 50 bước
                     if (playerHistory.length > 50) {
                         playerHistory.shift();
                     }
-                    
+
                     currentUrlIndex = playerHistory.length - 1;
                     updatePlayerNavState();
                     chrome.storage.local.set({ lastPlayerUrl: targetUrl });
@@ -1894,7 +1910,7 @@ elements.scanTelegramMediaBtn.addEventListener('click', async () => {
                 target: { tabId: tab.id },
                 files: ['telegram_content.js']
             });
-        } catch(e) {
+        } catch (e) {
             notify('Lỗi inject script: ' + e.message, 'error');
             return;
         }
@@ -1905,7 +1921,7 @@ elements.scanTelegramMediaBtn.addEventListener('click', async () => {
         let response;
         try {
             response = await chrome.tabs.sendMessage(tab.id, { type: 'tg_scan' });
-        } catch(e) {
+        } catch (e) {
             notify('Không thể kết nối script. Hãy thử lại.', 'error');
             return;
         }
@@ -2056,7 +2072,7 @@ async function startTelegramDownload(item, tabId, btn) {
                 });
                 notify('Đang tải video... Vui lòng chờ', 'info');
             }
-        } catch(e) {
+        } catch (e) {
             if (btn) { btn.disabled = false; btn.textContent = '📥 Tải'; }
             notify('Lỗi: ' + e.message, 'error');
         }
@@ -2176,7 +2192,7 @@ function showTelegramMediaPreview(url, type) {
 // Vault Logic
 elements.unlockVault.addEventListener('click', async () => {
     const code = elements.vaultPassInput.value;
-    
+
     chrome.storage.local.get(['stealthPasswordHash', 'stealthSalt'], async (result) => {
         const storedHash = result.stealthPasswordHash || await hashPassword('1234', 'default_salt');
         const salt = result.stealthSalt || 'default_salt';
@@ -2240,10 +2256,10 @@ async function deriveKey(password) {
     const data = encoder.encode(password);
     const hash = await crypto.subtle.digest('SHA-256', data);
     return await crypto.subtle.importKey(
-        'raw', 
-        hash, 
-        { name: 'AES-GCM' }, 
-        false, 
+        'raw',
+        hash,
+        { name: 'AES-GCM' },
+        false,
         ['encrypt', 'decrypt']
     );
 }
@@ -2259,7 +2275,7 @@ async function encryptData(data, password) {
             key,
             encodedData
         );
-        
+
         return {
             iv: Array.from(iv),
             content: Array.from(new Uint8Array(encryptedContent))
@@ -2280,7 +2296,7 @@ async function decryptData(encryptedObj, password) {
             key,
             content
         );
-        
+
         const decoder = new TextDecoder();
         return JSON.parse(decoder.decode(decryptedContent));
     } catch (e) {
@@ -2323,13 +2339,13 @@ async function pullVaultFromCloud() {
                     chrome.storage.local.get(['privacyVault'], (localResult) => {
                         const localVault = localResult.privacyVault || [];
                         const mergedVault = [...localVault];
-                        
+
                         decrypted.forEach(remoteItem => {
                             if (!mergedVault.some(localItem => localItem.id === remoteItem.id)) {
                                 mergedVault.push(remoteItem);
                             }
                         });
-                        
+
                         chrome.storage.local.set({ privacyVault: mergedVault }, () => {
                             resolve(mergedVault);
                         });
@@ -2348,7 +2364,7 @@ function loadVault() {
     const { vaultList } = elements;
     const lang = settings.language || 'vi';
     const dict = translations[lang] || translations.vi;
-    
+
     // Check if we have the session password
     if (!secretCode) {
         // Only try to restore from session if ALWAYS require password is OFF
@@ -2396,7 +2412,7 @@ function renderVaultItems(dict) {
         vault.forEach(item => {
             const div = document.createElement('div');
             div.className = 'vault-item';
-            
+
             const iconSpan = document.createElement('div');
             iconSpan.className = 'vault-item-icon';
             iconSpan.textContent = item.type === 'link' ? '🔗' : '📝';
@@ -2463,7 +2479,7 @@ elements.historySearchInput.addEventListener('input', (e) => {
 elements.historyList.addEventListener('scroll', () => {
     const { historyList } = elements;
     const scrollThreshold = 100; // Load more when 100px from bottom
-    
+
     if (historyList.scrollHeight - historyList.scrollTop - historyList.clientHeight < scrollThreshold) {
         renderNextHistoryChunk();
     }
@@ -2481,16 +2497,16 @@ elements.bookmarksSearchInput.addEventListener('input', (e) => {
 elements.settingsSearchInput.addEventListener('input', (e) => {
     const query = e.target.value.toLowerCase().trim();
     const groups = document.querySelectorAll('.settings-group');
-    
+
     groups.forEach(group => {
         const title = group.querySelector('h3')?.textContent.toLowerCase() || '';
         const items = group.querySelectorAll('.setting-item');
         let groupHasMatch = title.includes(query);
-        
+
         items.forEach(item => {
             const itemText = item.textContent.toLowerCase();
             const isMatch = itemText.includes(query);
-            
+
             if (query === '') {
                 item.classList.remove('hidden-search');
                 item.classList.remove('match-search');
@@ -2503,7 +2519,7 @@ elements.settingsSearchInput.addEventListener('input', (e) => {
                 item.classList.remove('match-search');
             }
         });
-        
+
         if (query === '') {
             group.classList.remove('hidden-search');
             group.classList.remove('fade-out');
@@ -2529,12 +2545,12 @@ elements.clearSettingsSearch.addEventListener('click', () => {
 // Quick Actions Dashboard
 elements.quickFocusMode.addEventListener('click', () => {
     chrome.management.getAll((extensions) => {
-        const toDisable = extensions.filter(ext => 
-            ext.enabled && 
-            ext.type === 'extension' && 
+        const toDisable = extensions.filter(ext =>
+            ext.enabled &&
+            ext.type === 'extension' &&
             ext.id !== chrome.runtime.id // Don't disable yourself!
         );
-        
+
         if (toDisable.length === 0) {
             notify('Focus Mode already active!', 'warning');
             return;
@@ -2547,7 +2563,7 @@ elements.quickFocusMode.addEventListener('click', () => {
                 if (disabledCount === toDisable.length) {
                     notify(`Focus Mode: Disabled ${disabledCount} extensions`, 'success');
                     updateDashboard();
-                    
+
                     // Nếu đang mở tab Extensions Manager, cập nhật lại giao diện
                     if (elements.extensionsList.classList.contains('show')) {
                         renderExtensions();
@@ -2564,15 +2580,15 @@ elements.quickFocusMode.addEventListener('click', () => {
 let dashboardUpdateTimeout = null;
 async function updateDashboard() {
     if (dashboardUpdateTimeout) clearTimeout(dashboardUpdateTimeout);
-    
+
     dashboardUpdateTimeout = setTimeout(async () => {
         const { statCookies, statExtensions, statTrackers, permanentBar, sessionBar, permanentCount, sessionCount, privacyInsightsList } = elements;
-        
+
         // 1. Cookies count and age analysis
         chrome.cookies.getAll({}, (cookies) => {
             const total = cookies.length;
             statCookies.textContent = total;
-            
+
             // Age analysis
             let permanent = 0;
             let session = 0;
@@ -2589,7 +2605,7 @@ async function updateDashboard() {
 
             permanentCount.textContent = permanent;
             sessionCount.textContent = session;
-            
+
             if (total > 0) {
                 const permanentPercent = (permanent / total) * 100;
                 const sessionPercent = (session / total) * 100;
@@ -2617,7 +2633,7 @@ async function updateDashboard() {
                     const count = response ? response.count : 0;
                     const list = response ? response.list : [];
                     statTrackers.textContent = count;
-                    settings.trackerCount = count; 
+                    settings.trackerCount = count;
                     settings.currentTrackers = list; // Lưu trữ danh sách tracker hiện tại
                 });
             }
@@ -2633,11 +2649,11 @@ async function updateDashboard() {
  */
 async function calculatePrivacyGrade() {
     const { statCookies, statExtensions, statTrackers, privacyGradeValue, healthScoreText, healthStatusText, healthBarFill, fixPrivacyBtn } = elements;
-    
+
     const cookieCount = parseInt(statCookies.textContent) || 0;
     const extCount = parseInt(statExtensions.textContent) || 0;
     const trackerCount = parseInt(statTrackers.textContent) || 0;
-    
+
     let score = 100;
     const issues = [];
 
@@ -2675,7 +2691,7 @@ async function calculatePrivacyGrade() {
             score -= 5;
             issues.push('enableDNT');
         }
-    } catch (e) {}
+    } catch (e) { }
 
     // Giới hạn điểm từ 0 - 100
     score = Math.max(0, Math.min(100, score));
@@ -2711,7 +2727,7 @@ async function calculatePrivacyGrade() {
 
         if (score < 90 && issues.length > 0) {
             fixPrivacyBtn.classList.remove('hidden');
-            
+
             // Thêm danh sách chi tiết các vấn đề vào Grade Card
             let issuesContainer = elements.gradeCard.querySelector('.grade-issues-list');
             if (!issuesContainer) {
@@ -2719,7 +2735,7 @@ async function calculatePrivacyGrade() {
                 issuesContainer.className = 'grade-issues-list';
                 elements.gradeCard.appendChild(issuesContainer);
             }
-            
+
             issuesContainer.innerHTML = `<div class="fix-summary">${dict.fixSummary || 'Cần khắc phục'}:</div>`;
             issues.forEach(issue => {
                 const item = document.createElement('div');
@@ -2743,7 +2759,7 @@ async function calculatePrivacyGrade() {
 async function fixPrivacyIssues(issues) {
     const lang = settings.language || 'vi';
     const dict = translations[lang] || translations.vi;
-    
+
     for (const issue of issues) {
         switch (issue) {
             case 'enableAutoCleanup':
@@ -2765,15 +2781,15 @@ async function fixPrivacyIssues(issues) {
             case 'enableDNT':
                 try {
                     await chrome.privacy.websites.doNotTrackEnabled.set({ value: true });
-                } catch (e) {}
+                } catch (e) { }
                 break;
         }
     }
-    
+
     saveSettings();
     updateUILanguage(); // Cập nhật lại UI đồng bộ
     notify(dict.fixSuccess || 'Privacy upgraded successfully!', 'success');
-    
+
     // Đợi 1 chút để các hiệu ứng mượt mà
     setTimeout(() => calculatePrivacyGrade(), 500);
 }
@@ -2785,12 +2801,12 @@ function renderInsights(totalCookies, permanentCookies, trackers) {
     const { privacyInsightsList } = elements;
     const lang = settings.language || 'vi';
     const dict = translations[lang] || translations.vi;
-    
+
     privacyInsightsList.innerHTML = '';
     const insights = [];
 
     if (trackers > 5) {
-        insights.push({ 
+        insights.push({
             text: dict.trackersWarning || `Phát hiện ${trackers} tracker trên trang này. Hãy cẩn thận!`,
             type: 'warning'
         });
@@ -2829,7 +2845,7 @@ function renderInsights(totalCookies, permanentCookies, trackers) {
 function renderWhitelist() {
     const { whitelistList } = elements;
     whitelistList.innerHTML = '';
-    
+
     const whitelist = settings.whitelist || [];
     whitelist.forEach(domain => {
         const tag = document.createElement('div');
@@ -2875,7 +2891,7 @@ function loadContainers() {
 
         const iconWrapper = document.createElement('div');
         iconWrapper.className = 'container-card-icon';
-        
+
         const iconImg = document.createElement('img');
         const iconName = container.icon || 'container.png';
         iconImg.src = `icons/${iconName}`;
@@ -2883,7 +2899,7 @@ function loadContainers() {
         iconImg.style.width = '24px'; // Ensure base size
         iconImg.style.height = '24px';
         iconWrapper.appendChild(iconImg);
-        
+
         card.appendChild(iconWrapper);
 
         const name = document.createElement('span');
@@ -2925,7 +2941,7 @@ function loadContainers() {
                 });
                 notify(`Opening "${container.name}" in isolated Incognito window...`, 'success');
             } else {
-                chrome.tabs.create({ url: url }); 
+                chrome.tabs.create({ url: url });
                 notify(`Opening new tab in "${container.name}" (shared session)...`, 'success');
             }
         });
@@ -2962,14 +2978,14 @@ elements.addContainerBtn.addEventListener('click', () => {
     if (!settings.accountContainers) settings.accountContainers = [];
     settings.accountContainers.push(newContainer);
     saveSettings();
-    
+
     nameInput.value = '';
     // Reset icon picker
     document.querySelectorAll('.picker-icon').forEach(i => i.classList.remove('selected'));
     if (elements.containerIconPicker) {
         elements.containerIconPicker.firstElementChild.classList.add('selected');
     }
-    
+
     loadContainers();
     notify(`Container "${name}" created!`, 'success');
 });
@@ -2978,7 +2994,7 @@ elements.quickIdentityBtn.addEventListener('click', () => {
     const randomNames = ['Ghost', 'Phantom', 'Stealth', 'Ninja', 'Specter', 'Shadow', 'Anon', 'Voyager'];
     const randomColors = ['#3182ce', '#e53e3e', '#38a169', '#d69e2e', '#805ad5', '#ff0080'];
     const randomIcons = ['container.png', 'shield.png', 'incognito.png', 'shape.png', 'vietnam.png'];
-    
+
     const name = `${randomNames[Math.floor(Math.random() * randomNames.length)]}_${Math.floor(Math.random() * 1000)}`;
     const color = randomColors[Math.floor(Math.random() * randomColors.length)];
     const icon = randomIcons[Math.floor(Math.random() * randomIcons.length)];
@@ -2994,10 +3010,10 @@ elements.quickIdentityBtn.addEventListener('click', () => {
     if (!settings.accountContainers) settings.accountContainers = [];
     settings.accountContainers.push(newContainer);
     saveSettings();
-    
+
     loadContainers();
     notify(`Quick Identity "${name}" created!`, 'success');
-    
+
     // Simulate opening tab in this container
     chrome.tabs.create({ url: 'https://www.google.com' });
 });
@@ -3028,10 +3044,10 @@ elements.quickClearAll.addEventListener('click', async () => {
                         chrome.history.deleteUrl({ url: item.url });
                     }
                 });
-                
+
                 notify(`Đã dọn dẹp sạch dữ liệu của "${domain}"`, 'success');
                 updateDashboard();
-                
+
                 // Refresh history list if open
                 if (elements.historySection.classList.contains('show')) {
                     loadHistoryAndSessions();
@@ -3051,7 +3067,7 @@ document.querySelectorAll('.history-tab-btn').forEach(btn => {
         btn.classList.add('active');
         const tabId = btn.dataset.tab;
         document.getElementById(tabId).classList.add('active');
-        
+
         // Load data based on tab
         if (tabId === 'bookmarksTab') {
             loadBookmarks();
@@ -3074,11 +3090,11 @@ async function loadBookmarks(query = '') {
     }
 
     bookmarksList.innerHTML = '<p class="loading">Loading bookmarks...</p>';
-    
+
     const handleResults = (items) => {
         bookmarksList.innerHTML = '';
         const bookmarks = items.filter(item => item.url); // Chỉ hiện bookmark thực sự, không hiện folder
-        
+
         if (bookmarks.length === 0) {
             const lang = settings.language || 'vi';
             const dict = translations[lang] || translations.vi;
@@ -3108,7 +3124,7 @@ async function loadBookmarks(query = '') {
  */
 async function loadReadingList() {
     const { readingListContainer } = elements;
-    
+
     // chrome.readingList is only available in Chrome 102+
     if (!chrome.readingList) {
         readingListContainer.innerHTML = '<p class="empty-msg">Reading List API not available.</p>';
@@ -3116,11 +3132,11 @@ async function loadReadingList() {
     }
 
     readingListContainer.innerHTML = '<p class="loading">Loading reading list...</p>';
-    
+
     try {
         const items = await chrome.readingList.query({});
         readingListContainer.innerHTML = '';
-        
+
         if (items.length === 0) {
             const lang = settings.language || 'vi';
             const dict = translations[lang] || translations.vi;
@@ -3145,14 +3161,14 @@ async function loadReadingList() {
 function createHistoryItemUI(item, type) {
     const div = document.createElement('div');
     div.className = 'history-item';
-    
+
     let hostname = 'unknown';
-    try { hostname = new URL(item.url).hostname; } catch(e) {}
-    
+    try { hostname = new URL(item.url).hostname; } catch (e) { }
+
     const favicon = `https://www.google.com/s2/favicons?domain=${hostname}`;
     const visitDate = item.lastVisitTime ? new Date(item.lastVisitTime) : null;
     const visitTime = visitDate ? visitDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : '';
-    
+
     const lang = settings.language || 'vi';
     const dict = translations[lang] || translations.vi;
 
@@ -3216,7 +3232,7 @@ function createHistoryItemUI(item, type) {
             chrome.tabs.create({ url: item.url });
         }
     };
-    
+
     return div;
 }
 
@@ -3225,16 +3241,16 @@ function createHistoryItemUI(item, type) {
  */
 async function loadHistoryAndSessions(query = '') {
     const { historyList, deviceList, historyRestrictedOverlay } = elements;
-    
+
     historyList.innerHTML = '';
     deviceList.innerHTML = '';
     historyRestrictedOverlay.classList.add('hidden');
-    
+
     // Reset lazy load state
     historyItemsBuffer = [];
     currentHistoryIndex = 0;
     lastRenderedDate = '';
-    
+
     if (!chrome.history) {
         const errorContainer = document.createElement('div');
         errorContainer.className = 'error-container';
@@ -3266,7 +3282,7 @@ async function loadHistoryAndSessions(query = '') {
             historyList.appendChild(emptyMsg);
             return;
         }
-        
+
         historyItemsBuffer = items;
         renderNextHistoryChunk();
     });
@@ -3291,16 +3307,16 @@ async function loadHistoryAndSessions(query = '') {
                 deviceDiv.className = 'device-group';
                 const deviceHeader = document.createElement('h4');
                 deviceHeader.className = 'device-header';
-                
+
                 // Add icons based on device name
                 const deviceName = device.deviceName.toLowerCase();
                 let icon = '📱';
                 if (deviceName.includes('pc') || deviceName.includes('desktop') || deviceName.includes('mac') || deviceName.includes('windows')) icon = '💻';
                 if (deviceName.includes('tablet') || deviceName.includes('ipad')) icon = '📠';
-                
+
                 deviceHeader.innerHTML = `<span class="device-type-icon">${icon}</span> ${device.deviceName}`;
                 deviceDiv.appendChild(deviceHeader);
-                
+
                 device.sessions.forEach(session => {
                     let tabs = [];
                     if (session.tab) {
@@ -3312,15 +3328,15 @@ async function loadHistoryAndSessions(query = '') {
                     tabs.forEach(tab => {
                         const item = document.createElement('div');
                         item.className = 'device-item';
-                        
+
                         let hostname = 'unknown';
-                        try { hostname = new URL(tab.url).hostname; } catch(e) {}
+                        try { hostname = new URL(tab.url).hostname; } catch (e) { }
 
                         const favicon = `https://www.google.com/s2/favicons?domain=${hostname}`;
                         const img = document.createElement('img');
                         img.src = favicon;
                         img.className = 'device-icon';
-                        img.onerror = function() { this.src = 'icons/extension.png'; };
+                        img.onerror = function () { this.src = 'icons/extension.png'; };
                         item.appendChild(img);
 
                         const infoDiv = document.createElement('div');
@@ -3369,26 +3385,26 @@ async function loadHistoryAndSessions(query = '') {
  */
 function renderNextHistoryChunk() {
     if (isLoadingHistoryChunks || currentHistoryIndex >= historyItemsBuffer.length) return;
-    
+
     isLoadingHistoryChunks = true;
     const { historyList } = elements;
-    
+
     // Remove previous loader if exists
     const oldLoader = document.getElementById('historyLoadMore');
     if (oldLoader) oldLoader.remove();
 
     const itemsToRender = historyItemsBuffer.slice(currentHistoryIndex, currentHistoryIndex + historyChunkSize);
-    
+
     const fragment = document.createDocumentFragment();
-    
+
     itemsToRender.forEach((item, index) => {
         const date = new Date(item.lastVisitTime);
         const dateKey = date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
-        
+
         let displayDate = dateKey;
         const today = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
         const yesterday = new Date(Date.now() - 86400000).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
-        
+
         if (dateKey === today) displayDate = 'Today';
         else if (dateKey === yesterday) displayDate = 'Yesterday';
 
@@ -3405,11 +3421,11 @@ function renderNextHistoryChunk() {
         div.style.animationDelay = `${(index % historyChunkSize) * 0.02}s`; // Staggered animation
         fragment.appendChild(div);
     });
-    
+
     historyList.appendChild(fragment);
     currentHistoryIndex += historyChunkSize;
     isLoadingHistoryChunks = false;
-    
+
     // Show a small loader at the bottom if more items exist
     if (currentHistoryIndex < historyItemsBuffer.length) {
         const loadMoreIndicator = document.createElement('div');
@@ -3417,7 +3433,7 @@ function renderNextHistoryChunk() {
         loadMoreIndicator.className = 'loading-small';
         historyList.appendChild(loadMoreIndicator);
     }
-    
+
     // Check if we need more items immediately (if list is short)
     if (historyList.scrollHeight <= historyList.clientHeight && currentHistoryIndex < historyItemsBuffer.length) {
         renderNextHistoryChunk();
@@ -3435,7 +3451,16 @@ elements.darkModeToggle.addEventListener('change', (e) => {
 elements.autoClearToggle.addEventListener('change', (e) => {
     settings.autoClearStealth = e.target.checked;
     saveSettings();
-    notify(`Auto-clear history ${settings.autoClearStealth ? 'on' : 'off'}`, 'success');
+    if (settings.autoClearStealth) {
+        chrome.storage.local.remove(['stealthHistory', 'lastPlayerUrl']);
+        playerHistory = [];
+        currentUrlIndex = -1;
+        if (elements.stealthPlayer) elements.stealthPlayer.src = '';
+        notify('Đã bật Auto-clear Stealth History. Lịch sử sẽ bị xóa khi đóng/mở lại.', 'warning');
+    } else {
+        notify('Đã tắt Auto-clear. Lịch sử goback/forward sẽ được giữ lại.', 'success');
+        loadPlayerContent();
+    }
 });
 
 elements.showNotifyToggle.addEventListener('change', (e) => {
@@ -3454,15 +3479,15 @@ elements.cookieDestroyerToggle.addEventListener('change', (e) => {
 elements.addWhitelistBtn.addEventListener('click', () => {
     const input = elements.whitelistInput;
     const domain = input.value.trim().toLowerCase();
-    
+
     if (!domain) return;
-    
+
     if (!settings.whitelist) settings.whitelist = [];
     if (settings.whitelist.includes(domain)) {
         notify('Domain already in whitelist', 'warning');
         return;
     }
-    
+
     settings.whitelist.push(domain);
     saveSettings();
     input.value = '';
@@ -3480,11 +3505,11 @@ elements.historyIncognitoToggle.addEventListener('change', (e) => {
 elements.useSidePanelToggle.addEventListener('change', (e) => {
     settings.useSidePanel = e.target.checked;
     saveSettings();
-    
+
     // Cập nhật Panel behavior ngay lập tức
     chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: settings.useSidePanel })
         .catch((error) => console.error(error));
-        
+
     notify(`Side Panel default ${settings.useSidePanel ? 'enabled' : 'disabled'}`, 'success');
 });
 
@@ -3515,7 +3540,7 @@ elements.multiAccountToggle.addEventListener('change', (e) => {
     settings.multiAccountEnabled = e.target.checked;
     saveSettings();
     elements.multiAccountBtn.classList.toggle('hidden', !settings.multiAccountEnabled);
-    
+
     if (settings.multiAccountEnabled) {
         notify('Multi-Account Containers enabled! Check the main menu.', 'success');
         // Removed automatic tab switch as requested by user
@@ -3532,31 +3557,31 @@ elements.hibernationToggle.addEventListener('change', (e) => {
     settings.hibernationEnabled = e.target.checked;
     elements.hibernationTimeoutRow.style.display = settings.hibernationEnabled ? 'flex' : 'none';
     saveSettings();
-    
+
     // Gửi tin nhắn đến background để cập nhật logic hibernation
-    chrome.runtime.sendMessage({ 
-        type: 'updateHibernation', 
-        enabled: settings.hibernationEnabled, 
-        timeout: settings.hibernationTimeout 
+    chrome.runtime.sendMessage({
+        type: 'updateHibernation',
+        enabled: settings.hibernationEnabled,
+        timeout: settings.hibernationTimeout
     });
-    
+
     notify(`Tab Hibernation ${settings.hibernationEnabled ? 'enabled' : 'disabled'}`, 'success');
 });
 
 elements.hibernationTimeoutSelect.addEventListener('change', (e) => {
     const isCustom = e.target.value === 'custom';
     elements.hibernationCustomTimeout.classList.toggle('hidden', !isCustom);
-    
+
     if (!isCustom) {
         settings.hibernationTimeout = parseInt(e.target.value);
         saveSettings();
-        
-        chrome.runtime.sendMessage({ 
-            type: 'updateHibernation', 
-            enabled: settings.hibernationEnabled, 
-            timeout: settings.hibernationTimeout 
+
+        chrome.runtime.sendMessage({
+            type: 'updateHibernation',
+            enabled: settings.hibernationEnabled,
+            timeout: settings.hibernationTimeout
         });
-        
+
         notify(`Hibernation timeout set to ${settings.hibernationTimeout} minutes`, 'success');
     }
 });
@@ -3566,10 +3591,10 @@ elements.hibernationCustomTimeout.addEventListener('input', (e) => {
     if (value && value >= 10) {
         settings.hibernationTimeout = value;
         saveSettings();
-        
-        chrome.runtime.sendMessage({ 
-            type: 'updateHibernation', 
-            enabled: settings.hibernationEnabled, 
+
+        chrome.runtime.sendMessage({
+            type: 'updateHibernation',
+            enabled: settings.hibernationEnabled,
             timeout: settings.hibernationTimeout,
             isSeconds: true // Signal background it's in seconds
         });
@@ -3579,7 +3604,7 @@ elements.hibernationCustomTimeout.addEventListener('input', (e) => {
 elements.vaultSyncToggle.addEventListener('change', async (e) => {
     settings.vaultSyncEnabled = e.target.checked;
     elements.masterSyncSection.style.display = settings.vaultSyncEnabled ? 'block' : 'none';
-    
+
     if (settings.vaultSyncEnabled) {
         // If no Master Key exists, generate one
         if (!settings.masterSyncKey) {
@@ -3614,12 +3639,12 @@ elements.saveMasterKeyBtn.addEventListener('click', async () => {
         notify('Invalid Master Key!', 'error');
         return;
     }
-    
+
     const encryptedKey = await encryptData(inputKey, secretCode);
     settings.masterSyncKey = encryptedKey;
     elements.masterSyncKeyInput.value = inputKey;
     elements.manualMasterKeyInput.value = '';
-    
+
     saveSettings();
     notify('Master Key saved! Syncing...', 'success');
     pullVaultFromCloud().then(() => {
@@ -3666,7 +3691,7 @@ elements.playerLinkBehavior.addEventListener('change', (e) => {
     settings.playerLinkBehavior = e.target.value;
     saveSettings();
     updatePlayerSandbox(); // Cập nhật sandbox ngay lập tức
-    
+
     let notifyMsg = `Link behavior: ${e.target.options[e.target.selectedIndex].text}`;
     notify(notifyMsg, 'success');
 });
@@ -3683,13 +3708,13 @@ elements.addCustomBgBtn.addEventListener('click', () => {
         notify('Please enter a valid image URL.', 'warning');
         return;
     }
-    
+
     if (!settings.customBgList) settings.customBgList = [];
     if (settings.customBgList.includes(url)) {
         notify('URL already in list.', 'warning');
         return;
     }
-    
+
     settings.customBgList.unshift(url);
     settings.customBgUrl = url;
     saveSettings();
@@ -3725,7 +3750,7 @@ elements.switchViewBtn.addEventListener('click', () => {
 // Stealth Player Security Logic
 elements.unlockStealth.addEventListener('click', async () => {
     const code = elements.stealthPassInput.value;
-    
+
     chrome.storage.local.get(['stealthPasswordHash', 'stealthSalt'], async (result) => {
         const storedHash = result.stealthPasswordHash || await hashPassword('1234', 'default_salt');
         const salt = result.stealthSalt || 'default_salt';
@@ -3739,7 +3764,7 @@ elements.unlockStealth.addEventListener('click', async () => {
             isStealthUnlocked = true;
             elements.stealthLockScreen.classList.remove('show');
             notify('Stealth Mode Unlocked!', 'success');
-            
+
             // Restore last URL upon unlocking if currently empty
             if (elements.stealthPlayer.src === 'about:blank' || elements.stealthPlayer.src === '') {
                 chrome.storage.local.get(['lastPlayerUrl'], (result) => {
@@ -3753,7 +3778,7 @@ elements.unlockStealth.addEventListener('click', async () => {
                             currentUrlIndex = playerHistory.length - 1;
                             updatePlayerNavState();
                         }
-                        
+
                         notify('Restoring your last content...', 'success');
                     }
                 });
@@ -3774,7 +3799,7 @@ function isStrongPassword(password) {
     const hasLowerCase = /[a-z]/.test(password);
     const hasNumbers = /\d/.test(password);
     const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-    
+
     return password.length >= minLength && hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar;
 }
 
@@ -3808,13 +3833,13 @@ function setupPasswordToggle(inputId, toggleId) {
 elements.strongPasswordToggle.addEventListener('click', async (e) => {
     // Ngăn chặn việc thay đổi trạng thái ngay lập tức
     e.preventDefault();
-    
+
     const intendedState = !settings.requireStrongPassword;
     const action = intendedState ? 'bật' : 'tắt';
-    
+
     // Yêu cầu nhập mật khẩu hiện tại
     const currentPass = prompt(`Vui lòng nhập mật khẩu hiện tại để ${action} ràng buộc mật khẩu mạnh:`);
-    
+
     if (currentPass === null) return; // Người dùng nhấn Cancel
 
     chrome.storage.local.get(['stealthPasswordHash', 'stealthSalt'], async (result) => {
@@ -3847,16 +3872,16 @@ elements.showPasswordToggle.addEventListener('change', (e) => {
     saveSettings();
 });
 
-    // Setup password eyes
-    setupPasswordToggle('oldPassInput', 'toggleOldPass');
-    setupPasswordToggle('newPassInput', 'toggleNewPass');
-    setupPasswordToggle('confirmNewPassInput', 'toggleConfirmPass');
-    setupPasswordToggle('stealthPassInput', 'toggleStealthPass');
-    setupPasswordToggle('vaultPassInput', 'toggleVaultPass'); // Added for Vault
+// Setup password eyes
+setupPasswordToggle('oldPassInput', 'toggleOldPass');
+setupPasswordToggle('newPassInput', 'toggleNewPass');
+setupPasswordToggle('confirmNewPassInput', 'toggleConfirmPass');
+setupPasswordToggle('stealthPassInput', 'toggleStealthPass');
+setupPasswordToggle('vaultPassInput', 'toggleVaultPass'); // Added for Vault
 
 elements.verifyOldPass.addEventListener('click', async () => {
     const oldPass = elements.oldPassInput.value;
-    
+
     chrome.storage.local.get(['stealthPasswordHash', 'stealthSalt'], async (result) => {
         const storedHash = result.stealthPasswordHash || await hashPassword('1234', 'default_salt');
         const salt = result.stealthSalt || 'default_salt';
@@ -3868,7 +3893,7 @@ elements.verifyOldPass.addEventListener('click', async () => {
             elements.oldPassInput.disabled = true;
             elements.verifyOldPass.disabled = true;
             notify('Old password verified. Enter new one.', 'success');
-            
+
             // Hiển thị yêu cầu nếu cài đặt đang bật
             if (settings.requireStrongPassword) {
                 elements.passwordRequirementText.classList.remove('hidden');
@@ -3883,7 +3908,7 @@ elements.verifyOldPass.addEventListener('click', async () => {
 elements.saveNewPass.addEventListener('click', async () => {
     const newPass = elements.newPassInput.value.trim();
     const confirmPass = elements.confirmNewPassInput.value.trim();
-    
+
     if (newPass === '') {
         notify('Please enter a new password', 'warning');
         return;
@@ -3920,13 +3945,13 @@ elements.saveNewPass.addEventListener('click', async () => {
         }
     }
 
-    chrome.storage.local.set({ 
-        stealthPasswordHash: newHash, 
-        stealthSalt: newSalt 
+    chrome.storage.local.set({
+        stealthPasswordHash: newHash,
+        stealthSalt: newSalt
     }, () => {
         // Remove old plain text password
         chrome.storage.local.remove('stealthPassword');
-        
+
         secretCode = newPass; // Update session password
         saveSettings();
         notify('Password updated successfully!', 'success');
@@ -3937,7 +3962,7 @@ elements.saveNewPass.addEventListener('click', async () => {
         elements.newPassInput.value = '';
         elements.confirmNewPassInput.value = '';
         elements.newPassRow.classList.add('hidden');
-        
+
         // Reset input types to password
         elements.oldPassInput.type = 'password';
         elements.newPassInput.type = 'password';
@@ -3968,7 +3993,7 @@ elements.loadStealth.addEventListener('click', () => {
     let targetUrl;
     if (isValidUrl(input)) {
         targetUrl = input.startsWith('http') ? input : `https://${input}`;
-        
+
         // Smart YouTube Embed Conversion
         try {
             const url = new URL(targetUrl);
@@ -3985,7 +4010,7 @@ elements.loadStealth.addEventListener('click', () => {
                     notify('Optimizing YouTube for Privacy Player...', 'success');
                 }
             }
-        } catch (e) {}
+        } catch (e) { }
     } else {
         const encodedQuery = encodeURIComponent(input);
         switch (settings.searchEngine) {
@@ -4029,7 +4054,7 @@ elements.loadStealth.addEventListener('click', () => {
         isNavigating = true;
         elements.stealthPlayer.src = targetUrl;
         elements.stealthUrl.value = targetUrl; // Cập nhật thanh địa chỉ ngay lập tức
-        
+
         // Cập nhật History Stack nội bộ
         if (targetUrl !== playerHistory[currentUrlIndex]) {
             // Xóa phần Forward stack nếu có URL mới
@@ -4063,14 +4088,14 @@ function updatePlayerSandbox() {
     // allow-popups-to-escape-sandbox: Hỗ trợ các link mở ra tab mới thực sự
     // allow-downloads: Nếu người dùng muốn tải gì đó
     let sandbox = [
-        'allow-scripts', 
-        'allow-same-origin', 
-        'allow-forms', 
-        'allow-popups', 
+        'allow-scripts',
+        'allow-same-origin',
+        'allow-forms',
+        'allow-popups',
         'allow-popups-to-escape-sandbox',
         'allow-downloads'
     ];
-    
+
     stealthPlayer.setAttribute('sandbox', sandbox.join(' '));
 }
 
@@ -4083,7 +4108,7 @@ elements.stealthPlayer.addEventListener('load', () => {
     setTimeout(() => {
         isNavigating = false;
     }, 500);
-    
+
     // Ẩn placeholder khi có nội dung
     if (elements.stealthPlayer.src !== 'about:blank' && elements.stealthPlayer.src !== '') {
         elements.playerContainer.classList.add('has-content');
@@ -4095,7 +4120,7 @@ elements.openStealthWindow.addEventListener('click', async () => {
     if (url) {
         try {
             const formattedUrl = url.startsWith('http') ? url : `https://${url}`;
-            
+
             // Check if extension is allowed in incognito
             chrome.extension.isAllowedIncognitoAccess((isAllowed) => {
                 chrome.windows.create({
@@ -4156,7 +4181,7 @@ elements.enlargePlayer.addEventListener('click', () => {
         playerHeight += 40;
         changed = true;
     }
-    
+
     if (changed) {
         updatePlayerSize();
         // Save current player size if not following default
@@ -4261,34 +4286,34 @@ elements.reloadPlayer.addEventListener('click', () => {
 });
 
 elements.toggleTheaterMode.addEventListener('click', () => {
-     // Send message to the iframe
-     // Use both postMessage (direct) and chrome.tabs.sendMessage (via content script)
-     try {
-         elements.stealthPlayer.contentWindow.postMessage({ type: 'toggleTheaterMode' }, '*');
-         
-         // Try also via extension API (may fail if frameId is not 0 or not yet ready)
-         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-             if (tabs[0]) {
-                 chrome.tabs.sendMessage(tabs[0].id, { type: 'toggleTheaterMode' }, (response) => {
-                     if (chrome.runtime.lastError) {
-                         // Ignore errors from other tabs
-                     }
-                 });
-             }
-         });
-     } catch (e) {
-         console.error('Error sending theater mode message:', e);
-     }
-     
-     // Toggle active class on button
-     elements.toggleTheaterMode.classList.toggle('active');
-     notify('Toggling Theater Mode...', 'success');
- });
+    // Send message to the iframe
+    // Use both postMessage (direct) and chrome.tabs.sendMessage (via content script)
+    try {
+        elements.stealthPlayer.contentWindow.postMessage({ type: 'toggleTheaterMode' }, '*');
 
- elements.togglePip.addEventListener('click', () => {
+        // Try also via extension API (may fail if frameId is not 0 or not yet ready)
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0]) {
+                chrome.tabs.sendMessage(tabs[0].id, { type: 'toggleTheaterMode' }, (response) => {
+                    if (chrome.runtime.lastError) {
+                        // Ignore errors from other tabs
+                    }
+                });
+            }
+        });
+    } catch (e) {
+        console.error('Error sending theater mode message:', e);
+    }
+
+    // Toggle active class on button
+    elements.toggleTheaterMode.classList.toggle('active');
+    notify('Toggling Theater Mode...', 'success');
+});
+
+elements.togglePip.addEventListener('click', () => {
     try {
         elements.stealthPlayer.contentWindow.postMessage({ type: 'togglePip' }, '*');
-        
+
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             if (tabs[0]) {
                 chrome.tabs.sendMessage(tabs[0].id, { type: 'togglePip' }, (response) => {
@@ -4298,7 +4323,7 @@ elements.toggleTheaterMode.addEventListener('click', () => {
                 });
             }
         });
-        
+
         notify('Requesting Picture-in-Picture...', 'success');
     } catch (e) {
         console.error('Error sending PiP message:', e);
@@ -4411,7 +4436,7 @@ function renderFavoriteWebsites() {
 // Panic Button Logic
 elements.mainPanicBtn.addEventListener('click', () => {
     const action = settings.panicAction;
-    
+
     // Lấy ngẫu nhiên một URL từ danh sách an toàn, nếu không có thì dùng mặc định
     let safeUrl = 'https://www.google.com';
     if (settings.safeUrls && settings.safeUrls.length > 0) {
@@ -4432,7 +4457,7 @@ elements.mainPanicBtn.addEventListener('click', () => {
                             closedCount++;
                         }
                     });
-                    
+
                     // Luôn mở Safe Redirect URL trên tab bình thường sau khi xử lý ẩn danh
                     chrome.tabs.create({ url: safeUrl });
                     notify(`Đã đóng ${closedCount} cửa sổ ẩn danh và mở trang an toàn!`, 'warning');
@@ -4480,7 +4505,7 @@ function renderSafeUrls() {
     const lang = settings.language || 'vi';
     const dict = translations[lang] || translations.vi;
     safeUrlsList.innerHTML = '';
-    
+
     if (!settings.safeUrls || settings.safeUrls.length === 0) {
         safeUrlsList.innerHTML = `<p class="empty-msg">${dict.noSafeUrls || 'No safe URLs added. Default: Google.'}</p>`;
         return;
@@ -4489,16 +4514,16 @@ function renderSafeUrls() {
     settings.safeUrls.forEach((url, index) => {
         const item = document.createElement('div');
         item.className = 'favorite-item';
-        
+
         const info = document.createElement('div');
         info.className = 'favorite-info';
-        
+
         const urlSpan = document.createElement('span');
         urlSpan.className = 'favorite-url';
         urlSpan.textContent = url;
         urlSpan.style.fontSize = '0.8rem';
         info.appendChild(urlSpan);
-        
+
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'favorite-delete-btn';
         deleteBtn.innerHTML = '🗑';
@@ -4508,7 +4533,7 @@ function renderSafeUrls() {
             renderSafeUrls();
             notify('Safe URL removed.', 'warning');
         };
-        
+
         item.appendChild(info);
         item.appendChild(deleteBtn);
         safeUrlsList.appendChild(item);
@@ -4550,7 +4575,7 @@ elements.addSafeUrlBtn.addEventListener('click', () => {
 function updatePanicDescription(action) {
     const lang = settings.language || 'vi';
     const dict = translations[lang] || translations.vi;
-    
+
     const descriptions = {
         'closeIncognito': dict.panicDesc_closeIncognito || '🛡️ Bảo vệ riêng tư: Đóng ngay lập tức tất cả các cửa sổ ẩn danh đang mở.',
         'redirectAll': dict.panicDesc_redirectAll || '🌐 Ngụy trang nhanh: Chuyển hướng toàn bộ các tab hiện có sang một trang web an toàn.',
@@ -4600,7 +4625,7 @@ elements.saveSessionBtn.addEventListener('click', async () => {
         const tabType = elements.sessionTabTypeSelect.value;
         let queryOptions = {};
         const allTabs = await chrome.tabs.query({});
-        
+
         currentTabsToSave = allTabs.filter(tab => {
             if (tabType === 'normal') return !tab.incognito;
             if (tabType === 'incognito') return tab.incognito;
@@ -4616,7 +4641,7 @@ elements.saveSessionBtn.addEventListener('click', async () => {
         renderTabSelection();
         elements.tabSelectionArea.classList.remove('hidden');
         elements.saveSessionBtn.disabled = true;
-        
+
         notify('Vui lòng chọn các tab bạn muốn lưu', 'success');
     } catch (error) {
         notify('Lỗi khi lấy danh sách tab: ' + error.message, 'error');
@@ -4651,7 +4676,7 @@ function renderTabSelection() {
         label.style.cursor = 'pointer';
         label.style.flex = '1';
         label.title = tab.url;
-        
+
         const icon = tab.favIconUrl ? `<img src="${tab.favIconUrl}" width="12" height="12" style="margin-right: 5px; vertical-align: middle;">` : '🌐 ';
         label.innerHTML = `${icon}${tab.incognito ? '🔒 ' : ''}${tab.title || tab.url}`;
 
@@ -4679,14 +4704,14 @@ elements.cancelSaveSessionBtn.addEventListener('click', () => {
 elements.confirmSaveSessionBtn.addEventListener('click', () => {
     const sessionName = elements.sessionNameInput.value.trim();
     const selectedCheckboxes = document.querySelectorAll('.tab-selection-checkbox:checked');
-    
+
     if (selectedCheckboxes.length === 0) {
         notify('Vui lòng chọn ít nhất một tab để lưu!', 'warning');
         return;
     }
 
     const selectedTabs = Array.from(selectedCheckboxes).map(cb => currentTabsToSave[parseInt(cb.dataset.index)]);
-    
+
     const sessionData = {
         id: Date.now(),
         name: sessionName,
@@ -4703,18 +4728,18 @@ elements.confirmSaveSessionBtn.addEventListener('click', () => {
     settings.savedSessions.unshift(sessionData);
     saveSettings();
     renderSessions();
-    
+
     // Reset giao diện
     elements.sessionNameInput.value = '';
     elements.tabSelectionArea.classList.add('hidden');
     elements.saveSessionBtn.disabled = false;
-    
+
     if (confirm(`Đã lưu "${sessionName}" với ${selectedTabs.length} tab. Bạn có muốn đóng các tab đã chọn không?`)) {
         selectedTabs.forEach(t => {
-            chrome.tabs.remove(t.id).catch(() => {});
+            chrome.tabs.remove(t.id).catch(() => { });
         });
     }
-    
+
     notify(`Đã lưu phiên: ${sessionName}`, 'success');
 });
 
@@ -4745,7 +4770,7 @@ function renderSessions() {
         const nameSpan = document.createElement('span');
         nameSpan.textContent = session.name;
         nameSpan.style.fontWeight = 'bold';
-        
+
         const detailsSpan = document.createElement('small');
         const typeLabels = {
             'all': 'Tất cả',
@@ -4768,7 +4793,7 @@ function renderSessions() {
         expandBtn.title = 'Xem danh sách tab';
         expandBtn.textContent = '🔽';
         expandBtn.style.fontSize = '10px';
-        
+
         const restoreBtn = document.createElement('button');
         restoreBtn.className = 'favorite-go-btn';
         restoreBtn.title = 'Khôi phục phiên';
@@ -4777,7 +4802,7 @@ function renderSessions() {
             e.stopPropagation();
             restoreSession(session);
         };
-        
+
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'favorite-delete-btn';
         deleteBtn.title = 'Xóa phiên';
@@ -4899,7 +4924,7 @@ function renderSessions() {
         actionsDiv.appendChild(restoreBtn);
         actionsDiv.appendChild(deleteBtn);
         div.appendChild(actionsDiv);
-        
+
         sessionContainer.appendChild(div);
         sessionContainer.appendChild(tabsListDiv);
         sessionsList.appendChild(sessionContainer);
@@ -4909,7 +4934,7 @@ function renderSessions() {
 async function restoreSession(session) {
     try {
         notify(`Đang khôi phục phiên "${session.name}"...`, 'success');
-        
+
         // Nhóm các tab theo incognito
         const normalTabs = session.tabs.filter(t => !t.incognito);
         const incognitoTabs = session.tabs.filter(t => t.incognito);
@@ -4958,7 +4983,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     } else if (message.type === 'privacyPlayerLinkClicked') {
         const url = message.url;
         const action = message.action;
-        
+
         if (action === 'block') {
             notify('Link click blocked by settings', 'warning');
             return;
@@ -4992,7 +5017,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         isNavigating = true;
         elements.stealthPlayer.src = url;
         elements.stealthUrl.value = url;
-        
+
         // Cập nhật History Stack nội bộ
         if (url !== playerHistory[currentUrlIndex]) {
             playerHistory = playerHistory.slice(0, currentUrlIndex + 1);
@@ -5000,7 +5025,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             currentUrlIndex = playerHistory.length - 1;
             updatePlayerNavState();
         }
-        
+
         notify('Navigating inside player...', 'success');
         // Tăng thời gian delay lên 1500ms
         setTimeout(() => { isNavigating = false; }, 1500);
@@ -5019,33 +5044,33 @@ document.addEventListener('DOMContentLoaded', async () => {
             const infoText = e.target.dataset.info;
             tooltip.textContent = infoText;
             tooltip.style.display = 'block';
-            
+
             const rect = e.target.getBoundingClientRect();
             const tooltipWidth = 250; // Khớp với CSS
-            
+
             // Tính toán vị trí X (Căn giữa theo icon)
             let leftPos = rect.left + (rect.width / 2) - (tooltipWidth / 2);
-            
+
             // Chống tràn lề phải
             if (leftPos + tooltipWidth > window.innerWidth - 10) {
                 leftPos = window.innerWidth - tooltipWidth - 10;
             }
-            
+
             // Chống tràn lề trái
             if (leftPos < 10) {
                 leftPos = 10;
             }
-            
+
             tooltip.style.left = `${leftPos}px`;
-            
+
             // Tính toán vị trí Y (Ưu tiên hiện bên trên, nếu không đủ chỗ thì hiện bên dưới)
             const tooltipHeight = tooltip.offsetHeight;
             let topPos = rect.top - tooltipHeight - 10;
-            
+
             if (topPos < 10) {
                 topPos = rect.bottom + 10;
             }
-            
+
             tooltip.style.top = `${topPos}px`;
         });
 
@@ -5060,7 +5085,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initial calls to set up the UI
     updateDashboard();
     updatePlayerSize();
-    
+
     // Mặc định hiển thị Dashboard khi mở popup
     toggleSection('home');
     updatePlayerNavState();

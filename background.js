@@ -23,7 +23,7 @@ let tabUrls = {};            // tabId -> current URL (used for auto-cleanup on c
  */
 function createAllContextMenus() {
     chrome.contextMenus.removeAll(() => {
-        // 1. Create main session manager menu
+        checkLastError("sessionManager");
         chrome.contextMenus.create({
             id: "sessionManager",
             title: "📋 Session Manager",
@@ -48,14 +48,16 @@ function createAllContextMenus() {
                 type: item.type || "normal",
                 contexts: ["page", "link"]
             });
+            checkLastError(item.id);
         });
 
         // 3. Update restore session items from storage
         chrome.storage.local.get(['appSettings'], (result) => {
             const settings = result.appSettings || {};
             const sessions = settings.savedSessions || [];
-            
+
             if (sessions.length === 0) {
+                checkLastError("noSessions");
                 chrome.contextMenus.create({
                     id: "noSessions",
                     parentId: "restoreSessionParent",
@@ -72,12 +74,20 @@ function createAllContextMenus() {
                         title: `${index + 1}. ${session.name}`,
                         contexts: ["page", "link"]
                     });
+                    checkLastError(`restoreSession_${session.id}`);
                 });
             }
         });
     });
 }
-
+function checkLastError(id) {
+    if (chrome.runtime.lastError) {
+        const msg = chrome.runtime.lastError.message;
+        if (msg && !msg.includes("duplicate id")) {
+            console.error(`Context menu error for ${id}:`, msg);
+        }
+    }
+}
 chrome.runtime.onInstalled.addListener(createAllContextMenus);
 chrome.runtime.onStartup.addListener(createAllContextMenus);
 
@@ -144,7 +154,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         const settings = result.appSettings || {};
         if (!settings.savedSessions) settings.savedSessions = [];
         settings.savedSessions.unshift(sessionData);
-        
+
         await chrome.storage.local.set({ appSettings: settings });
 
         chrome.notifications.create({
@@ -153,7 +163,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
             title: 'Session Manager',
             message: `Saved session "${sessionName}" with ${tabsToSave.length} tabs.`
         });
-    } 
+    }
     // Handle session restoration commands
     else if (info.menuItemId.startsWith("restoreSession_")) {
         const sessionId = parseInt(info.menuItemId.split("_")[1]);
@@ -168,25 +178,37 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
             const incognitoTabs = session.tabs.filter(t => t.incognito);
 
             if (normalTabs.length > 0) {
-                chrome.windows.create({
-                    url: normalTabs.map(t => t.url),
-                    incognito: false
-                });
+                try {
+                    chrome.windows.create({
+                        url: normalTabs.map(t => t.url),
+                        incognito: false
+                    });
+                } catch (error) {
+                    console.error("Error creating normal window:", error);
+                }
             }
 
             if (incognitoTabs.length > 0) {
-                chrome.extension.isAllowedIncognitoAccess((isAllowed) => {
+                chrome.extension.isAllowedIncognitoAccess(async (isAllowed) => {
                     if (isAllowed) {
-                        chrome.windows.create({
-                            url: incognitoTabs.map(t => t.url),
-                            incognito: true
-                        });
+                        try {
+                            chrome.windows.create({
+                                url: incognitoTabs.map(t => t.url),
+                                incognito: true
+                            });
+                        } catch (error) {
+                            console.error("Error creating incognito window:", error);
+                        }
                     } else {
                         // Fallback to normal window if incognito access not granted
-                        chrome.windows.create({
-                            url: incognitoTabs.map(t => t.url),
-                            incognito: false
-                        });
+                        try {
+                            chrome.windows.create({
+                                url: incognitoTabs.map(t => t.url),
+                                incognito: false
+                            });
+                        } catch (error) {
+                            console.error("Error creating fallback normal window:", error);
+                        }
                     }
                 });
             }
@@ -197,7 +219,8 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 /**
  * Initialize extension state from storage
  */
-chrome.storage.local.get(['appSettings'], (result) => {
+//Replace callback with Promise-based API
+chrome.storage.local.get(['appSettings']).then((result) => {
     const settings = result.appSettings || {};
     videoDetectionEnabled = settings.videoDownloaderEnabled || false;
     hibernationEnabled = settings.hibernationEnabled || false;
@@ -246,7 +269,7 @@ function setupTelegramStreamDetection() {
                     details.initiator,
                     ''
                 );
-            } catch(e) {
+            } catch (e) {
                 // Fallback for parsing failures
                 addDetectedVideo(details.tabId, url, 'video/mp4', 'Telegram Stream', details.initiator, '');
             }
@@ -262,14 +285,14 @@ function setupTelegramStreamDetection() {
 chrome.webRequest.onBeforeRequest.addListener(
     (details) => {
         if (details.tabId === -1) return;
-        
+
         const urlString = details.url;
         const url = new URL(urlString);
         const isTracker = TRACKER_DOMAINS.some(domain => url.hostname.includes(domain));
-        
+
         if (isTracker) {
             const domain = url.hostname;
-            
+
             // Update detailed tracker list per tab
             if (!trackerList[details.tabId]) trackerList[details.tabId] = [];
             const existing = trackerList[details.tabId].find(t => t.domain === domain);
@@ -292,23 +315,23 @@ chrome.webRequest.onBeforeRequest.addListener(
                 tabId: details.tabId,
                 count: trackerCount[details.tabId],
                 list: trackerList[details.tabId]
-            }).catch(() => {});
+            }).catch(() => { });
         }
 
         // Detect videos via URL patterns
         if (videoDetectionEnabled) {
             const path = url.pathname.toLowerCase();
             const extension = path.split('.').pop();
-            
+
             // Match manifest files or direct video links
-            if (VIDEO_EXTENSIONS.includes(extension) || 
-                urlString.includes('.m3u8') || 
-                urlString.includes('.mpd') || 
+            if (VIDEO_EXTENSIONS.includes(extension) ||
+                urlString.includes('.m3u8') ||
+                urlString.includes('.mpd') ||
                 urlString.includes('googlevideo.com') ||
                 urlString.includes('/videoplayback') ||
                 urlString.includes('manifest') ||
                 urlString.includes('.ts')) {
-                
+
                 // Filter out small segments for HLS streams
                 if (extension === 'ts' && urlString.includes('seg-')) {
                     if (!urlString.includes('seg-1.')) return;
@@ -330,7 +353,7 @@ chrome.webNavigation.onCreatedNavigationTarget.addListener((details) => {
     if (details.sourceTabId === -1) {
         chrome.storage.local.get(['appSettings'], (result) => {
             const settings = result.appSettings || {};
-            
+
             // Redirect to incognito if configured
             if (settings.playerLinkBehavior === 'incognito') {
                 chrome.extension.isAllowedIncognitoAccess((isAllowed) => {
@@ -359,16 +382,16 @@ chrome.webRequest.onHeadersReceived.addListener(
 
         const contentTypeHeader = details.responseHeaders.find(h => h.name.toLowerCase() === 'content-type');
         const contentLengthHeader = details.responseHeaders.find(h => h.name.toLowerCase() === 'content-length');
-        
+
         if (contentTypeHeader) {
             const contentType = contentTypeHeader.value.toLowerCase();
             // Check for video MIME types or common stream formats
-            if (contentType.startsWith('video/') || 
-                contentType === 'application/x-mpegurl' || 
+            if (contentType.startsWith('video/') ||
+                contentType === 'application/x-mpegurl' ||
                 contentType === 'application/vnd.apple.mpegurl' ||
                 contentType === 'application/dash+xml' ||
                 (contentType === 'application/octet-stream' && isVideoUrl(details.url))) {
-                
+
                 let size = 'Unknown size';
                 if (contentLengthHeader) {
                     const bytes = parseInt(contentLengthHeader.value);
@@ -376,11 +399,11 @@ chrome.webRequest.onHeadersReceived.addListener(
                     else if (bytes > 1024) size = (bytes / 1024).toFixed(1) + ' KB';
                     else size = bytes + ' bytes';
                 }
-                
+
                 let type = contentType.split('/')[1] || 'video';
                 if (type.includes(';')) type = type.split(';')[0];
                 if (type === 'x-mpegurl' || type === 'vnd.apple.mpegurl') type = 'm3u8';
-                
+
                 addDetectedVideo(details.tabId, details.url, type, size, details.initiator, '');
             }
         }
@@ -408,7 +431,7 @@ function addDetectedVideo(tabId, url, type, size = 'Unknown size', initiator = '
 
     // Prevent detecting requests initiated by the extension itself
     if (initiator && initiator.includes(chrome.runtime.id)) return;
-    
+
     // Ignore invalid URLs
     if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('blob:')) {
         return;
@@ -445,13 +468,13 @@ function addDetectedVideo(tabId, url, type, size = 'Unknown size', initiator = '
                 try {
                     const meta = JSON.parse(decodeURIComponent(urlObj.pathname.split('/stream/')[1] || '{}'));
                     filename = title || meta.fileName || `telegram_stream_${Date.now()}.mp4`;
-                } catch(e) {
+                } catch (e) {
                     filename = title || `telegram_stream_${Date.now()}.mp4`;
                 }
             } else {
                 filename = title || urlObj.pathname.split('/').pop() || 'video_file';
             }
-        } catch(e) {
+        } catch (e) {
             filename = title || `video_${Date.now()}`;
         }
     }
@@ -478,7 +501,7 @@ function addDetectedVideo(tabId, url, type, size = 'Unknown size', initiator = '
     // Update UI badge
     chrome.action.setBadgeText({ text: detectedVideos[tabId].length.toString(), tabId });
     chrome.action.setBadgeBackgroundColor({ color: '#e53e3e' });
-    chrome.runtime.sendMessage({ type: 'newVideoDetected', tabId, video: videoData }).catch(() => {});
+    chrome.runtime.sendMessage({ type: 'newVideoDetected', tabId, video: videoData }).catch(() => { });
 }
 
 /**
@@ -493,7 +516,7 @@ function handleIframeNavigation(details) {
         frameId: details.frameId,
         processId: details.processId,
         timestamp: Date.now()
-    }).catch(() => {});
+    }).catch(() => { });
 }
 
 /**
@@ -539,7 +562,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && tab.url) {
         const isTelegram = ['web.telegram.org', 'webk.telegram.org', 'webz.telegram.org']
             .some(h => tab.url.includes(h));
-            
+
         if (isTelegram) {
             chrome.storage.local.get(['appSettings'], (result) => {
                 const settings = result.appSettings || {};
@@ -564,14 +587,22 @@ chrome.tabs.onRemoved.addListener((tabId) => {
         const settings = result.appSettings || {};
         const mapping = result.tabUrlMapping || {};
         const playerTabId = result.privacyPlayerTabId;
-        
+
         // Handle Privacy Player closure
-        if (tabId === playerTabId) {
-            chrome.storage.local.remove('privacyPlayerTabId');
-            if (settings.autoClearStealth) {
-                chrome.storage.local.remove('lastPlayerUrl');
-                console.log('Privacy Player: Auto-clear Stealth History (lastPlayerUrl removed)');
-            }
+        // if (tabId === playerTabId) {
+        //     chrome.storage.local.remove('privacyPlayerTabId');
+        //     if (settings.autoClearStealth) {
+        //         chrome.storage.local.remove('lastPlayerUrl');
+        //         console.log('Privacy Player: Auto-clear Stealth History (lastPlayerUrl removed)');
+        //     }
+        // }
+        if (tabId === playerTabId || true) {
+            chrome.storage.local.get(['appSettings'], (result) => {
+                if (settings.autoClearStealth) {
+                    chrome.storage.local.remove('lastPlayerUrl');
+                    console.log('Privacy Player: Auto-clear Stealth History (lastPlayerUrl removed)');
+                }
+            });
         }
 
         // Auto-Cleanup Cookies on tab close
@@ -581,9 +612,9 @@ chrome.tabs.onRemoved.addListener((tabId) => {
                 const url = new URL(urlToClean);
                 const domain = url.hostname;
                 const whitelist = settings.whitelist || [];
-                
+
                 const isWhitelisted = whitelist.some(d => domain.includes(d));
-                
+
                 if (!isWhitelisted) {
                     const cookies = await chrome.cookies.getAll({ domain: domain });
                     await Promise.all(
@@ -651,7 +682,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const tabId = request.tabId || (sender.tab ? sender.tab.id : null);
 
     if (request.type === 'getTrackerCount' && tabId) {
-        sendResponse({ 
+        sendResponse({
             count: trackerCount[tabId] || 0,
             list: trackerList[tabId] || []
         });
@@ -669,7 +700,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 tabId: sender.tab.id,
                 frameId: sender.frameId,
                 fromContentScript: true
-            }).catch(() => {});
+            }).catch(() => { });
         }
         addDetectedVideo(sender.tab.id, request.video.url, request.video.type, request.video.size || 'Detected', '', request.video.filename, request.video.thumbnail, sender.frameId);
     } else if (request.type === 'pageNavigatedInFrame') {
@@ -678,36 +709,39 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             url: request.url,
             title: request.title,
             fromContentScript: true
-        }).catch(() => {});
+        }).catch(() => { });
     } else if (request.type === 'updateHibernation') {
         hibernationEnabled = request.enabled;
         hibernationTimeout = request.timeout;
     } else if (request.type === 'iframeNavigated') {
         const url = request.url;
-        chrome.storage.local.set({ lastPlayerUrl: url });
+        chrome.storage.local.get(['tabUrlMapping', 'stealthHistory'], (result) => {
+            const mapping = result.tabUrlMapping || {};
+            const history = result.stealthHistory || [];
+            if (sender.tab) {
+                mapping[sender.tab.id] = url;
+            } else {
+                chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                    const activeTab = tabs[0];
+                    if (activeTab) mapping[activeTab.id] = url;
+                });
+            }
+            let newHistory = [...history];
+            if (newHistory[newHistory.length - 1] !== url) {
+                newHistory.push(url);
+                if (newHistory.length > 50) {
+                    newHistory = newHistory.slice(-50);
+                }
+            }
 
-        if (sender.tab) {
-            chrome.storage.local.get(['privacyPlayerTabId', 'tabUrlMapping'], (result) => {
-                if (result.privacyPlayerTabId === sender.tab.id) {
-                    const mapping = result.tabUrlMapping || {};
-                    mapping[sender.tab.id] = url;
-                    chrome.storage.local.set({ tabUrlMapping: mapping });
-                }
+            chrome.storage.local.set({
+                tabUrlMapping: mapping,
+                stealthHistory: newHistory,
+                lastPlayerUrl: url
             });
-        } else {
-            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                const activeTab = tabs[0];
-                if (activeTab) {
-                    chrome.storage.local.get(['tabUrlMapping'], (mappingResult) => {
-                        const mapping = mappingResult.tabUrlMapping || {};
-                        mapping[activeTab.id] = url;
-                        chrome.storage.local.set({ tabUrlMapping: mapping });
-                    });
-                }
-            });
-        }
+        })
     } else if (request.type === 'tg_stats_update') {
-        chrome.runtime.sendMessage(request).catch(() => {});
+        chrome.runtime.sendMessage(request).catch(() => { });
     } else if (request.type === 'createNotification') {
         chrome.notifications.create(request.options);
     } else if (request.type === 'updateSecurityRules') {
@@ -725,7 +759,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                         chrome.scripting.executeScript({
                             target: { tabId: tab.id },
                             files: ['telegram_content.js']
-                        }).catch(() => {});
+                        }).catch(() => { });
                     }
                 }
             });
@@ -800,7 +834,7 @@ async function executePanic() {
     chrome.storage.local.get(['appSettings'], (result) => {
         const settings = result.appSettings || {};
         const action = settings.panicAction || 'closeIncognito';
-        
+
         let safeUrl = 'https://www.google.com';
         if (settings.safeUrls && settings.safeUrls.length > 0) {
             const randomIndex = Math.floor(Math.random() * settings.safeUrls.length);
@@ -976,7 +1010,7 @@ chrome.webNavigation.onBeforeNavigate.addListener((details) => {
                 if (tab.openerTabId === playerTabId) {
                     chrome.tabs.remove(details.tabId);
                     if (settings.linkClickBehavior === 'player') {
-                        chrome.tabs.sendMessage(parseInt(playerTabId), { type: 'loadUrlInPlayer', url: details.url }).catch(() => {});
+                        chrome.tabs.sendMessage(parseInt(playerTabId), { type: 'loadUrlInPlayer', url: details.url }).catch(() => { });
                     }
                 }
             });
@@ -994,7 +1028,7 @@ chrome.tabs.onCreated.addListener((tab) => {
             const targetUrl = tab.pendingUrl || tab.url;
             if (targetUrl && !targetUrl.startsWith('chrome://')) {
                 if (settings.linkClickBehavior === 'player' && playerTabId) {
-                    chrome.tabs.sendMessage(parseInt(playerTabId), { type: 'loadUrlInPlayer', url: targetUrl }).catch(() => {});
+                    chrome.tabs.sendMessage(parseInt(playerTabId), { type: 'loadUrlInPlayer', url: targetUrl }).catch(() => { });
                 }
             }
         }
@@ -1006,7 +1040,7 @@ async function updateSecurityRules() {
     const result = await chrome.storage.local.get(['appSettings']);
     const settings = result.appSettings || {};
     const userWhitelist = settings.whitelist || [];
-    
+
     // Các domain mặc định cần loại trừ để đảm bảo tính năng bảo mật/captcha hoạt động
     const baseExclusions = [
         'challenges.cloudflare.com',
@@ -1016,10 +1050,10 @@ async function updateSecurityRules() {
         'hcaptcha.com',
         'recaptcha.net'
     ];
-    
+
     // Kết hợp với whitelist của người dùng để cho phép họ tự khắc phục các trang bị lỗi
     const allExclusions = Array.from(new Set([...baseExclusions, ...userWhitelist]));
-    
+
     const rulesToAdd = [];
     const ruleIdsToRemove = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011];
 
