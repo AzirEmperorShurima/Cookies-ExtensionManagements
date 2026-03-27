@@ -1785,16 +1785,13 @@ chrome.runtime.onMessage.addListener((request) => {
         notify('Phát hiện video mới có thể tải về!', 'info');
     } else if (request.type === 'iframeNavigated') {
         const targetUrl = request.url;
-
-        // Chỉ cập nhật nếu đang ở mục Privacy Player và không phải URL rỗng/hệ thống
+        if (!targetUrl || targetUrl === 'about:blank' || targetUrl.startsWith('chrome')) return;
         if (targetUrl && targetUrl !== 'about:blank' && !targetUrl.startsWith('chrome-extension://')) {
             const currentStoredUrl = playerHistory[currentUrlIndex] || '';
 
-            // Hàm chuẩn hóa URL để so sánh
             const normalize = (u) => {
                 try {
                     const url = new URL(u);
-                    // Bỏ qua các tham số tracking phổ biến hoặc các URL rác/ping
                     const path = url.pathname.toLowerCase();
                     const ignoredPaths = [
                         '/analytics', '/pixel', '/collect', '/telemetry', '/beacon', '/event', '/track', '/tr/',
@@ -1803,13 +1800,10 @@ chrome.runtime.onMessage.addListener((request) => {
                     if (ignoredPaths.some(p => path.includes(p))) {
                         return null;
                     }
-
-                    // Nếu là DuckDuckGo /post (chứa tracking), bỏ qua
                     if (url.hostname.includes('duckduckgo.com') && path.includes('/post')) {
                         return null;
                     }
 
-                    // Bỏ qua các định dạng file không phải trang web (ảnh, css, v.v.)
                     const ext = path.split('.').pop();
                     const ignoredExts = [
                         'png', 'jpg', 'jpeg', 'gif', 'svg', 'css', 'js', 'ico', 'woff', 'woff2',
@@ -1819,7 +1813,6 @@ chrome.runtime.onMessage.addListener((request) => {
                         return null;
                     }
 
-                    // Bỏ qua các URL là embed video (thường là rác cho thanh địa chỉ chính)
                     const isEmbedUrl = (
                         (url.hostname.includes('youtube.com') && path.includes('/embed/')) ||
                         (url.hostname.includes('vimeo.com') && path.includes('/video/')) ||
@@ -1832,8 +1825,6 @@ chrome.runtime.onMessage.addListener((request) => {
                         return null;
                     }
 
-                    // YouTube: Lấy video ID (v=...) hoặc channel ID
-                    // DuckDuckGo: Lấy query (q=...)
                     return url.origin + url.pathname + url.search;
                 } catch (e) { return u; }
             };
@@ -1841,30 +1832,21 @@ chrome.runtime.onMessage.addListener((request) => {
             const normTarget = normalize(targetUrl);
             const normCurrent = normalize(currentStoredUrl);
 
-            // Nếu URL là link rác (normalize trả về null), bỏ qua
             if (normTarget === null) return;
 
-            // Cập nhật thanh địa chỉ và lịch sử
             if (normTarget !== normCurrent) {
-                // Nếu không phải đang trong quá trình nhấn Back/Forward và không phải load lại chính nó
                 if (!isNavigating) {
-                    // Cập nhật thanh địa chỉ để người dùng thấy
                     elements.stealthUrl.value = targetUrl;
 
-                    // Tránh push duplicate liên tục nếu trang có nhiều redirect nhỏ
                     if (playerHistory.length > 0 && normalize(playerHistory[currentUrlIndex]) === normTarget) {
                         return;
                     }
 
-                    // Thêm vào lịch sử và xóa phần forward cũ
                     playerHistory = playerHistory.slice(0, currentUrlIndex + 1);
                     playerHistory.push(targetUrl);
-
-                    // Giới hạn lịch sử tối đa 50 bước
                     if (playerHistory.length > 50) {
                         playerHistory.shift();
                     }
-
                     currentUrlIndex = playerHistory.length - 1;
                     updatePlayerNavState();
                     chrome.storage.local.set({ lastPlayerUrl: targetUrl });
@@ -1893,8 +1875,6 @@ elements.scanTelegramMediaBtn.addEventListener('click', async () => {
 
         notify('Đang quét media...', 'info');
 
-        // Luôn inject lại để tránh "Extension context invalidated"
-        // (xảy ra khi extension reload/update trong khi tab vẫn mở)
         try {
             await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
@@ -1904,8 +1884,6 @@ elements.scanTelegramMediaBtn.addEventListener('click', async () => {
             notify('Lỗi inject script: ' + e.message, 'error');
             return;
         }
-
-        // Thêm delay nhỏ để script đăng ký listener xong
         await new Promise(r => setTimeout(r, 100));
 
         let response;
@@ -4448,7 +4426,6 @@ elements.mainPanicBtn.addEventListener('click', () => {
                         }
                     });
 
-                    // Luôn mở Safe Redirect URL trên tab bình thường sau khi xử lý ẩn danh
                     chrome.tabs.create({ url: safeUrl });
                     notify(`Đã đóng ${closedCount} cửa sổ ẩn danh và mở trang an toàn!`, 'warning');
                 });
@@ -5003,12 +4980,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             return;
         }
 
-        // Default / action === 'inside'
         isNavigating = true;
         elements.stealthPlayer.src = url;
         elements.stealthUrl.value = url;
 
-        // Cập nhật History Stack nội bộ
         if (url !== playerHistory[currentUrlIndex]) {
             playerHistory = playerHistory.slice(0, currentUrlIndex + 1);
             playerHistory.push(url);
@@ -5017,7 +4992,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
 
         notify('Navigating inside player...', 'success');
-        // Tăng thời gian delay lên 1500ms
         setTimeout(() => { isNavigating = false; }, 1500);
     }
 });

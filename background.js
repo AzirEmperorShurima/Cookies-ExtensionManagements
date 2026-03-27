@@ -719,6 +719,25 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         hibernationTimeout = request.timeout;
     } else if (request.type === 'iframeNavigated') {
         const url = request.url;
+
+        const isJunkUrl = (u) => {
+            if (!u) return true;
+            if (u === 'about:blank' || u === 'about:newtab') return true;
+            if (u.startsWith('chrome:') || u.startsWith('chrome-extension:')) return true;
+            if (u.startsWith('data:') || u.startsWith('blob:')) return true;
+            try {
+                const parsed = new URL(u);
+                const path = parsed.pathname.toLowerCase();
+                if (parsed.hostname === 'www.youtube.com' && path.includes('/live_chat')) return true;
+                if (parsed.hostname === 'www.youtube.com' && path.includes('/heartbeat')) return true;
+                const junkPaths = ['/analytics', '/pixel', '/collect', '/beacon', '/track', '/ping'];
+                if (junkPaths.some(p => path.includes(p))) return true;
+            } catch (e) { return true; }
+            return false;
+        };
+
+        if (isJunkUrl(url)) return;
+
         chrome.storage.local.get(['tabUrlMapping', 'stealthHistory'], (result) => {
             const mapping = result.tabUrlMapping || {};
             const history = result.stealthHistory || [];
@@ -726,23 +745,36 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 mapping[sender.tab.id] = url;
             } else {
                 chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                    const activeTab = tabs[0];
-                    if (activeTab) mapping[activeTab.id] = url;
+                    if (tabs[0]) mapping[tabs[0].id] = url;
                 });
             }
+            const fromPopup = !sender.tab;
             let newHistory = [...history];
-            if (newHistory[newHistory.length - 1] !== url) {
-                newHistory.push(url);
-                if (newHistory.length > 50) {
-                    newHistory = newHistory.slice(-50);
+            if (fromPopup) {
+                if (newHistory[newHistory.length - 1] !== url) {
+                    newHistory.push(url);
+                    if (newHistory.length > 50) newHistory = newHistory.slice(-50);
                 }
+                chrome.storage.local.set({
+                    tabUrlMapping: mapping,
+                    stealthHistory: newHistory,
+                    lastPlayerUrl: url
+                });
+            } else {
+                chrome.storage.local.set({ tabUrlMapping: mapping });
             }
+            // if (newHistory[newHistory.length - 1] !== url) {
+            //     newHistory.push(url);
+            //     if (newHistory.length > 50) {
+            //         newHistory = newHistory.slice(-50);
+            //     }
+            // }
 
-            chrome.storage.local.set({
-                tabUrlMapping: mapping,
-                stealthHistory: newHistory,
-                lastPlayerUrl: url
-            });
+            // chrome.storage.local.set({
+            //     tabUrlMapping: mapping,
+            //     stealthHistory: newHistory,
+            //     lastPlayerUrl: url
+            // });
         })
     } else if (request.type === 'tg_stats_update') {
         chrome.runtime.sendMessage(request).catch(() => { });

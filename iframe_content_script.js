@@ -374,7 +374,9 @@
 
             for (const selector of sitePlayers) {
                 const el = document.querySelector(selector);
-                if (el && el.offsetHeight > 100) return el;
+                if (!el) continue;
+                const rect = el.getBoundingClientRect();
+                if (rect.width > 100 && rect.height > 50) return el;
             }
 
             // 2. Find the largest visible video element or iframe with video-like properties
@@ -519,7 +521,7 @@
             .privacy-player-target-parent {
                 display: block !important;
                 visibility: visible !important;
-                position: static !important;
+                position: relative !important;
                 width: 100% !important;
                 height: 100% !important;
                 margin: 0 !important;
@@ -567,6 +569,44 @@
             [style*="padding-top"], [style*="padding-bottom"] {
                 padding-top: 0 !important;
                 padding-bottom: 0 !important;
+            }
+            /* JW Player Specific Overrides */
+            .privacy-player-target.jwplayer,
+            .privacy-player-target[id*="jwplayer"] {
+                position: fixed !important;
+                height: 100vh !important;
+            }
+            .privacy-player-target .jw-aspect,
+            .privacy-player-target[id*="jwplayer"] .jw-aspect {
+                padding-top: 0 !important;
+                height: 100vh !important;
+                position: static !important;
+            }
+            .privacy-player-target .jw-wrapper,
+            .privacy-player-target[id*="jwplayer"] .jw-wrapper {
+                position: absolute !important;
+                top: 0 !important; left: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+            }
+            .privacy-player-target .jw-media,
+            .privacy-player-target[id*="jwplayer"] .jw-media {
+                position: absolute !important;
+                width: 100% !important;
+                height: 100% !important;
+            }
+            .privacy-player-target .jw-video,
+            .privacy-player-target[id*="jwplayer"] video {
+                position: absolute !important;
+                width: 100% !important;
+                height: 100% !important;
+                object-fit: contain !important;
+            }
+            /* Ẩn controls bar và overlay của JW Player trong theater mode */
+            .privacy-player-target .jw-controls,
+            .privacy-player-target .jw-overlays,
+            .privacy-player-target .jw-logo {
+                z-index: 2147483646 !important;
             }
         `;
         }
