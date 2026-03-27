@@ -360,11 +360,10 @@ function isValidUrl(string) {
 }
 
 function applySettings() {
-    // Apply Dark Mode
     document.body.classList.toggle('dark-mode', settings.darkMode);
     elements.darkModeToggle.checked = settings.darkMode;
 
-    // Set other toggles
+
     elements.autoClearToggle.checked = settings.autoClearStealth;
     elements.showNotifyToggle.checked = settings.showNotifications;
     elements.cookieDestroyerToggle.checked = settings.cookieDestroyer;
@@ -377,7 +376,6 @@ function applySettings() {
     elements.alwaysRequirePasswordToggle.checked = settings.alwaysRequirePassword ?? true;
     elements.showPasswordToggle.checked = settings.showPasswordInSettings ?? true;
 
-    // Cập nhật trạng thái hiển thị của các nút ẩn/hiện password
     togglePasswordEyes();
 
     elements.telegramDownloaderToggle.checked = settings.telegramDownloaderEnabled || false;
@@ -483,13 +481,13 @@ function loadPlayerContent() {
             chrome.storage.local.remove(['stealthHistory', 'lastPlayerUrl']);
             playerHistory = [];
             currentUrlIndex = -1;
-            stealthPlayer.src = '';
+            stealthPlayer.src = `about:blank`;
             stealthUrl.value = '';
             updatePlayerNavState();
         }
     }
 
-    if (url && isValidUrl(url)) {
+    else if (url && isValidUrl(url)) {
         stealthPlayer.src = url;
         notify('Privacy Player: Loading URL...', 'success');
     } else if (url) {
@@ -497,8 +495,6 @@ function loadPlayerContent() {
         const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(url)}&igu=1`;
         stealthPlayer.src = searchUrl;
         notify('Privacy Player: Searching...', 'success');
-    } else {
-        stealthPlayer.src = '';
     }
 }
 
@@ -539,7 +535,6 @@ function updateUILanguage() {
         }
     });
 
-    // Cập nhật tooltip (data-info) cho các biểu tượng thông tin
     document.querySelectorAll('.info-icon[data-info]').forEach(el => {
         const infoKey = el.getAttribute('data-i18n-info');
         if (infoKey && dict[infoKey]) {
@@ -547,7 +542,6 @@ function updateUILanguage() {
         }
     });
 
-    // Cập nhật title cho các phần tử có data-i18n-title
     document.querySelectorAll('[data-i18n-title]').forEach(el => {
         const key = el.getAttribute('data-i18n-title');
         if (dict[key]) {
@@ -555,7 +549,6 @@ function updateUILanguage() {
         }
     });
 
-    // Container Icon Picker Logic
     document.querySelectorAll('.picker-icon').forEach(icon => {
         icon.addEventListener('click', () => {
             document.querySelectorAll('.picker-icon').forEach(i => i.classList.remove('selected'));
@@ -563,18 +556,15 @@ function updateUILanguage() {
         });
     });
 
-    // Cập nhật nhãn Language riêng biệt
     const languageLabel = document.getElementById('languageLabel');
     if (languageLabel) {
         languageLabel.textContent = dict.languageLabel;
     }
 
-    // Cập nhật các nội dung động khác
     if (typeof updatePanicDescription === 'function') {
         updatePanicDescription(settings.panicAction || 'closeIncognito');
     }
 
-    // Update Privacy Grade
     calculatePrivacyGrade();
 
     // Cập nhật các thông báo trống (empty messages)

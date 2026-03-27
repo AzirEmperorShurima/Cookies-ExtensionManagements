@@ -206,8 +206,8 @@
                     event.ctrlKey || event.metaKey ||
                     event.shiftKey || event.button === 1;
 
-                const behavior = settings.playerLinkBehavior;   // inside / newTab / incognito / block
-                const filter = settings.playerLinkFilter;     // all / newTabOnly
+                let behavior = settings.playerLinkBehavior;   // inside / newTab / incognito / block
+                let filter = settings.playerLinkFilter;     // all / newTabOnly
                 // ==================== CỐC CỐC SEARCH OVERRIDE ====================
                 const hostname = window.location.hostname;
                 const isCoccocSearch = hostname.includes('coccoc.com') || hostname.includes('coccoc.vn');
@@ -287,11 +287,9 @@
         });
 
         function togglePip() {
-            // Tìm video phù hợp nhất (lớn nhất và đang phát)
             const videos = Array.from(document.querySelectorAll('video'));
             if (videos.length === 0) {
                 console.log('Privacy Player: No video element found for PiP.');
-                // Thử tìm trong các iframe con (nếu cùng origin)
                 const iframes = document.querySelectorAll('iframe');
                 iframes.forEach(iframe => {
                     try {
@@ -300,13 +298,11 @@
                             requestPip(innerVideo);
                         }
                     } catch (e) {
-                        // Cross-origin iframe, không can thiệp được trực tiếp
                     }
                 });
                 return;
             }
 
-            // Ưu tiên video đang phát
             const playingVideo = videos.find(v => !v.paused && !v.ended);
             const targetVideo = playingVideo || videos[0];
 
@@ -318,11 +314,9 @@
                 document.exitPictureInPicture();
             } else {
                 if (document.pictureInPictureEnabled) {
-                    // Đảm bảo video đã sẵn sàng
                     if (video.readyState >= 2) { // HAVE_CURRENT_DATA
                         video.requestPictureInPicture().catch(error => {
                             console.error('Privacy Player: PiP failed', error);
-                            // Thử lại sau khi video metadata đã load (nếu chưa)
                             if (error.name === 'InvalidStateError') {
                                 video.addEventListener('loadedmetadata', () => {
                                     video.requestPictureInPicture();
