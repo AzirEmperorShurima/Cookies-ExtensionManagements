@@ -169,12 +169,26 @@
         reportNavigation();
     };
 
+    // Kiểm tra và giải phóng tài nguyên khi extension bị reload
+    function checkContextValidity() {
+        if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.id) {
+            window.removeEventListener('popstate', reportNavigation);
+            window.removeEventListener('hashchange', reportNavigation);
+            if (observer) {
+                observer.disconnect();
+                observer = null;
+            }
+            return false;
+        }
+        return true;
+    }
+
     /**
      * Báo cáo URL hiện tại của frame
      */
     function reportNavigation() {
-        // Kiểm tra chrome.runtime và chrome.runtime.id để tránh lỗi context invalidated
-        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id && window.parent === window.top) {
+        if (!checkContextValidity()) return;
+        if (window.parent === window.top) {
             chrome.runtime.sendMessage({
                 type: 'pageNavigatedInFrame',
                 url: window.location.href,
@@ -185,7 +199,13 @@
 
     // Lắng nghe thay đổi cài đặt
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
-        chrome.storage.onChanged.addListener((changes, area) => {
+        chrome.storage.onChanged.addListener(function storageListener(changes, area) {
+            if (!checkContextValidity()) {
+                try {
+                    chrome.storage.onChanged.removeListener(storageListener);
+                } catch (e) {}
+                return;
+            }
             if (area === 'local' && changes.appSettings) {
                 const newSettings = changes.appSettings.newValue || {};
                 videoDetectionEnabled = newSettings.videoDownloaderEnabled || false;
@@ -286,10 +306,7 @@
         if (!url || url.startsWith('data:')) return;
 
         // Kiểm tra Extension Context trước khi gửi tin nhắn
-        if (!chrome.runtime?.id) {
-            console.warn('[VideoDetector] Extension context invalidated. Skipping report.');
-            return;
-        }
+        if (!checkContextValidity()) return;
 
         chrome.runtime.sendMessage({
             type: 'newVideoDetectedFromContent',

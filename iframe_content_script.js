@@ -38,6 +38,13 @@
             playerLinkFilter: 'all' // Default
         };
 
+        function checkContextValidity() {
+            if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.id) {
+                return false;
+            }
+            return true;
+        }
+
         // Fetch extension settings from storage
         chrome.storage.local.get(['appSettings'], (result) => {
             if (result.appSettings) {
@@ -47,13 +54,18 @@
         });
 
         // Listen for setting changes
-        chrome.storage.onChanged.addListener((changes, areaName) => {
+        function storageListener(changes, areaName) {
+            if (!checkContextValidity()) {
+                try { chrome.storage.onChanged.removeListener(storageListener); } catch (e) {}
+                return;
+            }
             if (areaName === 'local' && changes.appSettings) {
                 const newSettings = changes.appSettings.newValue;
                 settings.playerLinkBehavior = newSettings.playerLinkBehavior || 'inside';
                 settings.playerLinkFilter = newSettings.playerLinkFilter || 'all';
             }
-        });
+        }
+        chrome.storage.onChanged.addListener(storageListener);
 
         // document.addEventListener('click', (event) => {
         //     let target = event.target;
@@ -266,7 +278,11 @@
         let originalStyles = new Map();
 
         // Listen for messages from the extension popup or background
-        chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        function messageListener(message, sender, sendResponse) {
+            if (!checkContextValidity()) {
+                try { chrome.runtime.onMessage.removeListener(messageListener); } catch (e) {}
+                return;
+            }
             if (message.type === 'toggleTheaterMode') {
                 toggleTheaterMode();
                 sendResponse({ success: true, isTheaterMode });
@@ -274,8 +290,8 @@
                 togglePip();
                 sendResponse({ success: true });
             }
-            return true; // Keep message channel open for async response
-        });
+        }
+        chrome.runtime.onMessage.addListener(messageListener);
 
         // Also listen for postMessage (for direct communication from popup iframe)
         window.addEventListener('message', (event) => {

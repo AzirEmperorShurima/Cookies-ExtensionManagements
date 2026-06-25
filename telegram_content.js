@@ -44,18 +44,29 @@
   // Thực thi tiêm
   injectMainScript();
 
+  function checkContextValidity() {
+    if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.id) {
+      return false;
+    }
+    return true;
+  }
+
   // BRIDGE: Xử lý tin nhắn từ Extension Popup gửi tới Content Script
-  chrome.runtime.onMessage.addListener((msg, sender, reply) => {
+  function messageListener(msg, sender, reply) {
+    if (!checkContextValidity()) {
+      try { chrome.runtime.onMessage.removeListener(messageListener); } catch (e) {}
+      return;
+    }
     if (msg.type === 'tg_download_stream') {
       // Gửi tiếp tin nhắn vào Main World để script tel_download.js xử lý
       window.postMessage({ type: 'TG_START_DOWNLOAD_MAIN', url: msg.url }, '*');
       reply({ started: true });
-      return true;
+      return;
     }
     if (msg.type === 'tg_play_and_download') {
       window.postMessage({ type: 'TG_START_DOWNLOAD_MAIN', type: 'video_mid', dataMid: msg.dataMid, filename: msg.filename }, '*');
       reply({ started: true });
-      return true;
+      return;
     }
     if (msg.type === 'tg_scan') {
       const items = [];
@@ -117,9 +128,11 @@
       });
 
       reply({ items });
-      return true;
+      return;
     }
-  });
+  }
+
+  chrome.runtime.onMessage.addListener(messageListener);
 
   console.log('[TG Downloader] Content Script v11 (Injected Mode) ✓');
 })();

@@ -666,15 +666,30 @@
             <p class="Number-Cookies cookies-count" id="totalCookies"></p>
         </div>
 
-        <div class="cookies-search">
-            <div class="search-wrapper">
+        <div class="cookies-search" style="display: flex; gap: 8px; align-items: center; width: 100%; margin-bottom: var(--spacing-lg);">
+            <div class="search-wrapper" style="flex: 1; margin-bottom: 0; position: relative;">
                 <input type="text" id="filterInput" class="filter-input"
                     placeholder="Search cookies by name or domain..." data-i18n-placeholder="searchCookiesPlaceholder">
                 <img src="icons/bin.png" alt="clear" id="clearInputFillter" class="clear-filter-icon">
             </div>
+            <button id="getCurrentDomainCookies" class="action-btn primary-btn" style="white-space: nowrap; padding: 10px 14px; height: 100%; border-radius: var(--radius-md); font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                <span>🌐</span> <span data-i18n="currentTabCookies">Current Tab</span>
+            </button>
+        </div>
+
+        <!-- Current Tab Cookies Container (displayed dynamically above the main table with a green border) -->
+        <div id="currentTabCookiesContainer" class="cookies-container" style="display: none; border: 2px solid var(--success-color, #10b981); border-radius: var(--radius-lg); padding: 15px; margin-bottom: 20px; background: rgba(16, 185, 129, 0.03); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.08); position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(16, 185, 129, 0.15); padding-bottom: 8px;">
+                <h3 style="margin: 0; font-size: 1rem; color: var(--success-color, #10b981); display: flex; align-items: center; gap: 6px;">
+                    <span>🟢</span> <span data-i18n="currentTabCookiesTitle">Current Tab Cookies:</span> <span id="currentTabDomainName" style="font-weight: normal; font-size: 0.9rem; opacity: 0.85; word-break: break-all;"></span>
+                </h3>
+                <button id="closeCurrentTabCookiesBtn" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--success-color, #10b981); padding: 4px; display: flex; align-items: center; justify-content: center; font-weight: bold;">✕</button>
+            </div>
+            <div id="currentTabCookieTable" class="cookies-table-sub" style="max-height: 250px; overflow-y: auto;"></div>
         </div>
 
         <div id="cookieTableContainer" class="cookies-container"></div>
+        <button id="backToTopCookiesBtn" class="back-to-top-btn hidden">↑</button>
     </div>
 
     <div id="historySection" class="history-section">
@@ -792,25 +807,43 @@
         <div class="stealth-header">
             <h2 id="stealthTitle" data-i18n="privacyPlayer">Privacy Player</h2>
             <div class="stealth-controls">
-                <button id="goBackPlayer" class="nav-btn" title="Go Back">⬅️</button>
-                <button id="goForwardPlayer" class="nav-btn" title="Go Forward">➡️</button>
-                <button id="reloadPlayer" class="nav-btn" title="Reload">🔄</button>
-                <button id="togglePip" class="pip-btn hidden" title="Picture-in-Picture" data-i18n-title="pipMode">🖼️</button>
-                <button id="toggleTheaterMode" class="theater-btn" title="Theater Mode" data-i18n-title="theaterMode">🎬</button>
-                <button id="shrinkPlayer" class="resize-btn" title="Shrink Player">➖</button>
-                <button id="enlargePlayer" class="resize-btn" title="Enlarge Player">➕</button>
-                <button id="resetPlayer" class="reset-btn" title="Reset Player">✖️</button>
+                <div class="player-nav-group">
+                    <button id="goBackPlayer" class="nav-btn" title="Quay lại" disabled>⬅️</button>
+                    <button id="goForwardPlayer" class="nav-btn" title="Tiến tới" disabled>➡️</button>
+                    <button id="reloadPlayer" class="nav-btn" title="Tải lại">🔄</button>
+                </div>
+                <div class="player-action-group">
+                    <button id="addCurrentToFavorite" class="nav-btn fav-add-btn" title="Thêm trang hiện tại vào Yêu thích">⭐</button>
+                    <button id="clearPlayerHistory" class="nav-btn" title="Xóa lịch sử Player">🗑️</button>
+                    <button id="togglePip" class="pip-btn hidden" title="Picture-in-Picture" data-i18n-title="pipMode">🖼️</button>
+                    <button id="toggleTheaterMode" class="theater-btn" title="Theater Mode" data-i18n-title="theaterMode">🎬</button>
+                    <button id="fullscreenPlayer" class="nav-btn fullscreen-btn" title="Toàn màn hình">⛶</button>
+                </div>
+                <div class="player-size-group">
+                    <button id="shrinkPlayer" class="resize-btn" title="Thu nhỏ">➖</button>
+                    <button id="enlargePlayer" class="resize-btn" title="Phóng to">➕</button>
+                    <button id="resetPlayer" class="reset-btn" title="Reset Player">✖️</button>
+                </div>
             </div>
             <div class="stealth-search">
-                <input type="text" id="stealthUrl" placeholder="Enter video/movie URL here..." data-i18n-placeholder="stealthUrlPlaceholder">
-                <button id="loadStealth" title="Play in Iframe" data-i18n="play">Play</button>
-                <button id="openStealthWindow" class="stealth-window-btn" title="Open in Stealth Window">
-                    <img src="icons/extension.png" alt="window" width="16" height="16">
+                <input type="text" id="stealthUrl" placeholder="Nhập URL hoặc từ khóa tìm kiếm..." data-i18n-placeholder="stealthUrlPlaceholder">
+                <button id="loadStealth" title="Phát trong Player" data-i18n="play">▶ Play</button>
+                <button id="openStealthWindow" class="stealth-window-btn" title="Mở trong cửa sổ ẩn danh">
+                    <img src="icons/incognito.png" alt="stealth window" width="16" height="16">
                 </button>
+            </div>
+            <div id="playerInfoBar" class="player-info-bar hidden">
+                <span class="info-bar-lock">🔒</span>
+                <span class="info-bar-domain"></span>
             </div>
         </div>
         <div class="player-container">
-            <iframe id="stealthPlayer" frameborder="0" allowfullscreen sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-downloads allow-top-navigation-by-user-activation"></iframe>
+            <div class="player-spinner">
+                <div class="spinner-ring"></div>
+            </div>
+            <iframe id="stealthPlayer" frameborder="0" allowfullscreen
+                sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-downloads allow-top-navigation-by-user-activation">
+            </iframe>
         </div>
     </div>
 
@@ -1003,7 +1036,7 @@
 
     <div id="notification"></div>
     <script src="translations.js"></script>
-    <script src="popup.js"></script>
+    <script src="popup.js" type="module"></script>
 </body>
 
 </html>

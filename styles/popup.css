@@ -37,7 +37,6 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    cursor: url('../icons/toy.png'), auto;
 }
 
 html {
@@ -65,8 +64,9 @@ html::-webkit-scrollbar-thumb:hover {
 
 body {
     font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    width: 800px; /* Increased default width */
-    height: 500px; /* Reduced default height */
+    width: 100%;
+    max-width: 800px;
+    min-height: 500px;
     padding: var(--spacing-lg);
     color: var(--text-main);
     background: var(--bg-main);
@@ -144,134 +144,97 @@ body {
 /* Main Navigation Controls */
 .mainControls {
     display: flex;
-    justify-content: flex-start; /* Bắt đầu từ trái */
-    align-items: stretch;
-    gap: 8px; /* Giảm khoảng cách giữa các nút */
+    justify-content: flex-start;
+    align-items: center;
+    gap: 8px;
     margin-bottom: var(--spacing-lg);
-    padding: 10px;
+    padding: 10px 16px;
     background: var(--glass-bg);
     backdrop-filter: blur(12px);
     border-radius: var(--radius-lg);
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow);
-    overflow-x: auto; /* Cho phép cuộn ngang */
-    -webkit-overflow-scrolling: touch; /* Hỗ trợ cuộn mượt trên thiết bị cảm ứng */
-    /* Custom scrollbar for Webkit browsers */
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Hide Firefox scrollbar */
+    -ms-overflow-style: none; /* Hide IE scrollbar */
 }
 
 .mainControls::-webkit-scrollbar {
-    height: 6px; /* Chiều cao của thanh cuộn */
-}
-
-.mainControls::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.1); /* Màu nền của track */
-    border-radius: 3px;
-}
-
-.mainControls::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.3); /* Màu của thumb */
-    border-radius: 3px;
-}
-
-.mainControls::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.5); /* Màu của thumb khi hover */
-}
-
-/* Custom scrollbar for Firefox */
-.mainControls {
-    scrollbar-width: thin; /* "auto" or "thin" */
-    scrollbar-color: rgba(0, 0, 0, 0.3) rgba(0, 0, 0, 0.1); /* thumb color track color */
+    display: none; /* Hide Chrome scrollbar */
+    width: 0;
+    height: 0;
 }
 
 .control-button {
-    flex-shrink: 0; /* Không cho phép nút co lại quá mức */
-    width: 130px; /* Tăng độ rộng cố định cho mỗi nút */
-    border: none;
+    flex-shrink: 0;
+    width: auto; /* Capsule dynamic width */
+    border: 1px solid transparent;
     background: transparent;
-    padding: 10px 0; /* Tăng padding */
-    border-radius: var(--radius-md);
+    padding: 8px 18px; /* Pill padding */
+    border-radius: 30px; /* Capsule/pill shape */
     cursor: pointer;
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Mượt hơn với hiệu ứng bounce nhẹ */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 6px; /* Tăng khoảng cách giữa icon và text */
     color: var(--text-muted);
     position: relative;
-    /* overflow: hidden; */ /* Bỏ để hiện badge Beta */
 }
 
 .control-button .button-content {
     display: flex;
-    flex-direction: column;
+    flex-direction: row; /* Horizontal capsule */
     align-items: center;
-    gap: 4px; /* Tăng khoảng cách nhỏ hơn nữa */
+    gap: 8px;
     width: 100%;
     z-index: 2;
     transition: transform 0.3s ease;
 }
 
 .control-button img {
-    width: 32px; /* Tăng kích thước icon */
-    height: 32px;
+    width: 18px; /* Clean inline size */
+    height: 18px;
     object-fit: contain;
     transition: all 0.3s ease;
 }
 
 .control-button span {
-    font-size: 0.9rem; /* Tăng font size */
-    font-weight: 800;
+    font-size: 0.82rem;
+    font-weight: 700;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    width: 100%;
-    text-align: center;
+    overflow: visible;
+    text-overflow: clip;
+    width: auto;
+    text-align: left;
     transition: color 0.3s ease;
 }
 
 .control-button:hover {
-    background: rgba(255, 255, 255, 0.5);
-    transform: translateY(-3px);
+    background: rgba(255, 255, 255, 0.6);
+    transform: translateY(-1px);
     color: var(--text-main);
 }
 
 .control-button:hover img {
-    transform: scale(1.15) rotate(5deg);
+    transform: scale(1.1);
 }
 
 .control-button.active {
-    background: rgba(121, 40, 202, 0.1); /* Màu nền tím nhạt nhẹ nhàng */
-    color: var(--text-main);
-    box-shadow: 0 4px 15px rgba(121, 40, 202, 0.1);
-}
-
-/* Thêm một dải màu nhỏ phía dưới để đánh dấu đang chọn */
-.control-button.active::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 20%;
-    right: 20%;
-    height: 3px;
     background: var(--primary-gradient);
-    border-radius: 10px 10px 0 0;
-    animation: slideIn 0.3s ease-out;
-}
-
-@keyframes slideIn {
-    from { transform: translateY(100%); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
+    color: #ffffff !important;
+    border-color: transparent;
+    box-shadow: 0 4px 12px rgba(157, 125, 243, 0.3);
 }
 
 .control-button.active img {
-    transform: scale(1.1);
-    filter: drop-shadow(0 0 8px rgba(121, 40, 202, 0.3));
+    transform: scale(1.05);
+    filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.5));
 }
 
 .control-button.active span {
-    color: var(--text-main);
-    font-weight: 900;
+    color: #ffffff !important;
+    font-weight: 800;
 }
 
 /* Main Containers */
@@ -1831,15 +1794,12 @@ body.dark-mode .tracker-time {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(15px);
-    -webkit-backdrop-filter: blur(15px);
+    background: #ffffff;
     z-index: 1000;
     display: none; /* Hidden by default */
     align-items: center;
     justify-content: center;
     border-radius: var(--radius-lg);
-    animation: fadeIn 0.4s ease-out;
 }
 
 .lock-screen-modern.show {
@@ -1847,7 +1807,7 @@ body.dark-mode .tracker-time {
 }
 
 body.dark-mode .lock-screen-modern {
-    background: rgba(30, 30, 30, 0.8);
+    background: #0f172a;
 }
 
 .lock-container {
@@ -1888,21 +1848,14 @@ body.dark-mode .lock-screen-modern {
 
 .lock-pulse {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    top: -5px;
+    left: -5px;
+    width: calc(100% + 10px);
+    height: calc(100% + 10px);
     background: var(--primary-gradient);
     border-radius: 50%;
-    opacity: 0.2;
+    opacity: 0.15;
     z-index: 1;
-    animation: pulse-ring 2s infinite;
-}
-
-@keyframes pulse-ring {
-    0% { transform: scale(0.95); opacity: 0.2; }
-    50% { transform: scale(1.15); opacity: 0.1; }
-    100% { transform: scale(0.95); opacity: 0.2; }
 }
 
 .lock-header h3 {
@@ -3709,7 +3662,21 @@ body.dark-mode .stat-box {
 
 .stealth-controls {
     display: flex;
+    align-items: center;
     gap: 6px;
+    flex-wrap: wrap;
+}
+
+.player-nav-group,
+.player-action-group,
+.player-size-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 6px;
+    background: var(--glass-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
 }
 
 .resize-btn, .reset-btn, .nav-btn, .theater-btn {
@@ -3789,10 +3756,8 @@ body.dark-mode .stat-box {
 .player-container {
     position: relative;
     width: 100%;
-    height: 400px; /* Fixed initial height for better control */
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
+    height: 400px;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
     border-radius: var(--radius-md);
     overflow: hidden;
     transition: width 0.3s ease, height 0.3s ease, margin-left 0.3s ease;
@@ -3800,26 +3765,50 @@ body.dark-mode .stat-box {
     align-items: center;
     justify-content: center;
     border: 1px solid var(--border-color);
+    margin-top: 8px;
 }
 
-/* Placeholder UI when empty */
+/* Placeholder when empty */
 .player-container::before {
-    content: '🎬 Ready for Privacy Viewing\nEnter a URL above to start';
-    color: white;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-    text-align: center;
-    font-size: 1.1rem;
-    font-weight: 700;
-    line-height: 1.6;
-    padding: 20px;
+    content: '🎬 Privacy Player';
+    color: rgba(255,255,255,0.4);
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
     z-index: 1;
-    background: rgba(0,0,0,0.2);
-    border-radius: var(--radius-sm);
-    backdrop-filter: blur(2px);
+    pointer-events: none;
 }
 
-.player-container.has-content::before {
+.player-container.has-content::before,
+.player-container.player-loading::before {
     display: none;
+}
+
+/* Loading Spinner */
+.player-spinner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 5;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.player-container.player-loading .player-spinner {
+    display: flex;
+}
+
+.spinner-ring {
+    width: 48px;
+    height: 48px;
+    border: 4px solid rgba(255,255,255,0.1);
+    border-top-color: #ff0080;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
 }
 
 #stealthPlayer {
@@ -3830,13 +3819,160 @@ body.dark-mode .stat-box {
     height: 100%;
     border: none;
     z-index: 2;
-    background: #ffffff; /* Đảm bảo nền trắng để không bị lộ hình nền Player */
+    background: #ffffff;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.player-container.has-content #stealthPlayer {
+    opacity: 1;
 }
 
 .player-container:not(.has-content) #stealthPlayer {
     pointer-events: none;
-    opacity: 0;
 }
+
+/* Fullscreen styles */
+.player-container:fullscreen,
+.player-container:-webkit-full-screen {
+    border-radius: 0;
+    width: 100vw !important;
+    height: 100vh !important;
+    margin: 0 !important;
+}
+
+.player-container:fullscreen #stealthPlayer,
+.player-container:-webkit-full-screen #stealthPlayer {
+    width: 100vw;
+    height: 100vh;
+}
+
+/* Player Info Bar */
+.player-info-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px;
+    background: rgba(0,0,0,0.04);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    margin-top: 6px;
+    font-size: 0.78rem;
+    transition: var(--transition-smooth);
+}
+
+.player-info-bar.hidden {
+    display: none;
+}
+
+.info-bar-domain {
+    font-weight: 600;
+    color: var(--text-main);
+    font-family: monospace;
+}
+
+.info-bar-lock {
+    font-size: 0.85rem;
+}
+
+body.dark-mode .player-info-bar {
+    background: rgba(255,255,255,0.04);
+}
+
+/* Fullscreen button active */
+.fullscreen-btn.active {
+    background: var(--primary-gradient) !important;
+    color: white !important;
+    border-color: transparent !important;
+}
+
+/* Fav add button highlight */
+.fav-add-btn:hover {
+    background: linear-gradient(135deg, #f6c90e, #f39c12) !important;
+    color: #1a1a1a !important;
+    border-color: transparent !important;
+}
+
+/* Inline Confirm Modal (replaces native confirm()) */
+.player-confirm-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.4);
+    backdrop-filter: blur(4px);
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+    animation: fadeIn 0.2s ease;
+}
+
+.player-confirm-box {
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    max-width: 280px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    border: 1px solid var(--border-color);
+    animation: modalSlideUp 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.player-confirm-box p {
+    font-size: 0.9rem;
+    color: var(--text-main);
+    margin-bottom: 18px;
+    line-height: 1.5;
+}
+
+.player-confirm-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.confirm-cancel-btn,
+.confirm-ok-btn {
+    padding: 8px 20px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+}
+
+.confirm-cancel-btn {
+    background: var(--card-bg);
+    color: var(--text-muted);
+}
+
+.confirm-cancel-btn:hover {
+    background: var(--bg-main);
+}
+
+.confirm-ok-btn {
+    background: linear-gradient(135deg, #ff416c, #ff4b2b);
+    color: white;
+    border-color: transparent;
+}
+
+.confirm-ok-btn:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+/* Favicon in favorites */
+.favorite-favicon {
+    flex-shrink: 0;
+    border-radius: 3px;
+    object-fit: contain;
+}
+
 
 #controls button {
     background: white;
@@ -4566,3 +4702,380 @@ body.dark-mode .favorite-actions button:hover {
 }
 
 ::-webkit-scrollbar-thumb:hover { filter: brightness(1.1); }
+
+/* Floating Back to Top Button */
+.back-to-top-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-color, #7928ca), var(--secondary-color, #ff0080));
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+    opacity: 1;
+    visibility: visible;
+}
+
+.back-to-top-btn.hidden {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px);
+    display: flex !important; /* Force override display logic when using transition classes */
+}
+
+.back-to-top-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* ============================================================
+   RESPONSIVE UI — Popup & Side Panel
+   Breakpoints:
+     - Full   : 680px+  (popup mặc định)
+     - Medium : 520–679px (side panel vừa)
+     - Compact: < 520px  (side panel hẹp)
+   ============================================================ */
+
+/* --- Base fluid sizing (thay thế width/height cứng) --- */
+body {
+    min-width: 360px;
+    max-width: 900px;
+    min-height: 400px;
+}
+
+/* ======================== MEDIUM (520–679px) ======================== */
+@media (max-width: 679px) {
+    body {
+        width: 100% !important;
+        height: auto !important;
+        min-height: 100vh;
+        padding: 15px;
+    }
+
+    /* Nav bar: thu nhỏ padding */
+    .mainControls {
+        padding: 8px 10px;
+        gap: 4px;
+        height: 56px;
+    }
+
+    .control-button {
+        padding: 6px 12px;
+        border-radius: 24px;
+    }
+
+    .control-button span {
+        font-size: 0.75rem;
+    }
+
+    .control-button img {
+        width: 16px;
+        height: 16px;
+    }
+
+    /* Dashboard: stack 2 cột thay 3 */
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    .grade-card-modern {
+        grid-column: span 2 !important;
+    }
+
+    /* Analysis grid: 1 cột */
+    .analysis-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Quick actions: stack dọc */
+    .action-buttons {
+        flex-direction: column;
+    }
+
+    /* Controls (cookie buttons): 1 cột */
+    #controls.show {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Settings: đơn giản hóa layout */
+    .setting-item {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .setting-item select,
+    .setting-item input[type="number"] {
+        width: 100%;
+    }
+
+    /* Lock screen container: full width */
+    .lock-container {
+        width: 95%;
+        max-width: none;
+        padding: 20px;
+    }
+
+    /* Vault input: stack dọc */
+    .vault-input-group {
+        flex-direction: column;
+    }
+
+    /* Container creator form */
+    .container-form {
+        gap: 10px;
+    }
+
+    /* Grade progress container */
+    .grade-progress-container {
+        width: 150px;
+    }
+
+    /* Player header actions */
+    .player-controls {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    /* Settings scroll area */
+    .settings-scroll-area {
+        max-height: none;
+    }
+
+    /* Page title: nhỏ hơn */
+    .page-title {
+        font-size: 1.6rem;
+    }
+
+    .dashboard-header h2 {
+        font-size: 1.5rem;
+    }
+}
+
+/* ======================== COMPACT (< 520px) ======================== */
+@media (max-width: 519px) {
+    body {
+        padding: 10px;
+    }
+
+    /* Nav bar: chỉ hiện icon, ẩn text */
+    .mainControls {
+        height: 52px;
+        padding: 6px 8px;
+        gap: 2px;
+    }
+
+    .control-button {
+        padding: 6px 8px;
+        border-radius: 50%;
+        min-width: 36px;
+        min-height: 36px;
+        justify-content: center;
+    }
+
+    /* Ẩn text label, chỉ giữ icon */
+    .control-button span {
+        display: none;
+    }
+
+    .control-button .button-content {
+        gap: 0;
+        justify-content: center;
+    }
+
+    .control-button img {
+        width: 20px;
+        height: 20px;
+    }
+
+    /* Beta badge vẫn hiển thị */
+    .beta-badge {
+        font-size: 6px !important;
+    }
+
+    /* Dashboard: 1 cột */
+    .stats-grid {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px;
+    }
+
+    .grade-card-modern {
+        grid-column: span 2 !important;
+    }
+
+    .grade-main {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .grade-progress-container {
+        width: 100%;
+    }
+
+    /* Page title: ẩn icon cookie */
+    .cookies-icon {
+        display: none;
+    }
+
+    .page-title {
+        font-size: 1.3rem;
+        margin-bottom: 10px;
+    }
+
+    /* Lock screen: full panel */
+    .lock-container {
+        width: 100%;
+        border-radius: var(--radius-md);
+        padding: 16px;
+    }
+
+    /* Table cookies: horizontal scroll */
+    #cookieTableContainer {
+        overflow-x: auto;
+    }
+
+    table {
+        min-width: 480px;
+    }
+
+    /* History list: compact */
+    .history-item, .device-item {
+        gap: 8px;
+        padding: 8px 10px;
+    }
+
+    .history-icon, .device-icon {
+        width: 24px;
+        height: 24px;
+        padding: 4px;
+    }
+
+    /* Vault items */
+    .vault-item {
+        gap: 10px;
+        padding: 10px;
+    }
+
+    .vault-item-icon {
+        width: 36px;
+        height: 36px;
+    }
+
+    /* Vault input */
+    .vault-input-container {
+        padding: 12px;
+    }
+
+    /* Settings groups: compact */
+    .settings-group {
+        padding: 10px;
+        margin-bottom: 12px;
+    }
+
+    /* Controls grid: 1 col */
+    #controls.show {
+        grid-template-columns: 1fr !important;
+        gap: 8px;
+    }
+
+    /* Quick actions */
+    .action-buttons {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    /* Container list */
+    .container-list {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    /* Modal */
+    .modal-card {
+        width: 98%;
+    }
+
+    /* Extension cards */
+    .extension-item {
+        flex-wrap: wrap;
+    }
+
+    /* Analysis grid */
+    .analysis-grid {
+        grid-template-columns: 1fr !important;
+        gap: 8px;
+    }
+
+    /* Stat value font */
+    .stat-value {
+        font-size: 1.2rem;
+    }
+}
+
+/* ======================== SIDE PANEL LANDSCAPE ======================== */
+@media (min-width: 680px) and (max-width: 750px) {
+    body {
+        width: 100% !important;
+        padding: 18px;
+    }
+
+    .mainControls {
+        padding: 8px 12px;
+    }
+
+    .control-button {
+        padding: 7px 14px;
+    }
+}
+
+/* ======================== TABLE RESPONSIVE ======================== */
+/* Đảm bảo table luôn có scroll ngang khi không đủ chỗ */
+#cookieTableContainer,
+.history-list,
+.extensions-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Tránh table vỡ layout */
+table {
+    border-collapse: collapse;
+    white-space: nowrap;
+}
+
+table td,
+table th {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ======================== PLAYER RESPONSIVE ======================== */
+.player-container {
+    max-width: 100% !important;
+    overflow: hidden;
+}
+
+/* ======================== TOUCH IMPROVEMENTS ======================== */
+/* Tăng hit area cho touch devices */
+@media (pointer: coarse) {
+    .control-button {
+        min-height: 44px;
+    }
+
+    button, .clickable-card {
+        min-height: 36px;
+    }
+
+    .history-item, .device-item, .vault-item, .favorite-item {
+        min-height: 52px;
+    }
+}

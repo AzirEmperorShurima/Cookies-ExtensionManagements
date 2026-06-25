@@ -256,6 +256,19 @@ const translations = {
         behavior_suggestion_coccoc_item2: "- **Applied Link Type**: 'Tất cả các link' để tối ưu hóa trải nghiệm tìm kiếm.",
         behavior_suggestion_general: "Thiết lập này giúp bạn giữ được trang kết quả tìm kiếm trong khi xem nội dung video hoặc trang web con một cách liền mạch.",
         trackersBlockedDetail: "Chi tiết Trackers bị chặn",
+        setupStealthCodeTitle: "Tạo Mã Số Bí Mật",
+        setupStealthCodeDesc: "Thiết lập mã số bảo mật để bảo vệ Két sắt và Trình phát riêng tư.",
+        enterNewPassPlaceholder: "Nhập mật khẩu mới (từ 4 kí tự)...",
+        confirmPassPlaceholder: "Xác nhận mật khẩu mới...",
+        saveAndUnlock: "Tạo & Mở Khóa",
+        setupSuccess: "Thiết lập mật khẩu thành công!",
+        passMinLength: "Mật khẩu phải từ 4 ký tự trở lên!",
+        passMismatch: "Mật khẩu xác nhận không trùng khớp!",
+        incorrectCode: "Mã bảo mật không chính xác!",
+        unlockSuccess: "Mở khóa thành công!",
+        enterPassWarning: "Vui lòng nhập mật khẩu!",
+        currentTabCookies: "Trang hiện tại",
+        currentTabCookiesTitle: "Cookies trang hiện tại:",
     },
     en: {
         pageTitle: "Privacy & Cookie Manager",
@@ -513,6 +526,19 @@ const translations = {
         behavior_suggestion_coccoc_item2: "- Applied Link Type: 'All Links' to optimize the search experience.",
         behavior_suggestion_general: "This setting helps you keep the search results page while viewing video content or subpages seamlessly.",
         trackersBlockedDetail: "Trackers Blocked Detail",
+        setupStealthCodeTitle: "Create Secret Code",
+        setupStealthCodeDesc: "Set a secret code to protect your Vault and Privacy Player.",
+        enterNewPassPlaceholder: "Enter new password (at least 4 characters)...",
+        confirmPassPlaceholder: "Confirm new password...",
+        saveAndUnlock: "Create & Unlock",
+        setupSuccess: "Secret code setup successfully!",
+        passMinLength: "Password must be at least 4 characters!",
+        passMismatch: "Passwords do not match!",
+        incorrectCode: "Incorrect secret code!",
+        unlockSuccess: "Unlock successful!",
+        enterPassWarning: "Please enter a password!",
+        currentTabCookies: "Current Tab",
+        currentTabCookiesTitle: "Current Tab Cookies:",
     },
     ja: {
         pageTitle: "プライバシー＆クッキーマネージャー",
@@ -1720,3 +1746,5 @@ const translations = {
         behavior_suggestion_general: "Diese Einstellung hilft, die Suchergebnisseite beim Ansehen von Inhalten zu behalten.",
     }
 };
+
+window.translations = translations;

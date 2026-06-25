@@ -1,5 +1,47 @@
 importScripts('email.min.js');
 
+const DEFAULT_SETTINGS = {
+    darkMode: false,
+    autoClearStealth: true,
+    showNotifications: true,
+    cookieDestroyer: false,
+    historyIncognito: false,
+    defaultPlayerWidth: 100,
+    defaultPlayerHeight: 400,
+    followDefaultPlayerSize: true,
+    searchEngine: 'google',
+    favoriteWebsites: [],
+    useSidePanel: false,
+    realTimeProtection: true,
+    blockClickjacking: true,
+    blockCryptoMining: true,
+    protectionLevel: 'standard',
+    language: 'vi',
+    playerBackgroundType: 'default',
+    playerLinkBehavior: 'inside',
+    playerLinkFilter: 'all',
+    customBgUrl: '',
+    customBgList: [],
+    panicAction: 'closeIncognito',
+    safeRedirectUrl: 'https://www.google.com',
+    savedSessions: [],
+    telegramDownloaderEnabled: false,
+    videoDownloaderEnabled: false,
+    multiAccountEnabled: false,
+    accountContainers: [],
+    hibernationEnabled: false,
+    hibernationTimeout: 30,
+    whitelist: ['google.com', 'facebook.com', 'gmail.com', 'youtube.com', 'github.com'],
+    alwaysRequirePassword: true,
+    vaultSyncEnabled: false,
+    masterSyncKey: null,
+    linkClickBehavior: 'player',
+    appliedLinkType: 'all',
+    safeUrls: [],
+    requireStrongPassword: false,
+    showPasswordInSettings: true
+};
+
 /**
  * State Management
  * These variables track tab-specific data in memory for performance.
@@ -16,6 +58,34 @@ let hibernationEnabled = false;
 let hibernationTimeout = 30; // In minutes
 let tabLastActive = {};      // tabId -> last active timestamp
 let tabUrls = {};            // tabId -> current URL (used for auto-cleanup on close)
+
+// Restore state from session storage on startup to prevent MV3 state loss
+chrome.storage.session.get(['trackerCount', 'trackerList', 'detectedVideos', 'tabLastActive', 'tabUrls']).then((result) => {
+    trackerCount = { ...trackerCount, ...(result.trackerCount || {}) };
+    trackerList = { ...trackerList, ...(result.trackerList || {}) };
+    detectedVideos = { ...detectedVideos, ...(result.detectedVideos || {}) };
+    tabLastActive = { ...tabLastActive, ...(result.tabLastActive || {}) };
+    tabUrls = { ...tabUrls, ...(result.tabUrls || {}) };
+}).catch(err => console.error("Error loading session state:", err));
+
+let pendingSessionSave = null;
+function saveStateToSession() {
+    if (pendingSessionSave) return;
+    pendingSessionSave = setTimeout(() => {
+        chrome.storage.session.set({
+            trackerCount,
+            trackerList,
+            detectedVideos,
+            tabLastActive,
+            tabUrls
+        }).then(() => {
+            pendingSessionSave = null;
+        }).catch(err => {
+            console.error('Error saving state to session:', err);
+            pendingSessionSave = null;
+        });
+    }, 500);
+}
 
 /**
  * Context Menu Management
@@ -57,7 +127,7 @@ function createAllContextMenus() {
 
         // 3. Update restore session items from storage
         chrome.storage.local.get(['appSettings'], (result) => {
-            const settings = result.appSettings || {};
+            const settings = result.appSettings ? { ...DEFAULT_SETTINGS, ...result.appSettings } : DEFAULT_SETTINGS;
             const sessions = settings.savedSessions || [];
 
             if (sessions.length === 0) {
@@ -92,7 +162,19 @@ function checkLastError(id) {
         }
     }
 }
-chrome.runtime.onInstalled.addListener(createAllContextMenus);
+chrome.runtime.onInstalled.addListener(async (details) => {
+    createAllContextMenus();
+    try {
+        const result = await chrome.storage.local.get(['appSettings']);
+        if (!result.appSettings) {
+            await chrome.storage.local.set({ appSettings: DEFAULT_SETTINGS });
+            console.log('Initialized default app settings on install');
+        }
+    } catch (e) {
+        console.error('Error initializing default settings:', e);
+    }
+    await updateSecurityRules();
+});
 chrome.runtime.onStartup.addListener(createAllContextMenus);
 
 /**
@@ -100,12 +182,28 @@ chrome.runtime.onStartup.addListener(createAllContextMenus);
  */
 chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local' && changes.appSettings) {
-        const oldSessions = changes.appSettings.oldValue?.savedSessions || [];
-        const newSessions = changes.appSettings.newValue?.savedSessions || [];
+        const oldValue = changes.appSettings.oldValue || {};
+        const newValue = changes.appSettings.newValue || {};
+        
+        const oldSessions = oldValue.savedSessions || [];
+        const newSessions = newValue.savedSessions || [];
         // Only recreate menus if sessions list actually changed
         if (JSON.stringify(oldSessions) !== JSON.stringify(newSessions)) {
             createAllContextMenus();
         }
+
+        // Sync local variables and alarms
+        videoDetectionEnabled = newValue.videoDownloaderEnabled || false;
+        hibernationEnabled = newValue.hibernationEnabled || false;
+        hibernationTimeout = newValue.hibernationTimeout || 30;
+
+        if (newValue.hibernationEnabled !== oldValue.hibernationEnabled || 
+            newValue.hibernationTimeout !== oldValue.hibernationTimeout) {
+            updateHibernationAlarm(newValue.hibernationEnabled || false, newValue.hibernationTimeout || 30);
+        }
+
+        // Dynamic rule update on settings change
+        updateSecurityRules();
     }
 });
 
@@ -155,7 +253,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         };
 
         const result = await chrome.storage.local.get(['appSettings']);
-        const settings = result.appSettings || {};
+        const settings = result.appSettings ? { ...DEFAULT_SETTINGS, ...result.appSettings } : DEFAULT_SETTINGS;
         if (!settings.savedSessions) settings.savedSessions = [];
         settings.savedSessions.unshift(sessionData);
 
@@ -172,7 +270,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     else if (info.menuItemId.startsWith("restoreSession_")) {
         const sessionId = parseInt(info.menuItemId.split("_")[1]);
         const result = await chrome.storage.local.get(['appSettings']);
-        const settings = result.appSettings || {};
+        const settings = result.appSettings ? { ...DEFAULT_SETTINGS, ...result.appSettings } : DEFAULT_SETTINGS;
         const sessions = settings.savedSessions || [];
         const session = sessions.find(s => s.id === sessionId);
 
@@ -225,10 +323,11 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
  */
 //Replace callback with Promise-based API
 chrome.storage.local.get(['appSettings']).then((result) => {
-    const settings = result.appSettings || {};
+    const settings = result.appSettings ? { ...DEFAULT_SETTINGS, ...result.appSettings } : DEFAULT_SETTINGS;
     videoDetectionEnabled = settings.videoDownloaderEnabled || false;
     hibernationEnabled = settings.hibernationEnabled || false;
     hibernationTimeout = settings.hibernationTimeout || 30;
+    updateHibernationAlarm(hibernationEnabled, hibernationTimeout);
 });
 
 // Common tracker domains for detection
@@ -314,6 +413,7 @@ chrome.webRequest.onBeforeRequest.addListener(
 
             // Update total tracker count and notify popup
             trackerCount[details.tabId] = (trackerCount[details.tabId] || 0) + 1;
+            saveStateToSession();
             chrome.runtime.sendMessage({
                 type: 'updateTrackerCount',
                 tabId: details.tabId,
@@ -356,7 +456,7 @@ chrome.webNavigation.onCreatedNavigationTarget.addListener((details) => {
     // sourceTabId -1 indicates creation from extension popup/iframe
     if (details.sourceTabId === -1) {
         chrome.storage.local.get(['appSettings'], (result) => {
-            const settings = result.appSettings || {};
+            const settings = result.appSettings ? { ...DEFAULT_SETTINGS, ...result.appSettings } : DEFAULT_SETTINGS;
 
             // Redirect to incognito if configured
             if (settings.playerLinkBehavior === 'incognito') {
@@ -501,6 +601,7 @@ function addDetectedVideo(tabId, url, type, size = 'Unknown size', initiator = '
     };
 
     detectedVideos[tabId].push(videoData);
+    saveStateToSession();
 
     // Update UI badge
     chrome.action.setBadgeText({ text: detectedVideos[tabId].length.toString(), tabId });
@@ -547,11 +648,13 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         trackerList[tabId] = [];
         detectedVideos[tabId] = [];
         chrome.action.setBadgeText({ text: '', tabId: tabId });
+        saveStateToSession();
     }
 
     // 2. Update tabUrls for Auto-Cleanup logic
     if (tab.url && !tab.url.startsWith('chrome')) {
         tabUrls[tabId] = tab.url;
+        saveStateToSession();
     }
 
     // 3. Handle Privacy Player mapping
@@ -569,7 +672,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
         if (isTelegram) {
             chrome.storage.local.get(['appSettings'], (result) => {
-                const settings = result.appSettings || {};
+                const settings = result.appSettings ? { ...DEFAULT_SETTINGS, ...result.appSettings } : DEFAULT_SETTINGS;
                 if (settings.telegramDownloaderEnabled) {
                     chrome.scripting.executeScript({
                         target: { tabId },
@@ -588,25 +691,17 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 chrome.tabs.onRemoved.addListener((tabId) => {
     // 1. Cleanup Cookies & URL Mappings
     chrome.storage.local.get(['appSettings', 'tabUrlMapping', 'privacyPlayerTabId'], async (result) => {
-        const settings = result.appSettings || {};
+        const settings = result.appSettings ? { ...DEFAULT_SETTINGS, ...result.appSettings } : DEFAULT_SETTINGS;
         const mapping = result.tabUrlMapping || {};
         const playerTabId = result.privacyPlayerTabId;
 
         // Handle Privacy Player closure
-        // if (tabId === playerTabId) {
-        //     chrome.storage.local.remove('privacyPlayerTabId');
-        //     if (settings.autoClearStealth) {
-        //         chrome.storage.local.remove('lastPlayerUrl');
-        //         console.log('Privacy Player: Auto-clear Stealth History (lastPlayerUrl removed)');
-        //     }
-        // }
-        if (tabId === playerTabId || true) {
-            chrome.storage.local.get(['appSettings'], (result) => {
-                if (settings.autoClearStealth) {
-                    chrome.storage.local.remove('lastPlayerUrl');
-                    console.log('Privacy Player: Auto-clear Stealth History (lastPlayerUrl removed)');
-                }
-            });
+        if (tabId === playerTabId) {
+            chrome.storage.local.remove('privacyPlayerTabId');
+            if (settings.autoClearStealth) {
+                chrome.storage.local.remove('lastPlayerUrl');
+                console.log('Privacy Player: Auto-clear Stealth History (lastPlayerUrl removed)');
+            }
         }
 
         // Auto-Cleanup Cookies on tab close
@@ -647,6 +742,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
     delete trackerList[tabId];
     delete detectedVideos[tabId];
     delete tabLastActive[tabId];
+    saveStateToSession();
 });
 
 /**
@@ -655,29 +751,43 @@ chrome.tabs.onRemoved.addListener((tabId) => {
  */
 chrome.tabs.onActivated.addListener((activeInfo) => {
     tabLastActive[activeInfo.tabId] = Date.now();
+    saveStateToSession();
 });
 
-setInterval(() => {
-    if (!hibernationEnabled) return;
+function updateHibernationAlarm(enabled, timeout) {
+    chrome.alarms.clear("hibernationCheck").then(() => {
+        if (enabled) {
+            chrome.alarms.create("hibernationCheck", { periodInMinutes: 1 });
+            console.log(`Hibernation alarm registered. Timeout: ${timeout}m`);
+        } else {
+            console.log("Hibernation alarm disabled.");
+        }
+    }).catch(err => console.error("Alarm error:", err));
+}
 
-    const now = Date.now();
-    const timeoutMs = hibernationTimeout * 60 * 1000;
+chrome.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === "hibernationCheck") {
+        if (!hibernationEnabled) return;
 
-    chrome.tabs.query({ active: false, pinned: false, discarded: false }, (tabs) => {
-        tabs.forEach(tab => {
-            const lastActive = tabLastActive[tab.id] || 0;
-            if (lastActive > 0 && (now - lastActive) > timeoutMs) {
-                chrome.tabs.discard(tab.id, (discardedTab) => {
-                    if (chrome.runtime.lastError) {
-                        console.error('Hibernation error:', chrome.runtime.lastError);
-                    } else {
-                        console.log(`Tab ${tab.id} hibernated to save RAM.`);
-                    }
-                });
-            }
+        const now = Date.now();
+        const timeoutMs = hibernationTimeout * 60 * 1000;
+
+        chrome.tabs.query({ active: false, pinned: false, discarded: false }, (tabs) => {
+            tabs.forEach(tab => {
+                const lastActive = tabLastActive[tab.id] || 0;
+                if (lastActive > 0 && (now - lastActive) > timeoutMs) {
+                    chrome.tabs.discard(tab.id, (discardedTab) => {
+                        if (chrome.runtime.lastError) {
+                            console.error('Hibernation error:', chrome.runtime.lastError);
+                        } else {
+                            console.log(`Tab ${tab.id} hibernated to save RAM.`);
+                        }
+                    });
+                }
+            });
         });
-    });
-}, 60000); // Check every minute
+    }
+});
 
 /**
  * Global Message Listener
@@ -801,7 +911,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             });
         }
     }
-    return true;
 });
 
 // Lắng nghe sự kiện click menu chuột phải
@@ -836,7 +945,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
         };
 
         chrome.storage.local.get(['appSettings'], (result) => {
-            const settings = result.appSettings || {};
+            const settings = result.appSettings ? { ...DEFAULT_SETTINGS, ...result.appSettings } : DEFAULT_SETTINGS;
             const favorites = settings.favoriteWebsites || [];
             if (!favorites.some(f => f.url === favoriteItem.url)) {
                 favorites.push(favoriteItem);
@@ -868,7 +977,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
  */
 async function executePanic() {
     chrome.storage.local.get(['appSettings'], (result) => {
-        const settings = result.appSettings || {};
+        const settings = result.appSettings ? { ...DEFAULT_SETTINGS, ...result.appSettings } : DEFAULT_SETTINGS;
         const action = settings.panicAction || 'closeIncognito';
 
         let safeUrl = 'https://www.google.com';
@@ -882,26 +991,35 @@ async function executePanic() {
         switch (action) {
             case 'closeIncognito':
                 chrome.windows.getAll({ populate: true }, (windows) => {
+                    const normalWindow = windows.find(win => !win.incognito);
+                    if (normalWindow) {
+                        chrome.tabs.create({ windowId: normalWindow.id, url: safeUrl }).catch(() => {});
+                    } else {
+                        chrome.windows.create({ url: safeUrl }).catch(() => {});
+                    }
                     windows.forEach(win => {
-                        if (win.incognito) chrome.windows.remove(win.id);
+                        if (win.incognito) {
+                            chrome.windows.remove(win.id).catch(() => {});
+                        }
                     });
-                    chrome.tabs.create({ url: safeUrl });
                 });
                 break;
             case 'redirectAll':
                 chrome.tabs.query({}, (tabs) => {
-                    tabs.forEach(tab => chrome.tabs.update(tab.id, { url: safeUrl }));
+                    tabs.forEach(tab => {
+                        if (tab.url !== safeUrl) {
+                            chrome.tabs.update(tab.id, { url: safeUrl }).catch(() => {});
+                        }
+                    });
                 });
                 break;
             case 'closeAll':
-                chrome.windows.create({ url: safeUrl, focused: true }, () => {
-                    chrome.windows.getAll({}, (windows) => {
+                chrome.windows.create({ url: safeUrl, focused: true }, (newWin) => {
+                    chrome.windows.getAll({ populate: true }, (windows) => {
                         windows.forEach(win => {
-                            chrome.windows.get(win.id, (w) => {
-                                if (w.tabs && w.tabs[0] && w.tabs[0].url !== safeUrl) {
-                                    chrome.windows.remove(win.id);
-                                }
-                            });
+                            if (win.id !== newWin.id) {
+                                chrome.windows.remove(win.id).catch(() => {});
+                            }
                         });
                     });
                 });
@@ -1056,7 +1174,7 @@ chrome.webNavigation.onBeforeNavigate.addListener((details) => {
 
 chrome.tabs.onCreated.addListener((tab) => {
     chrome.storage.local.get(['appSettings', 'privacyPlayerTabId'], (result) => {
-        const settings = result.appSettings || {};
+        const settings = result.appSettings ? { ...DEFAULT_SETTINGS, ...result.appSettings } : DEFAULT_SETTINGS;
         const playerTabId = result.privacyPlayerTabId;
         const isFromPlayer = tab.openerTabId && tab.openerTabId === playerTabId;
         if ((settings.linkClickBehavior === 'player' || settings.linkClickBehavior === 'block') && isFromPlayer) {
@@ -1074,7 +1192,7 @@ chrome.tabs.onCreated.addListener((tab) => {
 // Hàm cập nhật quy tắc bảo mật động (Clickjacking & Real-time Protection)
 async function updateSecurityRules() {
     const result = await chrome.storage.local.get(['appSettings']);
-    const settings = result.appSettings || {};
+    const settings = result.appSettings ? { ...DEFAULT_SETTINGS, ...result.appSettings } : DEFAULT_SETTINGS;
     const userWhitelist = settings.whitelist || [];
 
     // Các domain mặc định cần loại trừ để đảm bảo tính năng bảo mật/captcha hoạt động
