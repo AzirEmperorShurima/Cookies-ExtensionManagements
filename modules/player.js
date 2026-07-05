@@ -1,5 +1,5 @@
-import { elements, settings, notify, saveSettings, state } from '../popup.js';
-import { isValidUrl } from './utils.js';
+import { elements, settings, notify, saveSettings, state, showConfirm } from '../popup.js';
+import { isValidUrl, createElement } from './utils.js';
 
 const translations = window.translations;
 
@@ -10,6 +10,8 @@ let currentUrlIndex = -1;
 let isNavigating = false;
 let _messageListenerAdded = false;
 let _isFullscreen = false;
+let currentBoostSpeed = 1.0;
+let currentBoostVolume = 1.0;
 
 // Search engine map - dùng settings.searchEngine của user
 const SEARCH_ENGINES = {
@@ -63,10 +65,9 @@ function updateInfoBar(url) {
     try {
         const parsed = new URL(url);
         const isSecure = parsed.protocol === 'https:';
-        bar.innerHTML = `
-            <span class="info-bar-lock">${isSecure ? '🔒' : '⚠️'}</span>
-            <span class="info-bar-domain">${parsed.hostname}</span>
-        `;
+        bar.textContent = '';
+        bar.appendChild(createElement('span', { className: 'info-bar-lock' }, isSecure ? '🔒' : '⚠️'));
+        bar.appendChild(createElement('span', { className: 'info-bar-domain' }, parsed.hostname));
         bar.classList.remove('hidden');
     } catch {
         bar.classList.add('hidden');
@@ -81,31 +82,8 @@ function persistHistory() {
 
 // ─── Inline Confirm (replaces native confirm() blocked by CSP) ────────────────
 function showInlineConfirm(message, onConfirm) {
-    const existing = document.getElementById('playerConfirmOverlay');
-    if (existing) existing.remove();
-
-    const overlay = document.createElement('div');
-    overlay.id = 'playerConfirmOverlay';
-    overlay.className = 'player-confirm-overlay';
-    overlay.innerHTML = `
-        <div class="player-confirm-box">
-            <p>${message}</p>
-            <div class="player-confirm-actions">
-                <button class="confirm-cancel-btn">Hủy</button>
-                <button class="confirm-ok-btn">Xóa</button>
-            </div>
-        </div>
-    `;
-
-    const stealthSection = document.getElementById('stealthSection');
-    (stealthSection || document.body).appendChild(overlay);
-
-    overlay.querySelector('.confirm-ok-btn').addEventListener('click', () => {
-        overlay.remove();
-        onConfirm();
-    });
-    overlay.querySelector('.confirm-cancel-btn').addEventListener('click', () => {
-        overlay.remove();
+    showConfirm(message).then(confirmed => {
+        if (confirmed) onConfirm();
     });
 }
 
@@ -260,17 +238,14 @@ export function updatePlayerSize() {
     const { playerContainer } = elements;
     if (!playerContainer) return;
 
-    playerContainer.style.width = `${playerScale}%`;
-    playerContainer.style.marginLeft = `${(100 - playerScale) / 2}%`;
+    playerContainer.style.width = '100%';
+    playerContainer.style.marginLeft = '0';
     playerContainer.style.height = `${playerHeight}px`;
 
-    const extraWidth = Math.max(0, (playerScale - 100) * 5);
     const extraHeight = Math.max(0, playerHeight - 400);
-    const maxWidth = Math.min(800, window.innerWidth || 800);
-    const targetWidth = Math.min(maxWidth, 800 + extraWidth);
-    const targetHeight = Math.min(700, 500 + extraHeight);
+    const targetHeight = Math.min(650, 500 + extraHeight);
 
-    document.body.style.width = `${targetWidth}px`;
+    document.body.style.width = '800px';
     document.body.style.height = `${targetHeight}px`;
 }
 
@@ -288,10 +263,10 @@ export function renderFavoriteWebsites() {
 
     const lang = settings.language || 'vi';
     const dict = translations[lang] || translations.vi;
-    favoriteWebsitesList.innerHTML = '';
+    favoriteWebsitesList.textContent = '';
 
     if (!settings.favoriteWebsites || settings.favoriteWebsites.length === 0) {
-        favoriteWebsitesList.innerHTML = `<p class="empty-favorites-card">${dict.noFavorites || '✨ Chưa có trang yêu thích nào.'}</p>`;
+        favoriteWebsitesList.appendChild(createElement('p', { className: 'empty-favorites-card' }, dict.noFavorites || '✨ Chưa có trang yêu thích nào.'));
         return;
     }
 
@@ -366,10 +341,24 @@ export function checkStealthLock() {
     };
 
     if (!state.isStealthUnlocked) {
-        if (stealthLockScreen) stealthLockScreen.classList.add('show');
-        import('../popup.js').then(popup => {
-            popup.setupUnifiedLockScreen(stealthLockScreen, stealthPassInput, unlockStealth, proceedLoad);
-        });
+        if (!settings.alwaysRequirePassword && chrome.storage.session) {
+            chrome.storage.session.get(['sessionPassword'], (result) => {
+                if (result.sessionPassword) {
+                    state.secretCode = result.sessionPassword;
+                    proceedLoad();
+                } else {
+                    if (stealthLockScreen) stealthLockScreen.classList.add('show');
+                    import('../popup.js').then(popup => {
+                        popup.setupUnifiedLockScreen(stealthLockScreen, stealthPassInput, unlockStealth, proceedLoad);
+                    });
+                }
+            });
+        } else {
+            if (stealthLockScreen) stealthLockScreen.classList.add('show');
+            import('../popup.js').then(popup => {
+                popup.setupUnifiedLockScreen(stealthLockScreen, stealthPassInput, unlockStealth, proceedLoad);
+            });
+        }
     } else {
         proceedLoad();
     }
@@ -384,6 +373,9 @@ export function init() {
     } = elements;
 
     updatePlayerSandbox();
+    import('./settings.js').then(m => {
+        if (typeof m.applyPlayerBackground === 'function') m.applyPlayerBackground();
+    }).catch(() => {});
 
     if (settings.followDefaultPlayerSize) {
         playerScale = settings.defaultPlayerWidth || 100;
@@ -409,6 +401,59 @@ export function init() {
             if (stealthPlayer.src && stealthPlayer.src !== 'about:blank' && stealthPlayer.src !== location.href) {
                 elements.playerContainer?.classList.add('has-content');
                 updateInfoBar(stealthPlayer.src);
+
+                // Tự động áp dụng boost speed/volume hiện tại vào các video
+                chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                    if (tabs[0]) {
+                        chrome.tabs.sendMessage(tabs[0].id, { type: 'boostVideoSpeed', speed: currentBoostSpeed }).catch(() => {});
+                        chrome.tabs.sendMessage(tabs[0].id, { type: 'boostVideoVolume', volume: currentBoostVolume }).catch(() => {});
+                    }
+                });
+
+                // Cập nhật lại UI của slider và dropdowns
+                const sSlider = document.getElementById('speedSlider');
+                const sVal = document.getElementById('speedVal');
+                const vSlider = document.getElementById('volumeSlider');
+                const vVal = document.getElementById('volumeVal');
+                const sDropdown = document.getElementById('speedDropdown');
+                const vDropdown = document.getElementById('volumeDropdown');
+                const cSpeedWrapper = document.getElementById('customSpeedWrapper');
+                const cVolumeWrapper = document.getElementById('customVolumeWrapper');
+
+                if (sSlider) {
+                    sSlider.value = currentBoostSpeed;
+                    if (sVal) sVal.textContent = `${currentBoostSpeed.toFixed(2)}x`;
+                }
+                if (vSlider) {
+                    vSlider.value = Math.round(currentBoostVolume * 100);
+                    if (vVal) vVal.textContent = `${Math.round(currentBoostVolume * 100)}%`;
+                }
+
+                const commonSpeeds = ['0.5', '1.0', '1.25', '1.5', '2.0', '3.0'];
+                if (sDropdown) {
+                    const speedStr = currentBoostSpeed.toFixed(1);
+                    const speedStr2 = currentBoostSpeed.toFixed(2);
+                    let matchedSpeed = commonSpeeds.find(s => parseFloat(s) === currentBoostSpeed);
+                    if (matchedSpeed) {
+                        sDropdown.value = matchedSpeed;
+                        if (cSpeedWrapper) cSpeedWrapper.classList.add('hidden');
+                    } else {
+                        sDropdown.value = 'custom';
+                        if (cSpeedWrapper) cSpeedWrapper.classList.remove('hidden');
+                    }
+                }
+
+                const commonVolumes = ['100', '150', '200', '250', '300'];
+                if (vDropdown) {
+                    const volPercentStr = Math.round(currentBoostVolume * 100).toString();
+                    if (commonVolumes.includes(volPercentStr)) {
+                        vDropdown.value = volPercentStr;
+                        if (cVolumeWrapper) cVolumeWrapper.classList.add('hidden');
+                    } else {
+                        vDropdown.value = 'custom';
+                        if (cVolumeWrapper) cVolumeWrapper.classList.remove('hidden');
+                    }
+                }
             }
         });
         stealthPlayer.addEventListener('error', () => setPlayerLoading(false));
@@ -423,36 +468,30 @@ export function init() {
 
     if (enlargePlayer) {
         enlargePlayer.addEventListener('click', () => {
-            let changed = false;
-            if (playerScale < 150) { playerScale += 10; changed = true; }
-            if (playerHeight < 800) { playerHeight += 50; changed = true; }
-            if (changed) {
+            if (playerHeight < 800) {
+                playerHeight += 50;
                 updatePlayerSize();
                 if (!settings.followDefaultPlayerSize) {
-                    settings.defaultPlayerWidth = playerScale;
                     settings.defaultPlayerHeight = playerHeight;
                     saveSettings();
                 }
             } else {
-                notify('Da dat kich thuoc toi da.', 'warning');
+                notify('Đã đạt chiều cao tối đa.', 'warning');
             }
         });
     }
 
     if (shrinkPlayer) {
         shrinkPlayer.addEventListener('click', () => {
-            let changed = false;
-            if (playerScale > 50) { playerScale -= 10; changed = true; }
-            if (playerHeight > 250) { playerHeight -= 50; changed = true; }
-            if (changed) {
+            if (playerHeight > 250) {
+                playerHeight -= 50;
                 updatePlayerSize();
                 if (!settings.followDefaultPlayerSize) {
-                    settings.defaultPlayerWidth = playerScale;
                     settings.defaultPlayerHeight = playerHeight;
                     saveSettings();
                 }
             } else {
-                notify('Da dat kich thuoc toi thieu.', 'warning');
+                notify('Đã đạt chiều cao tối thiểu.', 'warning');
             }
         });
     }
@@ -467,7 +506,11 @@ export function init() {
             currentUrlIndex = -1;
             updatePlayerNavState();
             chrome.storage.local.remove(['lastPlayerUrl']);
-            notify('Player da reset!', 'success');
+            
+            playerHeight = 400;
+            updatePlayerSize();
+            
+            notify('Player đã reset!', 'success');
         });
     }
 
@@ -529,6 +572,46 @@ export function init() {
     if (fullscreenBtn) {
         fullscreenBtn.addEventListener('click', toggleFullscreen);
     }
+
+    const focusModeBtn = document.getElementById('focusModePlayer');
+    if (focusModeBtn) {
+        focusModeBtn.addEventListener('click', () => {
+            const stealthSection = document.getElementById('stealthSection');
+            if (stealthSection) {
+                const isActive = stealthSection.classList.toggle('focus-mode-active');
+                document.body.classList.toggle('has-focus-mode', isActive);
+                focusModeBtn.classList.toggle('active', isActive);
+                focusModeBtn.title = isActive ? 'Tắt Chế độ tập trung' : 'Chế độ tập trung (Focus Mode)';
+                
+                // Vô hiệu hóa các nút resize khi ở Focus Mode
+                const shrinkBtn = document.getElementById('shrinkPlayer');
+                const enlargeBtn = document.getElementById('enlargePlayer');
+                const resetBtn = document.getElementById('resetPlayer');
+                if (shrinkBtn) shrinkBtn.disabled = isActive;
+                if (enlargeBtn) enlargeBtn.disabled = isActive;
+                if (resetBtn) resetBtn.disabled = isActive;
+
+                if (isActive) {
+                    const container = elements.playerContainer;
+                    if (container) {
+                        container.style.width = '100%';
+                        container.style.marginLeft = '0';
+                        container.style.height = '100%';
+                    }
+                } else {
+                    // Reset inline styles được gán khi bật focus mode trước khi gọi updatePlayerSize
+                    const container = elements.playerContainer;
+                    if (container) {
+                        container.style.width = '';
+                        container.style.marginLeft = '';
+                        container.style.height = '';
+                    }
+                    updatePlayerSize();
+                }
+                notify(isActive ? 'Đã bật Chế độ tập trung' : 'Đã tắt Chế độ tập trung', 'success');
+            }
+        });
+    }
     document.addEventListener('fullscreenchange', () => {
         _isFullscreen = !!document.fullscreenElement;
         if (fullscreenBtn) {
@@ -548,6 +631,188 @@ export function init() {
             updatePlayerNavState();
             chrome.storage.local.remove(['stealthHistory', 'stealthHistoryIndex', 'lastPlayerUrl']);
             notify('Da xoa lich su Player.', 'success');
+        });
+    }
+
+    const clearIdentityBtn = document.getElementById('clearPlayerIdentity');
+    if (clearIdentityBtn) {
+        clearIdentityBtn.addEventListener('click', () => {
+            const currentUrl = elements.stealthUrl?.value.trim() || (elements.stealthPlayer && elements.stealthPlayer.src);
+            if (currentUrl && currentUrl.startsWith('http')) {
+                try {
+                    const parsedUrl = new URL(currentUrl);
+                    const domain = parsedUrl.hostname;
+                    chrome.cookies.getAll({}, (cookies) => {
+                        let count = 0;
+                        cookies.forEach((cookie) => {
+                            const cookieDomain = cookie.domain.startsWith('.') ? cookie.domain.substring(1) : cookie.domain;
+                            if (domain === cookieDomain || domain.endsWith('.' + cookieDomain) || cookieDomain.endsWith('.' + domain)) {
+                                const protocol = cookie.secure ? "https:" : "http:";
+                                const cookieUrl = `${protocol}//${cookieDomain}${cookie.path}`;
+                                chrome.cookies.remove({ url: cookieUrl, name: cookie.name });
+                                count++;
+                            }
+                        });
+                        const lang = settings.language || 'vi';
+                        const msg = lang === 'en' 
+                            ? `Created new identity for ${domain}. Cleared ${count} cookies.` 
+                            : `Đã tạo danh tính mới cho ${domain}. Đã xóa ${count} cookies.`;
+                        notify(msg, 'success');
+                    });
+                    
+                    // Reload player
+                    if (elements.stealthPlayer) {
+                        setPlayerLoading(true);
+                        elements.stealthPlayer.src = currentUrl;
+                    }
+                } catch (e) {
+                    console.error(e);
+                    const lang = settings.language || 'vi';
+                    const msg = lang === 'en' ? 'Error clearing cookies.' : 'Lỗi khi xóa cookies.';
+                    notify(msg, 'error');
+                }
+            } else {
+                const lang = settings.language || 'vi';
+                const msg = lang === 'en' 
+                    ? 'No website is currently open to clear identity.' 
+                    : 'Không có trang web nào đang mở để xóa danh tính.';
+                notify(msg, 'warning');
+            }
+        });
+    }
+
+    const speedSlider = document.getElementById('speedSlider');
+    const speedVal = document.getElementById('speedVal');
+    const volumeSlider = document.getElementById('volumeSlider');
+    const volumeVal = document.getElementById('volumeVal');
+    const speedDropdown = document.getElementById('speedDropdown');
+    const volumeDropdown = document.getElementById('volumeDropdown');
+    const customSpeedWrapper = document.getElementById('customSpeedWrapper');
+    const customVolumeWrapper = document.getElementById('customVolumeWrapper');
+    const playerSettingsTrigger = document.getElementById('playerSettingsTrigger');
+    const playerSettingsMenu = document.getElementById('playerSettingsMenu');
+    const playerOverlayControls = document.getElementById('playerOverlayControls');
+    const playerContainer = document.querySelector('.player-container');
+
+    // 1. Auto-hide logic
+    let overlayHideTimeout = null;
+
+    function resetOverlayHideTimeout() {
+        if (overlayHideTimeout) clearTimeout(overlayHideTimeout);
+        overlayHideTimeout = setTimeout(() => {
+            if (playerSettingsMenu && playerSettingsMenu.classList.contains('hidden') && playerOverlayControls) {
+                playerOverlayControls.classList.remove('active');
+            }
+        }, 3000);
+    }
+
+    function showOverlayControls() {
+        if (playerOverlayControls) {
+            playerOverlayControls.classList.add('active');
+        }
+        resetOverlayHideTimeout();
+    }
+
+    if (playerContainer) {
+        playerContainer.addEventListener('mousemove', showOverlayControls);
+        playerContainer.addEventListener('mouseleave', () => {
+            if (overlayHideTimeout) clearTimeout(overlayHideTimeout);
+            overlayHideTimeout = setTimeout(() => {
+                if (playerSettingsMenu && playerSettingsMenu.classList.contains('hidden') && playerOverlayControls) {
+                    playerOverlayControls.classList.remove('active');
+                }
+            }, 1000);
+        });
+    }
+
+    if (playerOverlayControls) {
+        playerOverlayControls.addEventListener('mouseenter', () => {
+            if (overlayHideTimeout) clearTimeout(overlayHideTimeout);
+        });
+        playerOverlayControls.addEventListener('mouseleave', () => {
+            resetOverlayHideTimeout();
+        });
+    }
+
+    // 2. Trigger dropdown menu
+    if (playerSettingsTrigger && playerSettingsMenu) {
+        playerSettingsTrigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            playerSettingsMenu.classList.toggle('hidden');
+            if (!playerSettingsMenu.classList.contains('hidden')) {
+                if (overlayHideTimeout) clearTimeout(overlayHideTimeout);
+            } else {
+                resetOverlayHideTimeout();
+            }
+        });
+    }
+
+    document.addEventListener('click', (e) => {
+        if (playerSettingsMenu && !playerSettingsMenu.classList.contains('hidden')) {
+            if (!playerSettingsMenu.contains(e.target) && !playerSettingsTrigger.contains(e.target)) {
+                playerSettingsMenu.classList.add('hidden');
+                resetOverlayHideTimeout();
+            }
+        }
+    });
+
+    // Helper to apply speed
+    function applySpeed(speed) {
+        currentBoostSpeed = speed;
+        if (speedSlider) speedSlider.value = speed;
+        if (speedVal) speedVal.textContent = `${speed.toFixed(2)}x`;
+        const playerFrame = document.getElementById('playerFrame');
+        if (playerFrame && playerFrame.contentWindow) {
+            playerFrame.contentWindow.postMessage({ type: 'boostVideoSpeed', speed: currentBoostSpeed }, '*');
+        }
+    }
+
+    // Helper to apply volume
+    function applyVolume(volumePercent) {
+        currentBoostVolume = volumePercent / 100;
+        if (volumeSlider) volumeSlider.value = volumePercent;
+        if (volumeVal) volumeVal.textContent = `${volumePercent}%`;
+        const playerFrame = document.getElementById('playerFrame');
+        if (playerFrame && playerFrame.contentWindow) {
+            playerFrame.contentWindow.postMessage({ type: 'boostVideoVolume', volume: currentBoostVolume }, '*');
+        }
+    }
+
+    // 3. Dropdowns changes
+    if (speedDropdown) {
+        speedDropdown.addEventListener('change', (e) => {
+            const val = e.target.value;
+            if (val === 'custom') {
+                if (customSpeedWrapper) customSpeedWrapper.classList.remove('hidden');
+            } else {
+                if (customSpeedWrapper) customSpeedWrapper.classList.add('hidden');
+                applySpeed(parseFloat(val));
+            }
+        });
+    }
+
+    if (volumeDropdown) {
+        volumeDropdown.addEventListener('change', (e) => {
+            const val = e.target.value;
+            if (val === 'custom') {
+                if (customVolumeWrapper) customVolumeWrapper.classList.remove('hidden');
+            } else {
+                if (customVolumeWrapper) customVolumeWrapper.classList.add('hidden');
+                applyVolume(parseInt(val));
+            }
+        });
+    }
+
+    // 4. Sliders inputs (for Custom mode)
+    if (speedSlider) {
+        speedSlider.addEventListener('input', (e) => {
+            applySpeed(parseFloat(e.target.value));
+        });
+    }
+
+    if (volumeSlider) {
+        volumeSlider.addEventListener('input', (e) => {
+            applyVolume(parseInt(e.target.value));
         });
     }
 
@@ -614,6 +879,9 @@ export function init() {
                 setTimeout(() => { isNavigating = false; }, 1500);
 
             } else if (message.type === 'iframeNavigated') {
+                // Ignore navigations from normal browser tabs (tabId !== -1)
+                if (message.tabId !== undefined && message.tabId !== -1) return;
+
                 const targetUrl = message.url;
                 if (!targetUrl || targetUrl === 'about:blank' || targetUrl.startsWith('chrome')) return;
 
@@ -639,6 +907,15 @@ export function init() {
                     }
                 }
             }
+        });
+    }
+
+    // 5. Wheel scroll for stealth-controls
+    const stealthControls = document.querySelector('.stealth-controls');
+    if (stealthControls) {
+        stealthControls.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            stealthControls.scrollLeft += e.deltaY;
         });
     }
 

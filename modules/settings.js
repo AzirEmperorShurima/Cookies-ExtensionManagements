@@ -1,7 +1,8 @@
-import { elements, settings, notify, saveSettings, updateUILanguage, applySettings, state } from '../popup.js';
-import { isValidUrl, hashPassword, generateMasterKey, decryptData, encryptData } from './utils.js';
+import { elements, settings, notify, saveSettings, updateUILanguage, applySettings, state, showConfirm } from '../popup.js';
+import { isValidUrl, hashPassword, generateMasterKey, decryptData, encryptData, createElement } from './utils.js';
 
 const translations = window.translations;
+const getDict = () => translations[settings.language || 'vi'] || translations.vi;
 let currentTabsToSave = [];
 
 export function toggleCustomBgUrlRow() {
@@ -21,10 +22,10 @@ export function renderCustomBgList() {
 
     const lang = settings.language || 'vi';
     const dict = translations[lang] || translations.vi;
-    customBgList.innerHTML = '';
+    customBgList.textContent = '';
 
     if (!settings.customBgList || settings.customBgList.length === 0) {
-        customBgList.innerHTML = `<p class="empty-msg">${dict.noCustomBg || 'No custom backgrounds added.'}</p>`;
+        customBgList.appendChild(createElement('p', { className: 'empty-msg' }, dict.noCustomBg || 'No custom backgrounds added.'));
         return;
     }
 
@@ -46,7 +47,7 @@ export function renderCustomBgList() {
         actions.className = 'custom-bg-item-actions';
 
         const selectBtn = document.createElement('button');
-        selectBtn.innerHTML = '✔';
+        selectBtn.textContent = '✔';
         selectBtn.title = 'Select this background';
         selectBtn.onclick = (e) => {
             e.stopPropagation();
@@ -54,15 +55,15 @@ export function renderCustomBgList() {
             saveSettings();
             renderCustomBgList();
             applyPlayerBackground();
-            notify('Background updated!', 'success');
+            notify(getDict().bgUpdated, 'success');
         };
 
         const deleteBtn = document.createElement('button');
-        deleteBtn.innerHTML = '🗑';
+        deleteBtn.textContent = '🗑';
         deleteBtn.title = 'Delete this background';
-        deleteBtn.onclick = (e) => {
+        deleteBtn.onclick = async (e) => {
             e.stopPropagation();
-            if (confirm('Delete this background from list?')) {
+            if (await showConfirm('Delete this background from list?')) {
                 settings.customBgList.splice(index, 1);
                 if (settings.customBgUrl === url) {
                     settings.customBgUrl = settings.customBgList[0] || '';
@@ -92,20 +93,31 @@ export function updateBgPreview(url) {
     const { bgPreviewImg, bgPreviewPlaceholder } = elements;
     if (!bgPreviewImg || !bgPreviewPlaceholder) return;
 
+    const container = document.getElementById('bgPreviewContainer');
+
     if (url && isValidUrl(url)) {
         bgPreviewImg.src = url;
         bgPreviewImg.classList.remove('hidden');
         bgPreviewPlaceholder.classList.add('hidden');
+        if (container) {
+            container.style.backgroundImage = `url('${url}')`;
+        }
         bgPreviewImg.onerror = () => {
             bgPreviewImg.onerror = null;
             bgPreviewImg.classList.add('hidden');
             bgPreviewPlaceholder.classList.remove('hidden');
             bgPreviewPlaceholder.textContent = 'Invalid Image URL';
+            if (container) {
+                container.style.backgroundImage = 'none';
+            }
         };
     } else {
         bgPreviewImg.classList.add('hidden');
         bgPreviewPlaceholder.classList.remove('hidden');
         bgPreviewPlaceholder.textContent = 'No Image Selected';
+        if (container) {
+            container.style.backgroundImage = 'none';
+        }
     }
 }
 
@@ -152,7 +164,7 @@ export function updateCurrentShortcutDisplay() {
 export function renderTabSelection() {
     const { tabListContainer } = elements;
     if (!tabListContainer) return;
-    tabListContainer.innerHTML = '';
+    tabListContainer.textContent = '';
 
     currentTabsToSave.forEach((tab, index) => {
         const div = document.createElement('div');
@@ -170,8 +182,21 @@ export function renderTabSelection() {
         label.style.cssText = 'font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; flex: 1;';
         label.title = tab.url;
 
-        const icon = tab.favIconUrl ? `<img src="${tab.favIconUrl}" width="12" height="12" style="margin-right: 5px; vertical-align: middle;">` : '🌐 ';
-        label.innerHTML = `${icon}${tab.incognito ? '🔒 ' : ''}${tab.title || tab.url}`;
+        label.textContent = '';
+        if (tab.favIconUrl) {
+            label.appendChild(createElement('img', {
+                src: tab.favIconUrl,
+                width: '12',
+                height: '12',
+                style: { marginRight: '5px', verticalAlign: 'middle' }
+            }));
+        } else {
+            label.appendChild(document.createTextNode('🌐 '));
+        }
+        if (tab.incognito) {
+            label.appendChild(document.createTextNode('🔒 '));
+        }
+        label.appendChild(document.createTextNode(tab.title || tab.url));
 
         div.appendChild(checkbox);
         div.appendChild(label);
@@ -182,12 +207,12 @@ export function renderTabSelection() {
 export function renderSessions() {
     const { sessionsList } = elements;
     if (!sessionsList) return;
-    sessionsList.innerHTML = '';
+    sessionsList.textContent = '';
 
     if (!settings.savedSessions || settings.savedSessions.length === 0) {
         const lang = settings.language || 'vi';
         const dict = translations[lang] || translations.vi;
-        sessionsList.innerHTML = `<p class="empty-msg">${dict.noSessions || 'Chưa có phiên làm việc nào được lưu.'}</p>`;
+        sessionsList.appendChild(createElement('p', { className: 'empty-msg' }, dict.noSessions || 'Chưa có phiên làm việc nào được lưu.'));
         return;
     }
 
@@ -240,13 +265,13 @@ export function renderSessions() {
         deleteBtn.className = 'favorite-delete-btn';
         deleteBtn.title = 'Xóa phiên';
         deleteBtn.textContent = '🗑️';
-        deleteBtn.onclick = (e) => {
+        deleteBtn.onclick = async (e) => {
             e.stopPropagation();
-            if (confirm(`Xóa phiên "${session.name}"?`)) {
+            if (await showConfirm(`Xóa phiên "${session.name}"?`)) {
                 settings.savedSessions.splice(index, 1);
                 saveSettings();
                 renderSessions();
-                notify('Đã xóa phiên làm việc', 'warning');
+                notify(getDict().sessionDeleted, 'warning');
             }
         };
 
@@ -261,7 +286,7 @@ export function renderSessions() {
         restoreSelectedBtn.onclick = () => {
             const selectedItems = tabsListDiv.querySelectorAll('.session-tab-checkbox:checked');
             if (selectedItems.length === 0) {
-                notify('Vui lòng chọn ít nhất một tab!', 'warning');
+                notify(getDict().selectOneTabWarning, 'warning');
                 return;
             }
             const tabsToRestore = Array.from(selectedItems).map(cb => session.tabs[parseInt(cb.dataset.tabIndex)]);
@@ -305,7 +330,7 @@ export function renderSessions() {
                     if (isAllowed) {
                         chrome.windows.create({ url: tab.url, incognito: true });
                     } else {
-                        notify('Cần cấp quyền Incognito', 'error');
+                        notify(getDict().incognitoAccessRequired, 'error');
                     }
                 });
             };
@@ -331,7 +356,7 @@ export function renderSessions() {
 
 export async function restoreSession(session) {
     try {
-        notify(`Đang khôi phục phiên "${session.name}"...`, 'success');
+        notify((getDict().restoringSession || 'Đang khôi phục phiên') + ` "${session.name}"...`, 'success');
         const normalTabs = session.tabs.filter(t => !t.incognito);
         const incognitoTabs = session.tabs.filter(t => t.incognito);
 
@@ -346,12 +371,12 @@ export async function restoreSession(session) {
                     incognito: isAllowed
                 });
                 if (!isAllowed) {
-                    notify('Cần cấp quyền Incognito để mở tab ẩn danh', 'error');
+                    notify(getDict().incognitoAccessRequired, 'error');
                 }
             });
         }
     } catch (error) {
-        notify('Lỗi khi khôi phục: ' + error.message, 'error');
+        notify((getDict().restoreError || 'Lỗi khi khôi phục: ') + error.message, 'error');
     }
 }
 
@@ -378,7 +403,7 @@ function setupPasswordToggle(inputId, toggleId) {
     }
 }
 
-export function init() {
+export async function init() {
     const {
         darkModeToggle, autoClearToggle, showNotifyToggle, useSidePanelToggle,
         realTimeProtectionToggle, blockClickjackingToggle, blockCryptoMiningToggle,
@@ -388,7 +413,8 @@ export function init() {
         newSafeUrlInput, panicActionSelect, changeShortcutBtn, saveSessionBtn,
         sessionNameInput, sessionTabTypeSelect, selectAllTabsBtn, deselectAllTabsBtn,
         cancelSaveSessionBtn, confirmSaveSessionBtn, tabSelectionArea, settingsSearchInput,
-        clearSettingsSearch, playerBackgroundType, customBgUrlInput, addCustomBgBtn
+        clearSettingsSearch, playerBackgroundType, customBgUrlInput, addCustomBgBtn,
+        customCursorInput, setCustomCursorBtn, resetCursorBtn, playerIsolatedIdentityToggle
     } = elements;
 
     // Load initial listings
@@ -404,7 +430,7 @@ export function init() {
             settings.darkMode = e.target.checked;
             applySettings();
             saveSettings();
-            notify(`Dark mode ${settings.darkMode ? 'enabled' : 'disabled'}`, 'success');
+            notify(`Dark mode ${settings.darkMode ? (getDict().enabled || 'enabled') : (getDict().disabled || 'disabled')}`, 'success');
         });
     }
 
@@ -415,9 +441,9 @@ export function init() {
             if (settings.autoClearStealth) {
                 chrome.storage.local.remove(['stealthHistory', 'lastPlayerUrl']);
                 if (elements.stealthPlayer) elements.stealthPlayer.src = '';
-                notify('Đã bật Auto-clear Stealth History.', 'warning');
+                notify(`${getDict().autoClearStealth || 'Auto-clear Stealth History'} ${getDict().enabled || 'enabled'}`, 'warning');
             } else {
-                notify('Đã tắt Auto-clear.', 'success');
+                notify(`${getDict().autoClearStealth || 'Auto-clear Stealth History'} ${getDict().disabled || 'disabled'}`, 'success');
             }
         });
     }
@@ -433,7 +459,7 @@ export function init() {
         useSidePanelToggle.addEventListener('change', (e) => {
             settings.useSidePanel = e.target.checked;
             saveSettings();
-            notify(`Default to side panel ${settings.useSidePanel ? 'enabled' : 'disabled'}`, 'success');
+            notify(`${getDict().useSidePanel || 'Default to side panel'} ${settings.useSidePanel ? (getDict().enabled || 'enabled') : (getDict().disabled || 'disabled')}`, 'success');
         });
     }
 
@@ -441,7 +467,7 @@ export function init() {
         realTimeProtectionToggle.addEventListener('change', (e) => {
             settings.realTimeProtection = e.target.checked;
             saveSettings();
-            notify(`Real-time protection ${settings.realTimeProtection ? 'enabled' : 'disabled'}`, 'success');
+            notify(`${getDict().realTimeProtection || 'Real-time protection'} ${settings.realTimeProtection ? (getDict().enabled || 'enabled') : (getDict().disabled || 'disabled')}`, 'success');
         });
     }
 
@@ -449,7 +475,7 @@ export function init() {
         blockClickjackingToggle.addEventListener('change', (e) => {
             settings.blockClickjacking = e.target.checked;
             saveSettings();
-            notify(`Clickjacking protection ${settings.blockClickjacking ? 'enabled' : 'disabled'}`, 'success');
+            notify(`${getDict().blockClickjacking || 'Clickjacking protection'} ${settings.blockClickjacking ? (getDict().enabled || 'enabled') : (getDict().disabled || 'disabled')}`, 'success');
         });
     }
 
@@ -457,7 +483,7 @@ export function init() {
         blockCryptoMiningToggle.addEventListener('change', (e) => {
             settings.blockCryptoMining = e.target.checked;
             saveSettings();
-            notify(`Cryptomining protection ${settings.blockCryptoMining ? 'enabled' : 'disabled'}`, 'success');
+            notify(`${getDict().blockCryptoMining || 'Cryptomining protection'} ${settings.blockCryptoMining ? (getDict().enabled || 'enabled') : (getDict().disabled || 'disabled')}`, 'success');
         });
     }
 
@@ -480,9 +506,9 @@ export function init() {
                     strongPasswordToggle.checked = intendedState;
                     if (passwordRequirementText) passwordRequirementText.classList.toggle('hidden', !intendedState);
                     saveSettings();
-                    notify(`Đã ${action} ràng buộc mật khẩu mạnh thành công!`, 'success');
+                    notify(settings.language === 'en' ? `Strong password requirement ${intendedState ? 'enabled' : 'disabled'} successfully!` : `Đã ${action} ràng buộc mật khẩu mạnh thành công!`, 'success');
                 } else {
-                    notify('Mật khẩu không chính xác!', 'error');
+                    notify(getDict().incorrectCode, 'error');
                 }
             });
         });
@@ -492,7 +518,16 @@ export function init() {
         alwaysRequirePasswordToggle.addEventListener('change', (e) => {
             settings.alwaysRequirePassword = e.target.checked;
             saveSettings();
-            notify(`Always require password ${settings.alwaysRequirePassword ? 'enabled' : 'disabled'}`, 'success');
+            notify(`${getDict().alwaysRequirePassword || 'Always require password'} ${settings.alwaysRequirePassword ? (getDict().enabled || 'enabled') : (getDict().disabled || 'disabled')}`, 'success');
+        });
+    }
+
+    if (playerIsolatedIdentityToggle) {
+        playerIsolatedIdentityToggle.addEventListener('change', (e) => {
+            settings.playerIsolatedIdentity = e.target.checked;
+            saveSettings();
+            chrome.runtime.sendMessage({ type: 'updateSecurityRules' });
+            notify(`${getDict().playerIsolatedIdentity || 'Isolated Identity'} ${settings.playerIsolatedIdentity ? (getDict().enabled || 'enabled') : (getDict().disabled || 'disabled')}`, 'success');
         });
     }
 
@@ -523,12 +558,12 @@ export function init() {
                     if (newPassRow) newPassRow.classList.remove('hidden');
                     oldPassInput.disabled = true;
                     verifyOldPass.disabled = true;
-                    notify('Old password verified. Enter new one.', 'success');
+                    notify(getDict().oldPassVerified, 'success');
                     if (settings.requireStrongPassword && passwordRequirementText) {
                         passwordRequirementText.classList.remove('hidden');
                     }
                 } else {
-                    notify('Incorrect current password!', 'error');
+                    notify(getDict().incorrectCode, 'error');
                     oldPassInput.value = '';
                 }
             });
@@ -542,19 +577,19 @@ export function init() {
             const confirmPass = confirmNewPassInput.value.trim();
 
             if (newPass === '') {
-                notify('Please enter a new password', 'warning');
+                notify(getDict().enterNewPass || 'Please enter a new password', 'warning');
                 return;
             }
             if (newPass !== confirmPass) {
-                notify('Passwords do not match!', 'error');
+                notify(getDict().passMismatch || 'Passwords do not match!', 'error');
                 return;
             }
             if (settings.requireStrongPassword && !isStrongPassword(newPass)) {
-                notify('Password does not meet security standards!', 'error');
+                notify(getDict().passwordRequirement || 'Password does not meet security standards!', 'error');
                 return;
             }
             if (!settings.requireStrongPassword && newPass.length < 4) {
-                notify('Password must be at least 4 chars', 'warning');
+                notify(getDict().passMinLength || 'Password must be at least 4 chars', 'warning');
                 return;
             }
 
@@ -577,7 +612,7 @@ export function init() {
                 chrome.storage.local.remove('stealthPassword');
                 state.secretCode = newPass;
                 saveSettings();
-                notify('Password updated successfully!', 'success');
+                notify(getDict().passUpdated || 'Password updated successfully!', 'success');
 
                 oldPassInput.value = '';
                 oldPassInput.disabled = false;
@@ -599,7 +634,7 @@ export function init() {
         searchEngineSelect.addEventListener('change', (e) => {
             settings.searchEngine = e.target.value;
             saveSettings();
-            notify(`Default search engine set to ${settings.searchEngine}`, 'success');
+            notify((settings.language === 'en' ? 'Default search engine set to ' : 'Đã thay đổi công cụ tìm kiếm mặc định thành ') + settings.searchEngine, 'success');
         });
     }
 
@@ -608,18 +643,18 @@ export function init() {
             if (!newSafeUrlInput) return;
             let url = newSafeUrlInput.value.trim();
             if (!url) {
-                notify('Vui lòng nhập URL', 'warning');
+                notify(getDict().enterNoteOrLink || 'Vui lòng nhập URL', 'warning');
                 return;
             }
             if (!url.startsWith('http')) url = 'https://' + url;
             if (!isValidUrl(url)) {
-                notify('URL không hợp lệ', 'error');
+                notify(getDict().invalidUrl || 'URL không hợp lệ', 'error');
                 return;
             }
 
             if (!settings.safeUrls) settings.safeUrls = [];
             if (settings.safeUrls.includes(url)) {
-                notify('URL này đã có trong danh sách', 'warning');
+                notify(getDict().urlExists || 'URL này đã có trong danh sách', 'warning');
                 return;
             }
 
@@ -627,7 +662,7 @@ export function init() {
             saveSettings();
             newSafeUrlInput.value = '';
             renderSafeUrls();
-            notify('Safe URL added!', 'success');
+            notify(getDict().safeUrlAdded || 'Safe URL added!', 'success');
         });
     }
 
@@ -636,7 +671,7 @@ export function init() {
             settings.panicAction = e.target.value;
             saveSettings();
             updatePanicDescription(e.target.value);
-            notify(`Panic action set to: ${e.target.value}`, 'success');
+            notify((settings.language === 'en' ? 'Panic action set to: ' : 'Hành động Panic được cài đặt thành: ') + e.target.value, 'success');
         });
     }
 
@@ -651,7 +686,7 @@ export function init() {
             if (!sessionNameInput || !sessionTabTypeSelect) return;
             const sessionName = sessionNameInput.value.trim();
             if (!sessionName) {
-                notify('Vui lòng nhập tên phiên làm việc', 'warning');
+                notify(getDict().enterSessionName || 'Vui lòng nhập tên phiên làm việc', 'warning');
                 return;
             }
 
@@ -665,16 +700,16 @@ export function init() {
                 });
 
                 if (currentTabsToSave.length === 0) {
-                    notify('Không tìm thấy tab nào để lưu!', 'warning');
+                    notify(getDict().noTabsFound || 'Không tìm thấy tab nào để lưu!', 'warning');
                     return;
                 }
 
                 renderTabSelection();
                 if (tabSelectionArea) tabSelectionArea.classList.remove('hidden');
                 saveSessionBtn.disabled = true;
-                notify('Vui lòng chọn các tab bạn muốn lưu', 'success');
+                notify(getDict().selectTabsToSave || 'Vui lòng chọn các tab bạn muốn lưu', 'success');
             } catch (error) {
-                notify('Lỗi khi lấy danh sách tab: ' + error.message, 'error');
+                notify((getDict().getTabsError || 'Lỗi khi lấy danh sách tab: ') + error.message, 'error');
             }
         });
     }
@@ -696,18 +731,18 @@ export function init() {
             if (tabSelectionArea) tabSelectionArea.classList.add('hidden');
             if (saveSessionBtn) saveSessionBtn.disabled = false;
             currentTabsToSave = [];
-            notify('Đã hủy thao tác lưu phiên', 'warning');
+            notify(getDict().saveSessionCancelled || 'Đã hủy thao tác lưu phiên', 'warning');
         });
     }
 
     if (confirmSaveSessionBtn) {
-        confirmSaveSessionBtn.addEventListener('click', () => {
+        confirmSaveSessionBtn.addEventListener('click', async () => {
             if (!sessionNameInput || !sessionTabTypeSelect) return;
             const sessionName = sessionNameInput.value.trim();
             const selectedCheckboxes = document.querySelectorAll('.tab-selection-checkbox:checked');
 
             if (selectedCheckboxes.length === 0) {
-                notify('Vui lòng chọn ít nhất một tab để lưu!', 'warning');
+                notify(getDict().selectOneTabWarning || 'Vui lòng chọn ít nhất một tab để lưu!', 'warning');
                 return;
             }
 
@@ -734,13 +769,13 @@ export function init() {
             if (tabSelectionArea) tabSelectionArea.classList.add('hidden');
             if (saveSessionBtn) saveSessionBtn.disabled = false;
 
-            if (confirm(`Đã lưu "${sessionName}" với ${selectedTabs.length} tab. Bạn có muốn đóng các tab đã chọn không?`)) {
+            if (await showConfirm(settings.language === 'en' ? `Saved "${sessionName}" with ${selectedTabs.length} tabs. Do you want to close the selected tabs?` : `Đã lưu "${sessionName}" với ${selectedTabs.length} tab. Bạn có muốn đóng các tab đã chọn không?`)) {
                 selectedTabs.forEach(t => {
-                    chrome.tabs.remove(t.id).catch(() => {});
+                    chrome.tabs.remove(t.id).catch(() => { });
                 });
             }
 
-            notify(`Đã lưu phiên: ${sessionName}`, 'success');
+            notify((getDict().sessionSaved || 'Đã lưu phiên: ') + sessionName, 'success');
         });
     }
 
@@ -803,7 +838,7 @@ export function init() {
             settings.language = e.target.value;
             saveSettings();
             updateUILanguage();
-            notify('Language updated!', 'success');
+            notify(getDict().langUpdated || 'Language updated!', 'success');
         });
     }
 
@@ -813,7 +848,7 @@ export function init() {
             saveSettings();
             toggleCustomBgUrlRow();
             applyPlayerBackground();
-            notify('Background type updated!', 'success');
+            notify(getDict().bgUpdated || 'Background type updated!', 'success');
         });
     }
 
@@ -823,13 +858,13 @@ export function init() {
             const url = customBgUrlInput.value.trim();
             if (!url) return;
             if (!isValidUrl(url)) {
-                notify('Invalid Image URL', 'error');
+                notify(getDict().invalidImgUrl || 'Invalid Image URL', 'error');
                 return;
             }
 
             if (!settings.customBgList) settings.customBgList = [];
             if (settings.customBgList.includes(url)) {
-                notify('Background URL already exists', 'warning');
+                notify(getDict().bgUrlExists || 'Background URL already exists', 'warning');
                 return;
             }
 
@@ -839,7 +874,7 @@ export function init() {
             customBgUrlInput.value = '';
             renderCustomBgList();
             applyPlayerBackground();
-            notify('Custom background added!', 'success');
+            notify(getDict().bgAdded || 'Custom background added!', 'success');
         });
     }
 
@@ -856,7 +891,7 @@ export function init() {
                 if (elements.masterSyncKeyInput) elements.masterSyncKeyInput.value = masterKey;
             }
             saveSettings();
-            notify(`Vault sync ${settings.vaultSyncEnabled ? 'enabled' : 'disabled'}`, 'success');
+            notify(`Vault sync ${settings.vaultSyncEnabled ? (getDict().enabled || 'enabled') : (getDict().disabled || 'disabled')}`, 'success');
         });
     }
 
@@ -866,7 +901,7 @@ export function init() {
                 const masterKey = await decryptData(settings.masterSyncKey, state.secretCode);
                 if (masterKey) {
                     navigator.clipboard.writeText(masterKey);
-                    notify('Master Key copied!', 'success');
+                    notify(getDict().masterKeyCopied || 'Master Key copied!', 'success');
                 }
             }
         });
@@ -877,7 +912,7 @@ export function init() {
             if (!elements.manualMasterKeyInput) return;
             const inputKey = elements.manualMasterKeyInput.value.trim();
             if (inputKey.length !== 64) {
-                notify('Master Key must be 64 characters!', 'error');
+                notify(getDict().masterKeyInvalidLength || 'Master Key must be 64 characters!', 'error');
                 return;
             }
 
@@ -886,13 +921,89 @@ export function init() {
             saveSettings();
             elements.manualMasterKeyInput.value = '';
             if (elements.masterSyncKeyInput) elements.masterSyncKeyInput.value = '********';
-            notify('Master Key saved! Merging vault items...', 'success');
+            notify(getDict().masterKeySaved || 'Master Key saved! Merging vault items...', 'success');
 
             // Pull items using the new key
-            await import('./vault.js').then(m => m.pullVaultFromCloud());
-            await import('./vault.js').then(m => m.loadVault());
+            import('./vault.js').then(v => {
+                if (v.renderVaultList) v.renderVaultList();
+            });
         });
     }
+
+    if (elements.pullSyncBtn) {
+        elements.pullSyncBtn.addEventListener('click', async () => {
+            try {
+                const { syncFromCloud } = await import('./sync.js');
+                const cloudData = await syncFromCloud(['appSettings']);
+                if (cloudData.appSettings) {
+                    Object.assign(settings, cloudData.appSettings);
+                    saveSettings();
+                    notify('Settings pulled from Cloud!', 'success');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    notify('No settings found in Cloud.', 'warning');
+                }
+            } catch (e) {
+                console.error(e);
+                notify('Error pulling from Cloud.', 'error');
+            }
+        });
+        await import('./vault.js').then(m => m.loadVault());
+    }
+}
+// Custom Cursor event handlers
+if (setCustomCursorBtn && customCursorInput) {
+    setCustomCursorBtn.addEventListener('click', () => {
+        const url = customCursorInput.value.trim();
+        if (url) {
+            if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:image')) {
+                settings.customCursor = url;
+                saveSettings();
+                import('../popup.js').then(m => m.applySettings());
+                notify(getDict().cursorApplied || 'Đã áp dụng con trỏ chuột tùy chỉnh!', 'success');
+            } else {
+                notify(getDict().invalidImgUrl || 'URL hình ảnh không hợp lệ!', 'error');
+            }
+        } else {
+            notify(getDict().enterImgUrl || 'Vui lòng nhập URL hình ảnh!', 'warning');
+        }
+    });
+}
+
+if (resetCursorBtn) {
+    resetCursorBtn.addEventListener('click', () => {
+        settings.customCursor = '';
+        saveSettings();
+        import('../popup.js').then(m => m.applySettings());
+        if (customCursorInput) customCursorInput.value = '';
+        notify(getDict().cursorReset || 'Đã khôi phục con trỏ chuột mặc định.', 'success');
+    });
+}
+
+// Preview Image click zoom at clicked point
+if (elements.bgPreviewImg) {
+    elements.bgPreviewImg.addEventListener('click', (e) => {
+        const img = elements.bgPreviewImg;
+        const container = document.getElementById('bgPreviewContainer');
+
+        const isZoomed = img.classList.toggle('zoomed');
+
+        if (isZoomed) {
+            const rect = img.getBoundingClientRect();
+            const x = ((e.clientX - rect.left) / rect.width) * 100;
+            const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+            img.style.transformOrigin = `${x}% ${y}%`;
+            if (container) {
+                container.classList.add('zoomed-container');
+            }
+        } else {
+            img.style.transformOrigin = 'center center';
+            if (container) {
+                container.classList.remove('zoomed-container');
+            }
+        }
+    });
 }
 
 export function renderSafeUrls() {
@@ -901,10 +1012,10 @@ export function renderSafeUrls() {
 
     const lang = settings.language || 'vi';
     const dict = translations[lang] || translations.vi;
-    safeUrlsList.innerHTML = '';
+    safeUrlsList.textContent = '';
 
     if (!settings.safeUrls || settings.safeUrls.length === 0) {
-        safeUrlsList.innerHTML = `<p class="empty-msg">${dict.noSafeUrls || 'No safe URLs added. Default: Google.'}</p>`;
+        safeUrlsList.appendChild(createElement('p', { className: 'empty-msg' }, dict.noSafeUrls || 'No safe URLs added. Default: Google.'));
         return;
     }
 
@@ -923,7 +1034,7 @@ export function renderSafeUrls() {
 
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'favorite-delete-btn';
-        deleteBtn.innerHTML = '🗑';
+        deleteBtn.textContent = '🗑';
         deleteBtn.onclick = () => {
             settings.safeUrls.splice(index, 1);
             saveSettings();

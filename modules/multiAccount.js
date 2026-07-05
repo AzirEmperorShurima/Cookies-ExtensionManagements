@@ -1,4 +1,5 @@
-import { elements, settings, notify, saveSettings } from '../popup.js';
+import { elements, settings, notify, saveSettings, showConfirm } from '../popup.js';
+import { createElement } from './utils.js';
 
 const translations = window.translations;
 
@@ -10,10 +11,10 @@ export function loadContainers() {
     const lang = settings.language || 'vi';
     const dict = translations[lang] || translations.vi;
 
-    containerList.innerHTML = '';
+    containerList.textContent = '';
 
     if (containers.length === 0) {
-        containerList.innerHTML = `<p class="empty-msg">${dict.noContainers || 'No containers yet. Create one to start!'}</p>`;
+        containerList.appendChild(createElement('p', { className: 'empty-msg' }, dict.noContainers || 'No containers yet. Create one to start!'));
         return;
     }
 
@@ -54,9 +55,9 @@ export function loadContainers() {
         deleteBtn.title = 'Remove';
         card.appendChild(deleteBtn);
 
-        deleteBtn.addEventListener('click', (e) => {
+        deleteBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            if (confirm(`Remove container "${container.name}"?`)) {
+            if (await showConfirm(`Remove container "${container.name}"?`)) {
                 settings.accountContainers = settings.accountContainers.filter(c => c.id !== container.id);
                 saveSettings();
                 loadContainers();

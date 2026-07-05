@@ -1,5 +1,5 @@
-import { elements, settings, notify, saveSettings, state, activeTab } from '../popup.js';
-import { isRestrictedUrl } from './utils.js';
+import { elements, settings, notify, saveSettings, state, activeTab, showConfirm } from '../popup.js';
+import { isRestrictedUrl, createElement } from './utils.js';
 
 const translations = window.translations;
 
@@ -16,13 +16,13 @@ export function renderVideoList(videos) {
     const list = elements.videoList;
     if (!list) return;
 
-    list.innerHTML = '';
+    list.textContent = '';
     state.currentVideos = videos;
 
     if (videos.length === 0) {
         const lang = settings.language || 'vi';
         const dict = translations[lang] || translations.vi;
-        list.innerHTML = `<p class="empty-msg">${dict.noVideos || 'Chưa phát hiện video nào trên trang này.'}</p>`;
+        list.appendChild(createElement('p', { className: 'empty-msg' }, dict.noVideos || 'Chưa phát hiện video nào trên trang này.'));
         return;
     }
 
@@ -36,10 +36,10 @@ export function renderVideoList(videos) {
         if (video.thumbnail) {
             const img = document.createElement('img');
             img.src = video.thumbnail;
-            img.onerror = () => { preview.innerHTML = '🎥'; };
+            img.onerror = () => { preview.textContent = '🎥'; };
             preview.appendChild(img);
         } else {
-            preview.innerHTML = video.url.includes('m3u8') ? '📡' : '🎥';
+            preview.textContent = video.url.includes('m3u8') ? '📡' : '🎥';
         }
 
         const info = document.createElement('div');
@@ -84,7 +84,7 @@ export function renderTelegramMediaList(items, tabId) {
     const itemsContainer = elements.telegramMediaItems;
     if (!itemsContainer) return;
 
-    itemsContainer.innerHTML = '';
+    itemsContainer.textContent = '';
     state.currentTelegramItems = items;
 
     if (!items.length) {
@@ -108,7 +108,7 @@ export function renderTelegramMediaList(items, tabId) {
             const img = document.createElement('img');
             img.src = item.thumbnail;
             img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
-            img.onerror = () => { preview.innerHTML = item.type === 'video' ? '🎬' : '🖼️'; };
+            img.onerror = () => { preview.textContent = item.type === 'video' ? '🎬' : '🖼️'; };
             preview.appendChild(img);
         } else {
             preview.textContent = item.type === 'video' ? '🎬' : '🖼️';
@@ -126,7 +126,7 @@ export function renderTelegramMediaList(items, tabId) {
                 display:flex; align-items:center; justify-content:center;
                 background:rgba(0,0,0,0.3);
             `;
-            overlay.innerHTML = '<span style="font-size:1.6rem;color:#fff;text-shadow:0 0 8px rgba(0,0,0,.9);">▶</span>';
+            overlay.appendChild(createElement('span', { style: { fontSize: '1.6rem', color: '#fff', textShadow: '0 0 8px rgba(0,0,0,.9)' } }, '▶'));
             preview.appendChild(overlay);
 
             if (item.duration) {
@@ -137,16 +137,17 @@ export function renderTelegramMediaList(items, tabId) {
             }
         }
 
-        const info = document.createElement('div');
-        info.className = 'media-card-info';
-        let html = `<strong style="font-size:0.8rem;word-break:break-all;">${item.title || item.filename}</strong>`;
-        html += `<br><small style="color:#aaa;">${item.type.toUpperCase()}`;
-        if (item.size) html += ` · ${(item.size / 1024 / 1024).toFixed(1)} MB`;
-        html += '</small>';
+        const info = createElement('div', { className: 'media-card-info' },
+            createElement('strong', { style: { fontSize: '0.8rem', wordBreak: 'break-all' } }, item.title || item.filename),
+            createElement('br'),
+            createElement('small', { style: { color: '#aaa' } }, 
+                item.type.toUpperCase() + (item.size ? ` · ${(item.size / 1024 / 1024).toFixed(1)} MB` : '')
+            )
+        );
         if (item.needsPlay) {
-            html += `<br><small style="color:#ffb74d;">⚠ Cần bấm phát trước</small>`;
+            info.appendChild(createElement('br'));
+            info.appendChild(createElement('small', { style: { color: '#ffb74d' } }, '⚠ Cần bấm phát trước'));
         }
-        info.innerHTML = html;
 
         const actions = document.createElement('div');
         actions.className = 'media-card-actions';
@@ -530,7 +531,7 @@ export function init() {
 
                 if (!isTelegram) {
                     notify('Vui lòng mở Telegram Web trước!', 'warning');
-                    if (confirm('Mở web.telegram.org ngay bây giờ?')) {
+                    if (await showConfirm('Mở web.telegram.org ngay bây giờ?')) {
                         chrome.tabs.create({ url: 'https://web.telegram.org/' });
                     }
                     return;

@@ -1,5 +1,6 @@
-import { elements, notify } from '../popup.js';
+import { elements, notify, showConfirm } from '../popup.js';
 import { updateDashboard } from './dashboard.js';
+import { createElement } from './utils.js';
 
 function getInstallTypeInfo(installType) {
     const info = {
@@ -28,53 +29,78 @@ function createExtensionCardHTML(ext) {
     const card = document.createElement('div');
     card.className = 'extension-card';
 
+    const visiblePerms = ext.permissions.slice(0, 3);
+    const hiddenPerms = ext.permissions.slice(3);
     const hasManyPermissions = ext.permissions.length > 3;
-    let permissionsTagsHTML = '';
-    
+
+    const permissionsBox = createElement('div', { className: 'extension-permissions-box' },
+        createElement('strong', {}, 'Permissions:')
+    );
+
+    const tagContainer = createElement('div', { 
+        className: 'permissions-tag-container', 
+        style: { display: 'flex', flexWrap: 'wrap', gap: '4px' } 
+    });
+
     if (ext.permissions.length === 0) {
-        permissionsTagsHTML = '<span class="permission-tag">None</span>';
+        tagContainer.textContent = 'None';
     } else {
-        const visiblePerms = ext.permissions.slice(0, 3);
-        const hiddenPerms = ext.permissions.slice(3);
-        
-        permissionsTagsHTML = visiblePerms.map(p => `<span class="permission-tag">${p}</span>`).join('');
+        visiblePerms.forEach(p => {
+            tagContainer.appendChild(createElement('span', { className: 'permission-tag' }, p));
+        });
         if (hasManyPermissions) {
-            permissionsTagsHTML += `
-                <div class="extra-permissions" style="display: none; margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; width: 100%;">
-                    ${hiddenPerms.map(p => `<span class="permission-tag">${p}</span>`).join('')}
-                </div>
-                <button class="permissions-expand-btn" style="background: none; border: none; color: var(--primary-color, #7928ca); cursor: pointer; font-size: 0.8rem; padding: 2px 0; margin-top: 4px; font-weight: 600; display: block; width: 100%; text-align: left;">[+ Expand]</button>
-            `;
+            const extraDiv = createElement('div', { 
+                className: 'extra-permissions', 
+                style: { display: 'none', marginTop: '4px', flexWrap: 'wrap', gap: '4px', width: '100%' } 
+            });
+            hiddenPerms.forEach(p => {
+                extraDiv.appendChild(createElement('span', { className: 'permission-tag' }, p));
+            });
+            const expandBtn = createElement('button', { 
+                className: 'permissions-expand-btn', 
+                style: { background: 'none', border: 'none', color: '#7928ca', cursor: 'pointer', fontSize: '0.8rem', padding: '2px 0', marginTop: '4px', fontWeight: '600', display: 'block', width: '100%', textAlign: 'left' } 
+            }, '[+ Expand]');
+            
+            tagContainer.appendChild(extraDiv);
+            tagContainer.appendChild(expandBtn);
         }
     }
+    permissionsBox.appendChild(tagContainer);
 
-    card.innerHTML = `
-        <div class="extension-top">
-            <div class="extension-large-icon-container">
-                <img src="${iconUrl}" alt="${ext.name}" class="extension-large-icon" onerror="this.onerror=null; this.src='icons/extension.png';">
-            </div>
-            <div class="extension-info">
-                <h3 class="extension-name">${ext.name}</h3>
-                <span class="extension-version">v${ext.version}</span>
-            </div>
-        </div>
-        <div class="extension-status-bar ${ext.enabled ? 'enabled' : 'disabled'}">
-            <label class="switch">
-                <input type="checkbox" ${ext.enabled ? 'checked' : ''}>
-                <span class="slider round"></span>
-            </label>
-            <span class="status-text">${ext.enabled ? 'Enabled' : 'Disabled'}</span>
-            <button class="remove-extension">Remove</button>
-        </div>
-        <div class="extension-meta">
-            <strong>Type: </strong>${typeLabel}
-            <img src="${icon}" title="${tooltip}" alt="${tooltip}" class="type-mini-icon">
-        </div>
-        <div class="extension-permissions-box">
-            <strong>Permissions:</strong>
-            <div class="permissions-tag-container" style="display: flex; flex-wrap: wrap; gap: 4px;">${permissionsTagsHTML}</div>
-        </div>
-    `;
+    const iconImg = createElement('img', { src: iconUrl, alt: ext.name, className: 'extension-large-icon' });
+    iconImg.onerror = () => { iconImg.onerror = null; iconImg.src = 'icons/extension.png'; };
+
+    const checkbox = createElement('input', { type: 'checkbox' });
+    if (ext.enabled) checkbox.checked = true;
+
+    card.textContent = '';
+    card.appendChild(
+        createElement('div', { className: 'extension-top' },
+            createElement('div', { className: 'extension-large-icon-container' }, iconImg),
+            createElement('div', { className: 'extension-info' },
+                createElement('h3', { className: 'extension-name' }, ext.name),
+                createElement('span', { className: 'extension-version' }, `v${ext.version}`)
+            )
+        )
+    );
+    card.appendChild(
+        createElement('div', { className: 'extension-status-bar ' + (ext.enabled ? 'enabled' : 'disabled') },
+            createElement('label', { className: 'switch' },
+                checkbox,
+                createElement('span', { className: 'slider round' })
+            ),
+            createElement('span', { className: 'status-text' }, ext.enabled ? 'Enabled' : 'Disabled'),
+            createElement('button', { className: 'remove-extension' }, 'Remove')
+        )
+    );
+    card.appendChild(
+        createElement('div', { className: 'extension-meta' },
+            createElement('strong', {}, 'Type: '),
+            typeLabel + ' ',
+            createElement('img', { src: icon, title: tooltip, alt: tooltip, className: 'type-mini-icon' })
+        )
+    );
+    card.appendChild(permissionsBox);
 
     return card;
 }
@@ -85,7 +111,7 @@ function addToggleEvent(card, ext) {
         const newState = toggle.checked;
 
         if (!newState && ext.enabled) {
-            if (!confirm(`Are you sure you want to disable "${ext.name}"?`)) {
+            if (!(await showConfirm(`Are you sure you want to disable "${ext.name}"?`))) {
                 toggle.checked = true;
                 return;
             }
@@ -123,8 +149,8 @@ function addToggleEvent(card, ext) {
 
 function addRemoveEvent(card, ext) {
     const removeButton = card.querySelector('.remove-extension');
-    removeButton.addEventListener('click', () => {
-        if (confirm(`Are you sure you want to remove "${ext.name}"?`)) {
+    removeButton.addEventListener('click', async () => {
+        if (await showConfirm(`Are you sure you want to remove "${ext.name}"?`)) {
             chrome.management.uninstall(ext.id, () => {
                 if (chrome.runtime.lastError) {
                     notify(`Failed to remove "${ext.name}": ${chrome.runtime.lastError.message}`, 'error');
@@ -174,7 +200,7 @@ export function renderExtensions() {
     const { extensionsList, extensionManager } = elements;
     if (!extensionsList || !extensionManager) return;
 
-    extensionsList.innerHTML = '';
+    extensionsList.textContent = '';
     extensionManager.classList.add('active');
     
     const container = document.createElement('div');

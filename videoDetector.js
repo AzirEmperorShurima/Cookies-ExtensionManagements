@@ -24,140 +24,7 @@
             scanForVideos();
             startObserver();
         }
-
-        // Kiểm tra xem có đang ở trong Privacy Player không
-        if (window.location.href.includes('privacy_player.html')) {
-            chrome.runtime.sendMessage({ type: 'setPrivacyPlayerTabId' });
-            // setupLinkInterception(settings);
-        }
     });
-
-    // function setupLinkInterception(settings) {
-    //     if (settings.linkClickBehavior !== 'player' && settings.linkClickBehavior !== 'block') return;
-
-    //     // TIÊM SCRIPT VÀO MAIN WORLD ĐỂ HOOK WINDOW.OPEN VÀ CLICK TRỰC TIẾP
-    //     const script = document.createElement('script');
-    //     script.textContent = `
-    //         (function() {
-    //             const behavior = '${settings.linkClickBehavior}';
-    //             const origin = window.location.origin;
-    //             const url = window.location.href;
-
-    //             // 0. Kiểm tra an toàn: Nếu là trang Cloudflare, hcaptcha hoặc bot-check
-    //             const isSecurityPage = 
-    //                 url.includes('cloudflare.com') || 
-    //                 url.includes('hcaptcha.com') || 
-    //                 url.includes('turnstile') ||
-    //                 url.includes('__cf_chl_tk') ||
-    //                 document.getElementById('cf-turnstile-response') ||
-    //                 document.querySelector('.ch-title-zone') ||
-    //                 window._cf_chl_opt;
-
-    //             if (isSecurityPage) {
-    //                 console.log('[Privacy Player] Bot verification detected, disabling AdBlock to allow verification');
-    //                 return;
-    //             }
-                
-    //             // 1. Hook window.open (Bắt quảng cáo popup bằng JS)
-    //             const originalOpen = window.open;
-    //             window.open = function(url, target, features) {
-    //                 // console.log('[Privacy Player] Intercepted window.open:', url);
-                    
-    //                 // Kiểm tra URL đáng ngờ (quảng cáo popunder)
-    //                 const isSuspicious = url && typeof url === 'string' && (
-    //                     url.includes('tsyndicate') || 
-    //                     url.includes('tsyndicads') ||
-    //                     url.includes('/pop?') || 
-    //                     url.includes('adserver') ||
-    //                     url.includes('trafficstars') ||
-    //                     url.includes('exoclick') ||
-    //                     (url.includes('missav') && url.includes('ad')) ||
-    //                     (!url.startsWith('about:') && !url.startsWith(origin) && !url.startsWith('http'))
-    //                 );
-
-    //                 if (isSuspicious || behavior === 'block') {
-    //                     console.log('[Privacy Player] Blocked suspicious/all popup:', url);
-    //                     return null;
-    //                 }
-
-    //                 if (behavior === 'player' && url && !url.startsWith('about:') && !url.startsWith(origin)) {
-    //                     // Gửi URL về iframe cha (Privacy Player)
-    //                     window.parent.postMessage({ type: 'loadUrlInPlayer', url: url }, '*');
-    //                     return null;
-    //                 }
-                    
-    //                 return originalOpen.apply(this, arguments);
-    //             };
-
-    //             // 2. Hook click (Bắt các thẻ <a> có target="_blank" hoặc click nặc danh)
-    //             document.addEventListener('click', (e) => {
-    //                 const link = e.target.closest('a');
-                    
-    //                 // Chặn click nặc danh vào body/document (kỹ thuật mở popunder)
-    //                 if (!link && !e.target.closest('button, video, input, [role="button"], label, summary, .btn, .button, .cf-turnstile')) {
-    //                     // Kiểm tra xem đây có phải click của người dùng thật không (isTrusted)
-    //                     if (!e.isTrusted) return;
-
-    //                     console.log('[Privacy Player] Blocked document-level click popunder attempt');
-    //                     e.stopPropagation();
-    //                     e.preventDefault();
-    //                     return;
-    //                 }
-
-    //                 if (link && link.href && !link.href.startsWith('javascript:')) {
-    //                     const target = link.getAttribute('target');
-    //                     const isExternal = !link.href.startsWith(origin) && link.href.startsWith('http');
-
-    //                     if (target === '_blank' || e.ctrlKey || e.metaKey || isExternal) {
-    //                         if (behavior === 'player') {
-    //                             e.preventDefault();
-    //                             e.stopPropagation();
-    //                             window.parent.postMessage({ type: 'loadUrlInPlayer', url: link.href }, '*');
-    //                         } else if (behavior === 'block') {
-    //                             e.preventDefault();
-    //                             e.stopPropagation();
-    //                             console.log('[Privacy Player] Blocked link click:', link.href);
-    //                         }
-    //                     }
-    //                 }
-    //             }, true); // Capture phase để chặn sớm nhất
-
-    //             // 4. Triệt tiêu các sự kiện popup đặc thù (Dựa trên MissAV AdBlocker)
-    //             function neutralizePopups() {
-    //                 // Nếu là trang bảo mật, không can thiệp DOM nữa
-    //                 if (window._cf_chl_opt || document.getElementById('cf-turnstile-response')) return;
-
-    //                 const popElements = document.querySelectorAll('[\\\\@click*="pop()"], [\\\\@keyup.space.window*="pop()"]');
-    //                 popElements.forEach(el => {
-    //                     el.removeAttribute('@click');
-    //                     el.removeAttribute('@keyup.space.window');
-    //                     el.addEventListener('click', (e) => {
-    //                         e.preventDefault();
-    //                         e.stopPropagation();
-    //                     }, true);
-    //                 });
-
-    //                 if (typeof window.pop === 'function') {
-    //                     window.pop = function() { return false; };
-    //                 }
-
-    //                 // 5. Chặn popunder bằng cách override beforeunload (ngăn redirect chain)
-    //                 window.addEventListener('beforeunload', function(e) {
-    //                     if (document.referrer.includes('tsyndicate') || location.href.includes('/pop?url=')) {
-    //                         e.preventDefault();
-    //                         e.returnValue = '';
-    //                     }
-    //                 });
-    //             }
-
-    //             neutralizePopups();
-    //             const observer = new MutationObserver(neutralizePopups);
-    //             observer.observe(document.documentElement, { childList: true, subtree: true });
-    //         })();
-    //     `;
-    //     (document.head || document.documentElement).appendChild(script);
-    //     script.remove();
-    // }
 
     // Theo dõi thay đổi URL trong SPA (YouTube, v.v.)
     window.addEventListener('popstate', reportNavigation);
@@ -363,5 +230,61 @@
             attributes: true,
             attributeFilter: ['src']
         });
+    }
+
+    // Add Global Media Sniffer Bubble
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+        if (request.type === 'SHOW_SNIFFER_BUBBLE' && request.video) {
+            showSnifferBubble(request.video);
+        }
+    });
+
+    function showSnifferBubble(video) {
+        let bubble = document.getElementById('pm-sniffer-bubble');
+        if (!bubble) {
+            bubble = document.createElement('div');
+            bubble.id = 'pm-sniffer-bubble';
+            bubble.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #1f1f1f, #2b2b2b);
+                border: 1px solid #7ed6df;
+                border-radius: 12px;
+                padding: 15px;
+                color: white;
+                font-family: Arial, sans-serif;
+                z-index: 2147483647;
+                box-shadow: 0 4px 15px rgba(126, 214, 223, 0.3);
+                display: flex;
+                align-items: center;
+                gap: 15px;
+                transition: all 0.3s ease;
+                cursor: pointer;
+            `;
+            document.body.appendChild(bubble);
+
+            // Auto hide after 10s
+            setTimeout(() => {
+                if (bubble && bubble.parentNode) {
+                    bubble.style.opacity = '0';
+                    setTimeout(() => bubble.parentNode && bubble.remove(), 300);
+                }
+            }, 10000);
+        }
+
+        bubble.innerHTML = `
+            <div style="font-size: 24px;">📥</div>
+            <div style="display: flex; flex-direction: column;">
+                <strong style="font-size: 14px; margin-bottom: 5px; color: #7ed6df;">Media Detected!</strong>
+                <span style="font-size: 12px; color: #dcdde1; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${video.filename || 'Unknown stream'} (${video.type || 'Media'})</span>
+                <span style="font-size: 10px; color: #fff; margin-top: 3px; opacity: 0.7;">Click to open Downloader</span>
+            </div>
+        `;
+
+        bubble.onclick = () => {
+            if (bubble.parentNode) bubble.remove();
+            alert('Media intercepted! Please open Privacy Manager Extension -> Video Downloader to download it.');
+        };
     }
 })();

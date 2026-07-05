@@ -1,3 +1,36 @@
+export function createElement(tag, attributes = {}, ...children) {
+    const el = document.createElement(tag);
+    for (const [key, value] of Object.entries(attributes)) {
+        if (key.startsWith('on') && typeof value === 'function') {
+            el.addEventListener(key.slice(2).toLowerCase(), value);
+        } else if (key === 'className') {
+            el.className = value;
+        } else if (key === 'style' && typeof value === 'object') {
+            Object.assign(el.style, value);
+        } else if (key === 'dataset' && typeof value === 'object') {
+            for (const [dataKey, dataVal] of Object.entries(value)) {
+                el.dataset[dataKey] = dataVal;
+            }
+        } else {
+            el.setAttribute(key, value);
+        }
+    }
+    for (const child of children) {
+        if (child == null || typeof child === 'boolean') continue;
+        if (typeof child === 'string' || typeof child === 'number') {
+            el.appendChild(document.createTextNode(child));
+        } else if (child instanceof Node) {
+            el.appendChild(child);
+        } else if (Array.isArray(child)) {
+            child.forEach(c => {
+                if (c instanceof Node) el.appendChild(c);
+                else if (typeof c === 'string' || typeof c === 'number') el.appendChild(document.createTextNode(c));
+            });
+        }
+    }
+    return el;
+}
+
 export function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
@@ -25,23 +58,30 @@ export function isRestrictedUrl(url) {
     return restrictedProtocols.some(protocol => url.startsWith(protocol));
 }
 
-async function deriveKey(password) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password);
-    const hash = await crypto.subtle.digest('SHA-256', data);
-    return await crypto.subtle.importKey(
-        'raw',
-        hash,
-        { name: 'AES-GCM' },
-        false,
-        ['encrypt', 'decrypt']
-    );
-}
-
 export async function encryptData(data, password) {
     try {
-        const key = await deriveKey(password);
         const encoder = new TextEncoder();
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        const baseKey = await crypto.subtle.importKey(
+            'raw',
+            encoder.encode(password),
+            'PBKDF2',
+            false,
+            ['deriveKey']
+        );
+        const key = await crypto.subtle.deriveKey(
+            {
+                name: 'PBKDF2',
+                salt: salt,
+                iterations: 100000,
+                hash: 'SHA-256'
+            },
+            baseKey,
+            { name: 'AES-GCM', length: 256 },
+            false,
+            ['encrypt', 'decrypt']
+        );
+
         const iv = crypto.getRandomValues(new Uint8Array(12));
         const encodedData = encoder.encode(JSON.stringify(data));
         const encryptedContent = await crypto.subtle.encrypt(
@@ -52,6 +92,7 @@ export async function encryptData(data, password) {
 
         return {
             iv: Array.from(iv),
+            salt: Array.from(salt),
             content: Array.from(new Uint8Array(encryptedContent))
         };
     } catch (e) {
@@ -62,7 +103,44 @@ export async function encryptData(data, password) {
 
 export async function decryptData(encryptedObj, password) {
     try {
-        const key = await deriveKey(password);
+        if (!encryptedObj || !encryptedObj.iv || !encryptedObj.content) return null;
+        let key;
+        if (encryptedObj.salt) {
+            const encoder = new TextEncoder();
+            const baseKey = await crypto.subtle.importKey(
+                'raw',
+                encoder.encode(password),
+                'PBKDF2',
+                false,
+                ['deriveKey']
+            );
+            const saltArray = new Uint8Array(encryptedObj.salt);
+            key = await crypto.subtle.deriveKey(
+                {
+                    name: 'PBKDF2',
+                    salt: saltArray,
+                    iterations: 100000,
+                    hash: 'SHA-256'
+                },
+                baseKey,
+                { name: 'AES-GCM', length: 256 },
+                false,
+                ['encrypt', 'decrypt']
+            );
+        } else {
+            // Tương thích ngược với SHA-256 đơn giản
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password);
+            const hash = await crypto.subtle.digest('SHA-256', data);
+            key = await crypto.subtle.importKey(
+                'raw',
+                hash,
+                { name: 'AES-GCM' },
+                false,
+                ['encrypt', 'decrypt']
+            );
+        }
+
         const iv = new Uint8Array(encryptedObj.iv);
         const content = new Uint8Array(encryptedObj.content);
         const decryptedContent = await crypto.subtle.decrypt(
@@ -91,4 +169,14 @@ export async function generateMasterKey() {
     const array = new Uint8Array(32);
     crypto.getRandomValues(array);
     return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+export function parseHTML(htmlString) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlString, 'text/html');
+    const fragment = document.createDocumentFragment();
+    while (doc.body.firstChild) {
+        fragment.appendChild(doc.body.firstChild);
+    }
+    return fragment;
 }

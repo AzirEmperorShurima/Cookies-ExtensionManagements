@@ -1,4 +1,7 @@
 import { calculatePrivacyGrade, setTrackStyle } from './modules/dashboard.js';
+import { createElement, parseHTML } from './modules/utils.js';
+import { initAdblockUI } from './modules/adblock.js';
+import { syncToCloud } from './modules/sync.js';
 
 const translations = window.translations;
 
@@ -30,6 +33,8 @@ export const elements = {
     toggleStealthPass: document.getElementById('toggleStealthPass'),
     unlockStealth: document.getElementById('unlockStealth'),
     stealthTitle: document.getElementById('stealthTitle'),
+    lockScreenBackBtn: document.getElementById('lockScreenBackBtn'),
+    vaultLockScreenBackBtn: document.getElementById('vaultLockScreenBackBtn'),
 
     appSettings: document.getElementById('appSettings'),
     oldPassInput: document.getElementById('oldPassInput'),
@@ -53,6 +58,7 @@ export const elements = {
     defaultPlayerWidth: document.getElementById('defaultPlayerWidth'),
     defaultPlayerHeight: document.getElementById('defaultPlayerHeight'),
     followDefaultPlayerSizeToggle: document.getElementById('followDefaultPlayerSizeToggle'),
+    playerIsolatedIdentityToggle: document.getElementById('playerIsolatedIdentityToggle'),
     autoClearToggle: document.getElementById('autoClearToggle'),
     showNotifyToggle: document.getElementById('showNotifyToggle'),
     cookieDestroyerToggle: document.getElementById('cookieDestroyerToggle'),
@@ -81,6 +87,8 @@ export const elements = {
     statCookies: document.getElementById('statCookies'),
     statExtensions: document.getElementById('statExtensions'),
     statTrackers: document.getElementById('statTrackers'),
+    cardEphemeral: document.getElementById('cardEphemeral'),
+    ephemeralStatus: document.getElementById('ephemeralStatus'),
     trackerModal: document.getElementById('trackerModal'),
     closeTrackerModal: document.getElementById('closeTrackerModal'),
     trackerDetailsList: document.querySelector('.tracker-details-list'),
@@ -94,6 +102,15 @@ export const elements = {
     sessionBar: document.getElementById('sessionBar'),
     permanentCount: document.getElementById('permanentCount'),
     sessionCount: document.getElementById('sessionCount'),
+
+    zenModeBtn: document.getElementById('zenModeBtn'),
+    zenModeModal: document.getElementById('zenModeModal'),
+    closeZenModal: document.getElementById('closeZenModal'),
+    zenTimerInput: document.getElementById('zenTimerInput'),
+    startZenModeBtn: document.getElementById('startZenModeBtn'),
+    zenActiveState: document.getElementById('zenActiveState'),
+    zenCountdown: document.getElementById('zenCountdown'),
+    stopZenModeBtn: document.getElementById('stopZenModeBtn'),
     quickFocusMode: document.getElementById('quickFocusMode'),
     quickClearAll: document.getElementById('quickClearAll'),
     fixPrivacyBtn: document.getElementById('fixPrivacyBtn'),
@@ -200,12 +217,31 @@ export const elements = {
     copyMasterKeyBtn: document.getElementById('copyMasterKeyBtn'),
     manualMasterKeyInput: document.getElementById('manualMasterKeyInput'),
     saveMasterKeyBtn: document.getElementById('saveMasterKeyBtn'),
+    pullSyncBtn: document.getElementById('pullSyncBtn'),
 
     telegramStats: document.getElementById('telegramStats'),
     statParallel: document.getElementById('statParallel'),
     statChunkSize: document.getElementById('statChunkSize'),
     statRetries: document.getElementById('statRetries'),
     statSpeed: document.getElementById('statSpeed'),
+
+    customCursorInput: document.getElementById('customCursorInput'),
+    setCustomCursorBtn: document.getElementById('setCustomCursorBtn'),
+    resetCursorBtn: document.getElementById('resetCursorBtn'),
+
+    adblockBtn: document.getElementById('adblockBtn'),
+    adblockSection: document.getElementById('adblockSection'),
+    adblockEnabledToggle: document.getElementById('adblockEnabledToggle'),
+    easylistToggle: document.getElementById('easylistToggle'),
+    fetchEasyListBtn: document.getElementById('fetchEasyListBtn'),
+    adblockNetworkCount: document.getElementById('adblockNetworkCount'),
+    adblockCssCount: document.getElementById('adblockCssCount'),
+    adsBlockedCount: document.getElementById('adsBlockedCount'),
+    customAdblockRules: document.getElementById('customAdblockRules'),
+    customAdblockCssRules: document.getElementById('customAdblockCssRules'),
+    saveAdblockSettingsBtn: document.getElementById('saveAdblockSettingsBtn'),
+    cardAdblock: document.getElementById('cardAdblock'),
+    statAdsBlocked: document.getElementById('statAdsBlocked'),
 };
 
 export const state = {
@@ -255,7 +291,12 @@ export let settings = {
     linkClickBehavior: 'player',
     appliedLinkType: 'all',
     requireStrongPassword: false,
-    showPasswordInSettings: true
+    showPasswordInSettings: true,
+    customCursor: '',
+    adblockEnabled: true,
+    easylistEnabled: true,
+    customAdblockRules: '',
+    customAdblockCssRules: ''
 };
 
 export let activeTab = null;
@@ -278,7 +319,11 @@ const ModuleLoader = {
 };
 
 export function saveSettings() {
-    chrome.storage.local.set({ appSettings: settings });
+    chrome.storage.local.set({ appSettings: settings }, () => {
+        if (settings.vaultSyncEnabled) {
+            syncToCloud({ appSettings: settings }).catch(e => console.error('Sync failed', e));
+        }
+    });
 }
 
 export function setupUnifiedLockScreen(container, passInput, unlockBtn, onSuccess) {
@@ -294,30 +339,33 @@ export function setupUnifiedLockScreen(container, passInput, unlockBtn, onSucces
                 const lang = settings.language || 'vi';
                 const dict = translations[lang] || translations.vi;
 
-                header.innerHTML = `
-                    <div class="lock-icon-wrapper">
-                        <img src="icons/icon128.png" alt="security" class="lock-icon">
-                        <div class="lock-pulse"></div>
-                    </div>
-                    <h3>${dict.setupStealthCodeTitle || 'Tạo Mã Số Bí Mật'}</h3>
-                    <p>${dict.setupStealthCodeDesc || 'Thiết lập mã số bảo mật để bảo vệ Két sắt và Trình phát riêng tư.'}</p>
-                `;
+                header.textContent = '';
+                header.appendChild(
+                    createElement('div', { className: 'lock-icon-wrapper' },
+                        createElement('img', { src: 'icons/icon128.png', alt: 'security', className: 'lock-icon' }),
+                        createElement('div', { className: 'lock-pulse' })
+                    )
+                );
+                header.appendChild(createElement('h3', {}, dict.setupStealthCodeTitle || 'Tạo Mã Số Bí Mật'));
+                header.appendChild(createElement('p', {}, dict.setupStealthCodeDesc || 'Thiết lập mã số bảo mật để bảo vệ Két sắt và Trình phát riêng tư.'));
 
-                body.innerHTML = `
-                    <div class="password-input-group">
-                        <div class="password-wrapper" style="position: relative; width: 100%;">
-                            <input type="password" class="lock-new-pass" placeholder="${dict.enterNewPassPlaceholder || 'Nhập mật khẩu mới (từ 4 kí tự)...'}">
-                            <button class="pass-eye lock-new-eye hidden" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer;">👁️</button>
-                        </div>
-                        <div class="password-wrapper" style="position: relative; width: 100%;">
-                            <input type="password" class="lock-confirm-pass" placeholder="${dict.confirmPassPlaceholder || 'Xác nhận mật khẩu mới...'}">
-                            <button class="pass-eye lock-confirm-eye hidden" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer;">👁️</button>
-                        </div>
-                        <button class="unlock-btn-modern setup-save-btn">
-                            <span>💾</span> ${dict.saveAndUnlock || 'Tạo & Mở Khóa'}
-                        </button>
-                    </div>
-                `;
+                body.textContent = '';
+                body.appendChild(
+                    createElement('div', { className: 'password-input-group' },
+                        createElement('div', { className: 'password-wrapper', style: { position: 'relative', width: '100%' } },
+                            createElement('input', { type: 'password', className: 'lock-new-pass', placeholder: dict.enterNewPassPlaceholder || 'Nhập mật khẩu mới (từ 4 kí tự)...' }),
+                            createElement('button', { className: 'pass-eye lock-new-eye hidden', style: { position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer' } }, '👁️')
+                        ),
+                        createElement('div', { className: 'password-wrapper', style: { position: 'relative', width: '100%' } },
+                            createElement('input', { type: 'password', className: 'lock-confirm-pass', placeholder: dict.confirmPassPlaceholder || 'Xác nhận mật khẩu mới...' }),
+                            createElement('button', { className: 'pass-eye lock-confirm-eye hidden', style: { position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer' } }, '👁️')
+                        ),
+                        createElement('button', { className: 'unlock-btn-modern setup-save-btn' },
+                            createElement('span', {}, '💾'),
+                            ' ' + (dict.saveAndUnlock || 'Tạo & Mở Khóa')
+                        )
+                    )
+                );
 
                 const saveBtn = body.querySelector('.setup-save-btn');
                 const newPassInput = body.querySelector('.lock-new-pass');
@@ -406,26 +454,29 @@ export function setupUnifiedLockScreen(container, passInput, unlockBtn, onSucces
                 const titleKey = isVault ? 'vaultProtected' : 'stealthModeLocked';
                 const descKey = isVault ? 'vaultLockDesc' : 'stealthLockDesc';
 
-                header.innerHTML = `
-                    <div class="lock-icon-wrapper">
-                        <img src="icons/icon128.png" alt="security" class="lock-icon">
-                        <div class="lock-pulse"></div>
-                    </div>
-                    <h3>${dict[titleKey] || (isVault ? 'Vault Protected' : 'Stealth Mode Locked')}</h3>
-                    <p>${dict[descKey] || (isVault ? 'Enter your Stealth Code to access the Vault' : 'Enter your secret code to unlock Privacy Player')}</p>
-                `;
+                header.textContent = '';
+                header.appendChild(
+                    createElement('div', { className: 'lock-icon-wrapper' },
+                        createElement('img', { src: 'icons/icon128.png', alt: 'security', className: 'lock-icon' }),
+                        createElement('div', { className: 'lock-pulse' })
+                    )
+                );
+                header.appendChild(createElement('h3', {}, dict[titleKey] || (isVault ? 'Vault Protected' : 'Stealth Mode Locked')));
+                header.appendChild(createElement('p', {}, dict[descKey] || (isVault ? 'Enter your Stealth Code to access the Vault' : 'Enter your secret code to unlock Privacy Player')));
 
-                body.innerHTML = `
-                    <div class="password-input-group">
-                        <div class="password-wrapper" style="position: relative;">
-                            <input type="password" class="lock-login-pass" placeholder="${dict.enterSecretCode || 'Nhập mã số bí mật...'}" value="">
-                            <button class="pass-eye hidden" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer;">👁️</button>
-                        </div>
-                        <button class="unlock-btn-modern login-unlock-btn">
-                            <span>🔓</span> ${dict.unlock || 'Unlock'}
-                        </button>
-                    </div>
-                `;
+                body.textContent = '';
+                body.appendChild(
+                    createElement('div', { className: 'password-input-group' },
+                        createElement('div', { className: 'password-wrapper', style: { position: 'relative' } },
+                            createElement('input', { type: 'password', className: 'lock-login-pass', placeholder: dict.enterSecretCode || 'Nhập mã số bí mật...', value: '' }),
+                            createElement('button', { className: 'pass-eye hidden', style: { position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer' } }, '👁️')
+                        ),
+                        createElement('button', { className: 'unlock-btn-modern login-unlock-btn' },
+                            createElement('span', {}, '🔓'),
+                            ' ' + (dict.unlock || 'Unlock')
+                        )
+                    )
+                );
 
                 const loginInput = body.querySelector('.lock-login-pass');
                 const loginUnlockBtn = body.querySelector('.login-unlock-btn');
@@ -505,6 +556,7 @@ export function notifySend(message, title = 'Cookie Manager', type = 'basic', ic
 export function applySettings() {
     document.body.classList.toggle('dark-mode', settings.darkMode);
     if (elements.darkModeToggle) elements.darkModeToggle.checked = settings.darkMode;
+    if (elements.languageSelect) elements.languageSelect.value = settings.language || 'vi';
 
     if (elements.autoClearToggle) elements.autoClearToggle.checked = settings.autoClearStealth;
     if (elements.showNotifyToggle) elements.showNotifyToggle.checked = settings.showNotifications;
@@ -517,6 +569,7 @@ export function applySettings() {
     if (elements.strongPasswordToggle) elements.strongPasswordToggle.checked = settings.requireStrongPassword ?? false;
     if (elements.alwaysRequirePasswordToggle) elements.alwaysRequirePasswordToggle.checked = settings.alwaysRequirePassword ?? true;
     if (elements.showPasswordToggle) elements.showPasswordToggle.checked = settings.showPasswordInSettings ?? true;
+    if (elements.playerIsolatedIdentityToggle) elements.playerIsolatedIdentityToggle.checked = settings.playerIsolatedIdentity ?? true;
 
     if (elements.telegramDownloaderToggle) elements.telegramDownloaderToggle.checked = settings.telegramDownloaderEnabled || false;
     if (elements.videoDownloaderToggle) elements.videoDownloaderToggle.checked = settings.videoDownloaderEnabled || false;
@@ -534,7 +587,24 @@ export function applySettings() {
         eye.classList.toggle('hidden', !showEyes);
     });
 
+    if (settings.customCursor) {
+        document.body.style.cursor = `url('${settings.customCursor}'), auto`;
+        let styleEl = document.getElementById('custom-cursor-style');
+        if (!styleEl) {
+            styleEl = document.createElement('style');
+            styleEl.id = 'custom-cursor-style';
+            document.head.appendChild(styleEl);
+        }
+        styleEl.textContent = `* { cursor: url('${settings.customCursor}'), auto !important; }`;
+    } else {
+        document.body.style.cursor = '';
+        const styleEl = document.getElementById('custom-cursor-style');
+        if (styleEl) styleEl.remove();
+    }
+    if (elements.customCursorInput) elements.customCursorInput.value = settings.customCursor || '';
+
     updateUILanguage();
+    document.body.style.opacity = '1';
 }
 
 export function updateUILanguage() {
@@ -547,13 +617,11 @@ export function updateUILanguage() {
             const children = Array.from(el.childNodes).filter(node =>
                 node.nodeType === Node.ELEMENT_NODE && !node.classList.contains('beta-badge')
             );
-            el.innerHTML = '';
+            el.textContent = '';
             children.forEach(child => el.appendChild(child));
             const translatedText = dict[key];
             if (translatedText.includes('<') && translatedText.includes('>')) {
-                const tempSpan = document.createElement('span');
-                tempSpan.innerHTML = translatedText;
-                el.appendChild(tempSpan);
+                el.appendChild(parseHTML(translatedText));
             } else {
                 el.appendChild(document.createTextNode(' ' + translatedText));
             }
@@ -593,7 +661,8 @@ export async function toggleSection(section) {
         extensionManager, cookiesManager, privacySettings,
         privacyPlayer, stealthSection, appSettings,
         appSettingsBtn, homeSection, historyManagerBtn,
-        historySection, vaultBtn, vaultSection, vaultLockScreen, stealthLockScreen
+        historySection, vaultBtn, vaultSection, vaultLockScreen, stealthLockScreen,
+        adblockSection, adblockBtn
     } = elements;
 
     const isActive = (section === 'extensions' && extensionManager?.classList.contains('active')) ||
@@ -604,17 +673,20 @@ export async function toggleSection(section) {
         (section === 'vault' && vaultBtn?.classList.contains('active')) ||
         (section === 'telegram' && elements.telegramDownloaderBtn?.classList.contains('active')) ||
         (section === 'video' && elements.videoDownloaderBtn?.classList.contains('active')) ||
-        (section === 'multiAccount' && elements.multiAccountBtn?.classList.contains('active'));
+        (section === 'multiAccount' && elements.multiAccountBtn?.classList.contains('active')) ||
+        (section === 'adblock' && adblockBtn?.classList.contains('active'));
 
     const allSections = [
         extensionsList, cookiesList, controls, privacySettings, stealthSection, appSettings,
-        homeSection, historySection, vaultSection, elements.telegramSection, elements.videoDownloaderSection, elements.multiAccountSection
+        homeSection, historySection, vaultSection, elements.telegramSection, elements.videoDownloaderSection, elements.multiAccountSection,
+        adblockSection
     ];
     allSections.forEach(el => el?.classList.remove('show'));
 
     const allBtns = [
         extensionManager, cookiesManager, privacyPlayer, appSettingsBtn, historyManagerBtn,
-        vaultBtn, elements.telegramDownloaderBtn, elements.videoDownloaderBtn, elements.multiAccountBtn
+        vaultBtn, elements.telegramDownloaderBtn, elements.videoDownloaderBtn, elements.multiAccountBtn,
+        adblockBtn
     ];
     allBtns.forEach(el => el?.classList.remove('active'));
 
@@ -630,31 +702,43 @@ export async function toggleSection(section) {
     }
 
     if (section !== 'player') {
-        state.isStealthUnlocked = false;
         if (stealthLockScreen) stealthLockScreen.classList.remove('show');
         const stealthPassInput = document.getElementById('stealthPassInput');
         if (stealthPassInput) stealthPassInput.value = '';
 
         if (settings.alwaysRequirePassword) {
+            state.isStealthUnlocked = false;
             state.secretCode = null;
             chrome.storage.session?.remove('sessionPassword');
         }
 
-        if (settings.autoClearStealth) {
-            const stealthPlayer = document.getElementById('stealthPlayer');
-            if (stealthPlayer?.src && stealthPlayer.src !== 'about:blank') {
+        const stealthPlayer = document.getElementById('stealthPlayer');
+        if (stealthPlayer) {
+            if (settings.autoClearStealth && stealthPlayer.src && stealthPlayer.src !== 'about:blank') {
                 chrome.history.deleteUrl({ url: stealthPlayer.src });
             }
+            stealthPlayer.src = 'about:blank';
+            const container = document.querySelector('.player-container');
+            if (container) container.classList.remove('has-content', 'player-loading');
+        }
+
+        const stealthSectionEl = document.getElementById('stealthSection');
+        if (stealthSectionEl) stealthSectionEl.classList.remove('focus-mode-active');
+        document.body.classList.remove('has-focus-mode');
+        const focusModeBtn = document.getElementById('focusModePlayer');
+        if (focusModeBtn) {
+            focusModeBtn.classList.remove('active');
+            focusModeBtn.title = 'Chế độ tập trung (Focus Mode)';
         }
     }
 
     if (section !== 'vault') {
-        state.isVaultUnlocked = false;
         if (vaultLockScreen) vaultLockScreen.classList.remove('show');
         const vaultPassInput = document.getElementById('vaultPassInput');
         if (vaultPassInput) vaultPassInput.value = '';
 
         if (settings.alwaysRequirePassword) {
+            state.isVaultUnlocked = false;
             state.secretCode = null;
             chrome.storage.session?.remove('sessionPassword');
         }
@@ -726,6 +810,11 @@ export async function toggleSection(section) {
         if (elements.multiAccountBtn) elements.multiAccountBtn.classList.add('active');
         await ModuleLoader.load('multiAccount');
         import('./modules/multiAccount.js').then(m => m.loadContainers());
+    } else if (section === 'adblock') {
+        if (elements.adblockSection) elements.adblockSection.classList.add('show');
+        if (elements.adblockBtn) elements.adblockBtn.classList.add('active');
+        await ModuleLoader.load('adblock');
+        import('./modules/adblock.js').then(m => m.initAdblockUI());
     }
 }
 
@@ -827,6 +916,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     elements.telegramDownloaderBtn.addEventListener('click', () => toggleSection('telegram'));
     elements.videoDownloaderBtn.addEventListener('click', () => toggleSection('video'));
     elements.multiAccountBtn.addEventListener('click', () => toggleSection('multiAccount'));
+    elements.adblockBtn.addEventListener('click', () => toggleSection('adblock'));
+    if (elements.cardAdblock) {
+        elements.cardAdblock.addEventListener('click', () => toggleSection('adblock'));
+    }
+    if (elements.lockScreenBackBtn) {
+        elements.lockScreenBackBtn.addEventListener('click', () => toggleSection('home'));
+    }
+    if (elements.vaultLockScreenBackBtn) {
+        elements.vaultLockScreenBackBtn.addEventListener('click', () => toggleSection('home'));
+    }
 
     // Horizontal scrolling on mousewheel hover for navigation bar
     const mainControls = document.querySelector('.mainControls');
@@ -852,3 +951,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }, 1000);
 });
+
+export function showConfirm(message) {
+    return new Promise((resolve) => {
+        const overlay = createElement('div', { className: 'custom-confirm-overlay' },
+            createElement('div', { className: 'custom-confirm-box' },
+                createElement('span', { className: 'custom-confirm-icon' }, '⚠️'),
+                createElement('p', {}, message),
+                createElement('div', { className: 'custom-confirm-actions' },
+                    createElement('button', { className: 'custom-confirm-btn-cancel' }, 'Hủy'),
+                    createElement('button', { className: 'custom-confirm-btn-ok' }, 'Đồng ý')
+                )
+            )
+        );
+        document.body.appendChild(overlay);
+
+        const btnOk = overlay.querySelector('.custom-confirm-btn-ok');
+        const btnCancel = overlay.querySelector('.custom-confirm-btn-cancel');
+
+        const cleanup = (result) => {
+            overlay.remove();
+            resolve(result);
+        };
+
+        btnOk.addEventListener('click', () => cleanup(true));
+        btnCancel.addEventListener('click', () => cleanup(false));
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                cleanup(false);
+            }
+        });
+    });
+}
+

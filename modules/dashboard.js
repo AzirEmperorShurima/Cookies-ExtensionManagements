@@ -1,4 +1,5 @@
-import { elements, settings, notify, saveSettings, updateUILanguage, toggleSection } from '../popup.js';
+import { elements, settings, notify, saveSettings, updateUILanguage, toggleSection, showConfirm } from '../popup.js';
+import { createElement } from './utils.js';
 
 const translations = window.translations;
 let dashboardUpdateTimeout = null;
@@ -45,6 +46,12 @@ export async function updateDashboard() {
         chrome.management.getAll((extensions) => {
             const activeExts = extensions.filter(ext => ext.enabled && ext.type === 'extension').length;
             if (statExtensions) statExtensions.textContent = activeExts;
+        });
+
+        chrome.storage.local.get(['adsBlockedCount'], (res) => {
+            if (elements.statAdsBlocked) {
+                elements.statAdsBlocked.textContent = res.adsBlockedCount || 0;
+            }
         });
 
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -143,11 +150,14 @@ export async function calculatePrivacyGrade() {
                 elements.gradeCard.appendChild(issuesContainer);
             }
 
-            issuesContainer.innerHTML = `<div class="fix-summary">${dict.fixSummary || 'Cần khắc phục'}:</div>`;
+            issuesContainer.textContent = '';
+            issuesContainer.appendChild(createElement('div', { className: 'fix-summary' }, (dict.fixSummary || 'Cần khắc phục') + ':'));
             issues.forEach(issue => {
-                const item = document.createElement('div');
-                item.className = 'issue-item';
-                item.innerHTML = `<span class="issue-dot"></span> <span>${dict[issue] || issue}</span>`;
+                const item = createElement('div', { className: 'issue-item' },
+                    createElement('span', { className: 'issue-dot' }),
+                    ' ',
+                    createElement('span', {}, dict[issue] || issue)
+                );
                 issuesContainer.appendChild(item);
             });
 
@@ -204,7 +214,7 @@ export function renderInsights(totalCookies, permanentCookies, trackers) {
     const lang = settings.language || 'vi';
     const dict = translations[lang] || translations.vi;
 
-    privacyInsightsList.innerHTML = '';
+    privacyInsightsList.textContent = '';
     const insights = [];
 
     if (trackers > 5) {
@@ -245,26 +255,22 @@ export function showTrackerDetails(trackers) {
     const { trackerModal, trackerDetailsList } = elements;
     if (!trackerDetailsList) return;
 
-    trackerDetailsList.innerHTML = '';
+    trackerDetailsList.textContent = '';
 
     if (!trackers || trackers.length === 0) {
-        trackerDetailsList.innerHTML = '<p class="empty-msg">No trackers detected on this page.</p>';
+        trackerDetailsList.appendChild(createElement('p', { className: 'empty-msg' }, 'No trackers detected on this page.'));
     } else {
         const sortedTrackers = [...trackers].sort((a, b) => b.count - a.count);
 
         sortedTrackers.forEach(t => {
-            const item = document.createElement('div');
-            item.className = 'tracker-detail-item';
-
             const lastSeenTime = new Date(t.lastSeen).toLocaleTimeString();
-
-            item.innerHTML = `
-                <div class="tracker-info">
-                    <span class="tracker-domain">${t.domain}</span>
-                    <span class="tracker-time">Last seen: ${lastSeenTime}</span>
-                </div>
-                <span class="tracker-count-badge">${t.count}</span>
-            `;
+            const item = createElement('div', { className: 'tracker-detail-item' },
+                createElement('div', { className: 'tracker-info' },
+                    createElement('span', { className: 'tracker-domain' }, t.domain),
+                    createElement('span', { className: 'tracker-time' }, `Last seen: ${lastSeenTime}`)
+                ),
+                createElement('span', { className: 'tracker-count-badge' }, t.count.toString())
+            );
             trackerDetailsList.appendChild(item);
         });
     }
@@ -286,8 +292,111 @@ export function setTrackStyle(element, status) {
 export function init() {
     const {
         cardCookies, cardTrackers, cardExtensions, closeTrackerModal,
-        quickFocusMode, quickClearAll
+        quickFocusMode, quickClearAll,
+        zenModeBtn, zenModeModal, closeZenModal, zenTimerInput, startZenModeBtn, zenActiveState, zenCountdown, stopZenModeBtn
     } = elements;
+
+    if (zenModeBtn) {
+        zenModeBtn.addEventListener('click', () => {
+            zenModeModal?.classList.remove('hidden');
+            checkZenStatus();
+        });
+    }
+    if (closeZenModal) {
+        closeZenModal.addEventListener('click', () => zenModeModal?.classList.add('hidden'));
+    }
+
+    let zenInterval;
+    const checkZenStatus = () => {
+        chrome.storage.local.get(['zenEndTime'], (res) => {
+            if (res.zenEndTime && res.zenEndTime > Date.now()) {
+                if (startZenModeBtn) startZenModeBtn.classList.add('hidden');
+                if (zenTimerInput) zenTimerInput.parentElement.classList.add('hidden');
+                if (zenActiveState) zenActiveState.classList.remove('hidden');
+                updateZenTimer(res.zenEndTime);
+            } else {
+                if (startZenModeBtn) startZenModeBtn.classList.remove('hidden');
+                if (zenTimerInput) zenTimerInput.parentElement.classList.remove('hidden');
+                if (zenActiveState) zenActiveState.classList.add('hidden');
+                if (zenInterval) clearInterval(zenInterval);
+            }
+        });
+    };
+
+    const updateZenTimer = (endTime) => {
+        if (zenInterval) clearInterval(zenInterval);
+        zenInterval = setInterval(() => {
+            const left = Math.floor((endTime - Date.now()) / 1000);
+            if (left <= 0) {
+                clearInterval(zenInterval);
+                checkZenStatus();
+                return;
+            }
+            const m = Math.floor(left / 60).toString().padStart(2, '0');
+            const s = (left % 60).toString().padStart(2, '0');
+            if (zenCountdown) zenCountdown.textContent = `${m}:${s}`;
+        }, 1000);
+    };
+
+    if (startZenModeBtn) {
+        startZenModeBtn.addEventListener('click', () => {
+            const mins = parseInt(zenTimerInput?.value) || 25;
+            chrome.runtime.sendMessage({ type: 'START_ZEN', minutes: mins }, () => {
+                checkZenStatus();
+            });
+        });
+    }
+
+    if (stopZenModeBtn) {
+        stopZenModeBtn.addEventListener('click', () => {
+            chrome.runtime.sendMessage({ type: 'STOP_ZEN' }, () => {
+                checkZenStatus();
+            });
+        });
+    }
+
+    if (elements.cardEphemeral) {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0] && tabs[0].url && !tabs[0].url.startsWith('chrome://')) {
+                const domain = new URL(tabs[0].url).hostname;
+                chrome.storage.local.get(['ephemeralDomains'], (res) => {
+                    const eps = res.ephemeralDomains || [];
+                    const isEps = eps.includes(domain);
+                    if(elements.ephemeralStatus) {
+                        elements.ephemeralStatus.textContent = isEps ? 'BẬT' : 'TẮT';
+                        elements.ephemeralStatus.style.color = isEps ? '#ff4757' : '#ff9f43';
+                    }
+                    elements.cardEphemeral.style.borderColor = isEps ? 'rgba(255, 71, 87, 0.5)' : 'rgba(255, 159, 67, 0.3)';
+                });
+            } else {
+                if(elements.ephemeralStatus) elements.ephemeralStatus.textContent = 'N/A';
+            }
+        });
+
+        elements.cardEphemeral.addEventListener('click', () => {
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                if (tabs[0] && tabs[0].url && !tabs[0].url.startsWith('chrome://')) {
+                    const domain = new URL(tabs[0].url).hostname;
+                    chrome.storage.local.get(['ephemeralDomains'], (res) => {
+                        let eps = res.ephemeralDomains || [];
+                        if (eps.includes(domain)) {
+                            eps = eps.filter(d => d !== domain);
+                        } else {
+                            eps.push(domain);
+                        }
+                        chrome.storage.local.set({ ephemeralDomains: eps }, () => {
+                            const isEps = eps.includes(domain);
+                            if(elements.ephemeralStatus) {
+                                elements.ephemeralStatus.textContent = isEps ? 'BẬT' : 'TẮT';
+                                elements.ephemeralStatus.style.color = isEps ? '#ff4757' : '#ff9f43';
+                            }
+                            elements.cardEphemeral.style.borderColor = isEps ? 'rgba(255, 71, 87, 0.5)' : 'rgba(255, 159, 67, 0.3)';
+                        });
+                    });
+                }
+            });
+        });
+    }
 
     if (cardCookies) {
         cardCookies.addEventListener('click', () => toggleSection('cookies'));
@@ -355,7 +464,7 @@ export function init() {
                 const url = new URL(tab.url);
                 const domain = url.hostname;
 
-                if (confirm(`Bạn có chắc muốn xóa sạch Cookie và Lịch sử của trang "${domain}"?`)) {
+                if (await showConfirm(`Bạn có chắc muốn xóa sạch Cookie và Lịch sử của trang "${domain}"?`)) {
                     const cookies = await chrome.cookies.getAll({ domain: domain });
                     await Promise.all(
                         cookies.map(c => {

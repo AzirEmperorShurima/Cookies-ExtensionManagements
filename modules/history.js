@@ -1,5 +1,5 @@
-import { elements, settings, notify, toggleSection } from '../popup.js';
-import { debounce } from './utils.js';
+import { elements, settings, notify, toggleSection, showConfirm } from '../popup.js';
+import { debounce, createElement } from './utils.js';
 
 const translations = window.translations;
 
@@ -26,21 +26,26 @@ function createHistoryItemUI(item, type) {
     const lang = settings.language || 'vi';
     const dict = translations[lang] || translations.vi;
 
-    div.innerHTML = `
-        <img src="${favicon}" class="history-icon">
-        <div class="history-info">
-            <div class="history-top-line">
-                <span class="history-title" title="${item.title || item.url}">${item.title || 'No Title'}</span>
-                ${visitTime ? `<span class="history-time">${visitTime}</span>` : ''}
-            </div>
-            <span class="history-url">${item.url}</span>
-        </div>
-        <div class="history-item-actions">
-            <button class="history-play-btn" data-action="play" title="${dict.openInPrivacyPlayer || 'Open in Privacy Player'}">🛡️</button>
-            <button class="history-copy-btn" data-action="copy" title="Copy Link">🔗</button>
-            <button class="history-delete-btn" data-action="delete" title="Delete">🗑️</button>
-        </div>
-    `;
+    div.textContent = '';
+    const imgNode = createElement('img', { src: favicon, className: 'history-icon' });
+    imgNode.onerror = () => { imgNode.onerror = null; imgNode.src = 'icons/extension.png'; };
+    div.appendChild(imgNode);
+    div.appendChild(
+        createElement('div', { className: 'history-info' },
+            createElement('div', { className: 'history-top-line' },
+                createElement('span', { className: 'history-title', title: item.title || item.url }, item.title || 'No Title'),
+                visitTime ? createElement('span', { className: 'history-time' }, visitTime) : null
+            ),
+            createElement('span', { className: 'history-url' }, item.url)
+        )
+    );
+    div.appendChild(
+        createElement('div', { className: 'history-item-actions' },
+            createElement('button', { className: 'history-play-btn', dataset: { action: 'play' }, title: dict.openInPrivacyPlayer || 'Open in Privacy Player' }, '🛡️'),
+            createElement('button', { className: 'history-copy-btn', dataset: { action: 'copy' }, title: 'Copy Link' }, '🔗'),
+            createElement('button', { className: 'history-delete-btn', dataset: { action: 'delete' }, title: 'Delete' }, '🗑️')
+        )
+    );
 
     const img = div.querySelector('.history-icon');
     if (img) {
@@ -50,7 +55,7 @@ function createHistoryItemUI(item, type) {
     return div;
 }
 
-function handleHistoryListClick(e) {
+export async function handleHistoryListClick(e) {
     const itemEl = e.target.closest('.history-item');
     if (!itemEl) return;
 
@@ -70,7 +75,7 @@ function handleHistoryListClick(e) {
             navigator.clipboard.writeText(url);
             notify('Link copied to clipboard', 'success');
         } else if (action === 'delete') {
-            if (confirm('Are you sure you want to delete this item?')) {
+            if (await showConfirm('Are you sure you want to delete this item?')) {
                 if (type === 'history') {
                     chrome.history.deleteUrl({ url }, () => {
                         itemEl.remove();
@@ -104,8 +109,8 @@ export async function loadHistoryAndSessions(query = '') {
     const { historyList, deviceList, historyRestrictedOverlay } = elements;
     if (!historyList || !deviceList) return;
 
-    historyList.innerHTML = '';
-    deviceList.innerHTML = '';
+    historyList.textContent = '';
+    deviceList.textContent = '';
     if (historyRestrictedOverlay) historyRestrictedOverlay.classList.add('hidden');
 
     historyItemsBuffer = [];
@@ -118,9 +123,13 @@ export async function loadHistoryAndSessions(query = '') {
         const emptyMsg = document.createElement('p');
         emptyMsg.className = 'empty-msg';
         emptyMsg.textContent = 'History API not available.';
-        const hintText = document.createElement('p');
-        hintText.className = 'hint-text';
-        hintText.innerHTML = 'Vui lòng vào <b>chrome://extensions</b> và nhấn nút <b>Reload</b> (🔄) của extension này để cấp quyền truy cập lịch sử.';
+        const hintText = createElement('p', { className: 'hint-text' },
+            'Vui lòng vào ',
+            createElement('b', {}, 'chrome://extensions'),
+            ' và nhấn nút ',
+            createElement('b', {}, 'Reload'),
+            ' (🔄) của extension này để cấp quyền truy cập lịch sử.'
+        );
         errorContainer.appendChild(emptyMsg);
         errorContainer.appendChild(hintText);
         historyList.appendChild(errorContainer);
@@ -135,7 +144,7 @@ export async function loadHistoryAndSessions(query = '') {
     historyList.appendChild(loadingHistory);
 
     chrome.history.search({ text: query, maxResults: 2000, startTime: 0 }, (items) => {
-        historyList.innerHTML = '';
+        historyList.textContent = '';
         if (items.length === 0) {
             const emptyMsg = document.createElement('p');
             emptyMsg.className = 'empty-msg';
@@ -155,7 +164,7 @@ export async function loadHistoryAndSessions(query = '') {
 
     if (chrome.sessions) {
         chrome.sessions.getDevices({ maxResults: 10 }, (devices) => {
-            deviceList.innerHTML = '';
+            deviceList.textContent = '';
             if (devices.length === 0) {
                 const emptyMsg = document.createElement('p');
                 emptyMsg.className = 'empty-msg';
@@ -174,7 +183,9 @@ export async function loadHistoryAndSessions(query = '') {
                 if (deviceName.includes('pc') || deviceName.includes('desktop') || deviceName.includes('mac') || deviceName.includes('windows')) icon = '💻';
                 if (deviceName.includes('tablet') || deviceName.includes('ipad')) icon = '📠';
 
-                deviceHeader.innerHTML = `<span class="device-type-icon">${icon}</span> ${device.deviceName}`;
+                deviceHeader.textContent = '';
+                deviceHeader.appendChild(createElement('span', { className: 'device-type-icon' }, icon));
+                deviceHeader.appendChild(document.createTextNode(' ' + device.deviceName));
                 deviceDiv.appendChild(deviceHeader);
 
                 device.sessions.forEach(session => {
@@ -287,20 +298,22 @@ export async function loadBookmarks(query = '') {
     if (!bookmarksList) return;
 
     if (!chrome.bookmarks) {
-        bookmarksList.innerHTML = '<p class="empty-msg">Bookmarks API not available.</p>';
+        bookmarksList.textContent = '';
+        bookmarksList.appendChild(createElement('p', { className: 'empty-msg' }, 'Bookmarks API not available.'));
         return;
     }
 
-    bookmarksList.innerHTML = '<p class="loading">Loading bookmarks...</p>';
+    bookmarksList.textContent = '';
+    bookmarksList.appendChild(createElement('p', { className: 'loading' }, 'Loading bookmarks...'));
 
     const handleResults = (items) => {
-        bookmarksList.innerHTML = '';
+        bookmarksList.textContent = '';
         const bookmarks = items.filter(item => item.url);
 
         if (bookmarks.length === 0) {
             const lang = settings.language || 'vi';
             const dict = translations[lang] || translations.vi;
-            bookmarksList.innerHTML = `<p class="empty-msg">${dict.noBookmarks || 'No bookmarks found.'}</p>`;
+            bookmarksList.appendChild(createElement('p', { className: 'empty-msg' }, dict.noBookmarks || 'No bookmarks found.'));
             return;
         }
 
@@ -324,20 +337,22 @@ export async function loadReadingList() {
     if (!readingListContainer) return;
 
     if (!chrome.readingList) {
-        readingListContainer.innerHTML = '<p class="empty-msg">Reading List API not available.</p>';
+        readingListContainer.textContent = '';
+        readingListContainer.appendChild(createElement('p', { className: 'empty-msg' }, 'Reading List API not available.'));
         return;
     }
 
-    readingListContainer.innerHTML = '<p class="loading">Loading reading list...</p>';
+    readingListContainer.textContent = '';
+    readingListContainer.appendChild(createElement('p', { className: 'loading' }, 'Loading reading list...'));
 
     try {
         const items = await chrome.readingList.query({});
-        readingListContainer.innerHTML = '';
+        readingListContainer.textContent = '';
 
         if (items.length === 0) {
             const lang = settings.language || 'vi';
             const dict = translations[lang] || translations.vi;
-            readingListContainer.innerHTML = `<p class="empty-msg">${dict.noReadingList || 'Reading list is empty.'}</p>`;
+            readingListContainer.appendChild(createElement('p', { className: 'empty-msg' }, dict.noReadingList || 'Reading list is empty.'));
             return;
         }
 
@@ -348,7 +363,8 @@ export async function loadReadingList() {
         });
         readingListContainer.appendChild(fragment);
     } catch (e) {
-        readingListContainer.innerHTML = `<p class="empty-msg">Error loading reading list: ${e.message}</p>`;
+        readingListContainer.textContent = '';
+        readingListContainer.appendChild(createElement('p', { className: 'empty-msg' }, `Error loading reading list: ${e.message}`));
     }
 }
 

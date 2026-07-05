@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="styles/popup.css">
 </head>
 
-<body>
+<body style="opacity: 0; transition: opacity 0.2s ease-in;">
     <h1 class="page-title" data-i18n="pageTitle">Privacy & Cookie Manager
         <img src="icons/cookies.png" alt="paste" class=" ico cookies-icon" width="40" height="40"
             id="Cookies">
@@ -68,6 +68,12 @@
                 <span data-i18n="multiAccount">Multi-Account</span>
             </div>
         </button>
+        <button id="adblockBtn" class="control-button">
+            <div class="button-content">
+                <img src="icons/tracking_protection.png" alt="adblock" class="button-icon" width="32" height="32" style="filter: brightness(0) invert(1);">
+                <span data-i18n="adblockManager">Adblock Manager</span>
+            </div>
+        </button>
         <button id="appSettingsBtn" class="control-button">
             <div class="button-content">
                 <img src="icons/settings.png" alt="settings" class="button-icon" width="32" height="32">
@@ -108,6 +114,20 @@
                 <div class="stat-content">
                     <span class="stat-value" id="statExtensions">0</span>
                     <span class="stat-label" data-i18n="activeExts">Active Exts</span>
+                </div>
+            </div>
+            <div class="stat-card clickable-card" id="cardAdblock">
+                <div class="stat-icon-bg" style="background: rgba(229, 62, 62, 0.1);"><img src="icons/shield.png" width="24" height="24" style="filter: none;"></div>
+                <div class="stat-content">
+                    <span class="stat-value" id="statAdsBlocked">0</span>
+                    <span class="stat-label" data-i18n="adsBlockedCount">Ads Blocked</span>
+                </div>
+            </div>
+            <div class="stat-card clickable-card" id="cardEphemeral" style="background: linear-gradient(135deg, rgba(255,159,67,0.1), rgba(255,159,67,0.05)); border-color: rgba(255,159,67,0.3);">
+                <div class="stat-icon-bg" style="background: rgba(255, 159, 67, 0.2); font-size: 20px; display: flex; align-items: center; justify-content: center;">🔥</div>
+                <div class="stat-content">
+                    <span class="stat-value" id="ephemeralStatus" style="color: #ff9f43; font-size: 16px; margin-top: 5px; font-weight: bold;">TẮT</span>
+                    <span class="stat-label" data-i18n="ephemeralTab">Tự hủy Tab này</span>
                 </div>
             </div>
             <div class="stat-card grade-card-modern">
@@ -157,7 +177,7 @@
         <div class="quick-actions-home">
             <h3 data-i18n="quickActions">Quick Actions</h3>
             <div class="action-buttons">
-                <button id="quickFocusMode" class="action-btn" data-i18n="focusMode">🚀 Focus Mode</button>
+                <button id="zenModeBtn" class="action-btn" data-i18n="zenMode">🧘 Zen Mode</button>
                 <button id="quickClearAll" class="action-btn danger" data-i18n="deepClean">🧹 Deep Clean</button>
             </div>
         </div>
@@ -290,6 +310,14 @@
                 </label>
             </div>
             <div class="setting-item">
+                <span data-i18n="playerIsolatedIdentity">Isolated Identity (Stateless)</span>
+                <button class="info-icon" data-info="Ngăn chặn rò rỉ tài khoản (ví dụ: Google account) trong Privacy Player bằng cách loại bỏ Cookie và Set-Cookie headers.">ℹ️</button>
+                <label class="switch">
+                    <input type="checkbox" id="playerIsolatedIdentityToggle" checked>
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <div class="setting-item">
                 <span data-i18n="playerBackground">Player Background</span>
                 <button class="info-icon" data-info="Chọn hình nền cho Privacy Player.">ℹ️</button>
                 <select id="playerBackgroundType">
@@ -313,6 +341,17 @@
                     <div id="customBgList" class="custom-bg-list">
                         <!-- Custom backgrounds will be populated here -->
                     </div>
+                </div>
+            </div>
+            <div class="setting-item" style="border-bottom: none; flex-direction: column; align-items: stretch; gap: 8px; padding-bottom: var(--spacing-md);">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <span data-i18n="customCursor">Custom Cursor (PNG/CUR)</span>
+                    <button class="info-icon" data-info="Nhập URL hình ảnh định dạng PNG/CUR kích thước nhỏ (khuyên dùng 24x24 hoặc 32x32) làm con trỏ tùy chỉnh cho extension.">ℹ️</button>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center; width: 100%; margin-top: 4px;">
+                    <input type="text" id="customCursorInput" placeholder="https://example.com/cursor.png" style="flex-grow: 1;">
+                    <button id="setCustomCursorBtn" class="action-btn" style="padding: 6px 12px;" data-i18n="apply">Apply</button>
+                    <button id="resetCursorBtn" class="reset-btn" style="padding: 6px 12px; border-radius: var(--radius-md);" data-i18n="default">Default</button>
                 </div>
             </div>
             <div class="setting-item">
@@ -521,6 +560,7 @@
                 <div style="margin-top: 8px; display: flex; gap: 5px;">
                     <input type="text" id="manualMasterKeyInput" placeholder="Enter Master Key to Sync..." data-i18n-placeholder="masterKeyPlaceholder" style="flex: 1; padding: 6px; font-size: 11px; border-radius: 4px; border: 1px solid var(--border-color); background: white;">
                     <button id="saveMasterKeyBtn" class="action-btn" style="padding: 4px 8px; font-size: 11px;" data-i18n="save">Save</button>
+                    <button id="pullSyncBtn" class="action-btn premium-btn gradient-blue" style="padding: 4px 8px; font-size: 11px;">☁️ Pull</button>
                 </div>
             </div>
             
@@ -740,6 +780,7 @@
 
     <div id="vaultSection" class="vault-section">
         <div id="vaultLockScreen" class="lock-screen-modern">
+            <button id="vaultLockScreenBackBtn" class="nav-btn" style="position:absolute; top: 15px; left: 15px; border:none; background:transparent; font-size:24px; cursor:pointer; color: var(--text-color); transition: transform 0.2s;" title="Quay lại">⬅️</button>
             <div class="lock-container">
                 <div class="lock-header">
                     <div class="lock-icon-wrapper">
@@ -782,6 +823,7 @@
 
     <div id="stealthSection" class="stealth-section">
         <div id="stealthLockScreen" class="lock-screen-modern">
+            <button id="lockScreenBackBtn" class="nav-btn" style="position:absolute; top: 15px; left: 15px; border:none; background:transparent; font-size:24px; cursor:pointer; color: var(--text-color); transition: transform 0.2s;" title="Quay lại">⬅️</button>
             <div class="lock-container">
                 <div class="lock-header">
                     <div class="lock-icon-wrapper">
@@ -805,7 +847,7 @@
             </div>
         </div>
         <div class="stealth-header">
-            <h2 id="stealthTitle" data-i18n="privacyPlayer">Privacy Player</h2>
+            <div id="stealthTitle" class="player-brand-icon" title="Privacy Player">🕶️</div>
             <div class="stealth-controls">
                 <div class="player-nav-group">
                     <button id="goBackPlayer" class="nav-btn" title="Quay lại" disabled>⬅️</button>
@@ -815,8 +857,10 @@
                 <div class="player-action-group">
                     <button id="addCurrentToFavorite" class="nav-btn fav-add-btn" title="Thêm trang hiện tại vào Yêu thích">⭐</button>
                     <button id="clearPlayerHistory" class="nav-btn" title="Xóa lịch sử Player">🗑️</button>
+                    <button id="clearPlayerIdentity" class="nav-btn" title="Tạo danh tính mới (Clear Cookies & Cache)">🎭</button>
                     <button id="togglePip" class="pip-btn hidden" title="Picture-in-Picture" data-i18n-title="pipMode">🖼️</button>
                     <button id="toggleTheaterMode" class="theater-btn" title="Theater Mode" data-i18n-title="theaterMode">🎬</button>
+                    <button id="focusModePlayer" class="nav-btn focus-mode-btn" title="Chế độ tập trung (Focus Mode)">🎯</button>
                     <button id="fullscreenPlayer" class="nav-btn fullscreen-btn" title="Toàn màn hình">⛶</button>
                 </div>
                 <div class="player-size-group">
@@ -841,9 +885,50 @@
             <div class="player-spinner">
                 <div class="spinner-ring"></div>
             </div>
+            <!-- Limitation: allow-same-origin is needed for many video players, but it allows sites to retain localStorage/IndexedDB. Should be cleared on exit in future updates -->
             <iframe id="stealthPlayer" frameborder="0" allowfullscreen
-                sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-downloads allow-top-navigation-by-user-activation">
+                sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-downloads">
             </iframe>
+            <!-- Overlay controls cho Video Speed & Volume Boost -->
+            <div id="playerOverlayControls" class="player-overlay-controls">
+                <button id="playerSettingsTrigger" class="overlay-trigger-btn" title="Cài đặt phát">⚙️</button>
+                <div id="playerSettingsMenu" class="player-settings-menu hidden">
+                    <div class="menu-row">
+                        <span class="menu-label">⚡ Tốc độ:</span>
+                        <select id="speedDropdown" class="menu-select">
+                            <option value="0.5">0.5x</option>
+                            <option value="1.0" selected>1.0x</option>
+                            <option value="1.25">1.25x</option>
+                            <option value="1.5">1.5x</option>
+                            <option value="2.0">2.0x</option>
+                            <option value="3.0">3.0x</option>
+                            <option value="custom">Tùy chỉnh...</option>
+                        </select>
+                    </div>
+                    <div id="customSpeedWrapper" class="custom-slider-wrapper hidden">
+                        <input type="range" id="speedSlider" min="0.25" max="4.0" step="0.25" value="1.0">
+                        <span id="speedVal" class="slider-val">1.0x</span>
+                    </div>
+
+                    <div class="menu-divider"></div>
+
+                    <div class="menu-row">
+                        <span class="menu-label">🔊 Âm lượng:</span>
+                        <select id="volumeDropdown" class="menu-select">
+                            <option value="100" selected>100%</option>
+                            <option value="150">150%</option>
+                            <option value="200">200%</option>
+                            <option value="250">250%</option>
+                            <option value="300">300%</option>
+                            <option value="custom">Tùy chỉnh...</option>
+                        </select>
+                    </div>
+                    <div id="customVolumeWrapper" class="custom-slider-wrapper hidden">
+                        <input type="range" id="volumeSlider" min="100" max="300" step="10" value="100">
+                        <span id="volumeVal" class="slider-val">100%</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1017,6 +1102,110 @@
                     <p data-i18n="multiAccountDetailedTip">Multi-Account Containers allow you to separate different login sessions on the same website. Each 'Container' you create has its own Cookie storage, enabling you to log in to multiple Facebook, Gmail, or Shopee accounts simultaneously without needing incognito tabs or different browsers.</p>
                 </div>
             </div>
+    </div>
+    </div>
+
+    <div id="adblockSection" class="adblock-section premium-ui" style="position: relative;">
+        <!-- Gargantua Black Hole Fetch Overlay -->
+        <div id="adblockFetchOverlay" class="black-hole-overlay hidden">
+            <div class="black-hole-container">
+                <div class="bh-halo"></div>
+                <div class="event-horizon"></div>
+                <div class="bh-disk"></div>
+                <div class="bh-flare"></div>
+                <div class="ad-particle p1">Ad</div>
+                <div class="ad-particle p2">Banner</div>
+                <div class="ad-particle p3">Popup</div>
+                <div class="ad-particle p4">Tracker</div>
+                <div class="ad-particle p5">Cookie</div>
+                <div class="fetching-text" data-i18n="fetchingEasyListMsg">Đang hút sạch quảng cáo...</div>
+            </div>
+        </div>
+
+        <div class="adblock-header fade-in-up">
+            <div class="header-icon-wrapper pulse-anim">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            </div>
+            <h2 data-i18n="adblockManager">Adblock Manager</h2>
+            <p data-i18n="adblockDesc">Chặn quảng cáo, theo dõi và ẩn các phần tử hiển thị.</p>
+        </div>
+        <div class="adblock-content">
+            <div class="settings-card hover-lift delay-1">
+                <div class="settings-row premium-row">
+                    <div class="row-info">
+                        <svg class="row-icon text-blue" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+                        <span data-i18n="adblockEnabled">Bật chặn quảng cáo</span>
+                    </div>
+                    <label class="switch-modern">
+                        <input type="checkbox" id="adblockEnabledToggle" checked>
+                        <span class="slider-modern"></span>
+                    </label>
+                </div>
+                <div class="settings-row premium-row">
+                    <div class="row-info">
+                        <svg class="row-icon text-green" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                        <span data-i18n="easylistToggle">Bộ lọc EasyList (Quảng cáo)</span>
+                    </div>
+                    <label class="switch-modern">
+                        <input type="checkbox" id="easylistToggle" checked>
+                        <span class="slider-modern"></span>
+                    </label>
+                </div>
+                <div class="settings-row premium-row text-center-row" style="margin-top: 20px; justify-content: center; gap: 15px; border-bottom: none;">
+                    <button id="fetchEasyListBtn" class="action-btn premium-btn gradient-blue">
+                        <svg class="btn-icon fetch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        <span class="btn-text" data-i18n="fetchEasyList">Nạp & Cập nhật</span>
+                    </button>
+                    <button id="zapperModeBtn" class="action-btn premium-btn" style="background: linear-gradient(135deg, #ff4757, #ff6b81); box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4); border: none; color: white;">
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                        <span class="btn-text" data-i18n="zapMode">Bật Zapper</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="settings-card hover-lift delay-2 glass-card">
+                <div class="card-title-row">
+                    <svg class="title-icon text-purple" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg>
+                    <h3 data-i18n="adblockStatsLabel">Thống kê bộ lọc</h3>
+                </div>
+                <div class="adblock-stats-grid premium-stats">
+                    <div class="stat-box glow-box-blue">
+                        <span class="stat-label" data-i18n="networkRulesLoaded">Quy tắc mạng</span>
+                        <span id="adblockNetworkCount" class="stat-value">0</span>
+                    </div>
+                    <div class="stat-box glow-box-purple">
+                        <span class="stat-label" data-i18n="cssRulesLoaded">Quy tắc ẩn CSS</span>
+                        <span id="adblockCssCount" class="stat-value">0</span>
+                    </div>
+                    <div class="stat-box glow-box-red">
+                        <span class="stat-label" data-i18n="adsBlockedCount">Đã chặn</span>
+                        <span id="adsBlockedCount" class="stat-value">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-card hover-lift delay-3">
+                <div class="card-title-row">
+                    <svg class="title-icon text-orange" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    <label for="customAdblockRules" class="control-label" data-i18n="customRulesLabel">Quy tắc mạng (Mỗi dòng 1 quy tắc)</label>
+                </div>
+                <textarea id="customAdblockRules" class="premium-textarea" placeholder="ví dụ: ||example.com^ hoặc /ad-banner"></textarea>
+            </div>
+
+            <div class="settings-card hover-lift delay-4">
+                <div class="card-title-row">
+                    <svg class="title-icon text-pink" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                    <label for="customAdblockCssRules" class="control-label" data-i18n="customCssRulesLabel">Quy tắc ẩn CSS (Mỗi dòng 1 quy tắc)</label>
+                </div>
+                <textarea id="customAdblockCssRules" class="premium-textarea" placeholder="ví dụ: ##.ad-banner hoặc youtube.com##.ytp-ad-overlay-container"></textarea>
+            </div>
+
+            <div style="text-align: right; margin-top: 15px;" class="fade-in-up delay-5">
+                <button id="saveAdblockSettingsBtn" class="action-btn premium-btn gradient-green">
+                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                    <span class="btn-text" data-i18n="saveAdblockSettings">Lưu cấu hình Adblock</span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -1029,6 +1218,29 @@
             <div class="modal-body">
                 <div id="trackerList" class="tracker-details-list">
                     <!-- Tracker list items will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Zen Mode Modal -->
+    <div id="zenModeModal" class="modal-overlay hidden">
+        <div class="modal-content" style="text-align: center; max-width: 350px;">
+            <div class="modal-header">
+                <h3 data-i18n="zenModeTitle">Zen Mode 🧘</h3>
+                <button id="closeZenModal" class="close-modal-btn">&times;</button>
+            </div>
+            <div style="padding: 20px;">
+                <p data-i18n="zenModeDesc" style="margin-bottom: 20px;">Chặn các trang web giải trí (Facebook, TikTok, v.v.) để tập trung làm việc.</p>
+                <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 20px;">
+                    <input type="number" id="zenTimerInput" value="25" min="1" max="120" style="width: 70px; text-align: center; font-size: 20px; padding: 5px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color);">
+                    <span style="font-size: 16px;">Phút</span>
+                </div>
+                <button id="startZenModeBtn" class="action-btn premium-btn gradient-purple" style="width: 100%; border: none;">Bắt đầu Tập trung</button>
+                
+                <div id="zenActiveState" class="hidden" style="margin-top: 20px;">
+                    <h2 id="zenCountdown" style="font-size: 32px; color: #ff4757; margin-bottom: 10px;">25:00</h2>
+                    <button id="stopZenModeBtn" class="action-btn" style="background: transparent; border: 1px solid #ff4757; color: #ff4757; width: 100%;">Dừng Zen Mode</button>
                 </div>
             </div>
         </div>

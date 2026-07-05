@@ -16,19 +16,35 @@
         "bookmarks",
         "readingList",
         "downloads",
-        "scripting",
         "contextMenus",
         "webRequest",
         "webNavigation",
         "declarativeNetRequest",
         "sidePanel",
-        "alarms"
+        "alarms",
+        "browsingData",
+        "scripting"
     ],
+    "declarative_net_request": {
+        "rule_resources": [
+            {
+                "id": "easylist",
+                "enabled": false,
+                "path": "rules_easylist.json"
+            },
+            {
+                "id": "easyprivacy",
+                "enabled": false,
+                "path": "rules_easyprivacy.json"
+            }
+        ]
+    },
     "side_panel": {
         "default_path": "popup.html"
     },
     "host_permissions": [
-        "<all_urls>"
+        "<all_urls>",
+        "https://easylist.to/*"
     ],
     "action": {
         "default_popup": "popup.html",
@@ -64,6 +80,23 @@
             "all_frames": true,
             "run_at": "document_start",
             "match_about_blank": true
+        },
+        {
+            "matches": ["<all_urls>"],
+            "js": ["modules/spoof-inject.js"],
+            "run_at": "document_start",
+            "world": "MAIN",
+            "all_frames": true,
+            "match_about_blank": true,
+            "match_origin_as_fallback": true
+        },
+        {
+            "matches": ["<all_urls>"],
+            "js": ["modules/vendor/tldts.min.js", "modules/spoof-bridge.js"],
+            "run_at": "document_start",
+            "all_frames": true,
+            "match_about_blank": true,
+            "match_origin_as_fallback": true
         }
     ],
     "commands": {
@@ -75,14 +108,5 @@
             },
             "description": "Kích hoạt chế độ Panic ngay lập tức"
         }
-    },
-    "declarative_net_request": {
-        "rule_resources": [
-            {
-                "id": "ruleset_1",
-                "enabled": true,
-                "path": "rules.json"
-            }
-        ]
     }
 }

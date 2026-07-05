@@ -1,5 +1,5 @@
-import { elements, settings, notify, saveSettings } from '../popup.js';
-import { debounce } from './utils.js';
+import { elements, settings, notify, saveSettings, showConfirm } from '../popup.js';
+import { debounce, createElement } from './utils.js';
 
 let currentCookiesByDomain = {};
 let cachedCookies = [];
@@ -29,7 +29,7 @@ export async function loadCookies(filter = '', forceRefresh = false) {
     const totalCookiesCount = Object.values(cookiesByDomain).reduce((count, list) => count + list.length, 0);
 
     if (totalDomains === 0) {
-        cookieTableContainer.innerHTML = '';
+        cookieTableContainer.textContent = '';
         if (totalCookies) totalCookies.textContent = `No results found for "${filter}"`;
         return;
     }
@@ -75,49 +75,43 @@ export async function loadCookies(filter = '', forceRefresh = false) {
         const tableContainer = document.createElement('div');
         tableContainer.style.overflowX = 'auto';
 
-        let tableHTML = `
-            <table>
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Value</th>
-                        <th>Path</th>
-                        <th>Expires</th>
-                        <th>Expand</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-
+        const table = createElement('table', {},
+            createElement('thead', {},
+                createElement('tr', {},
+                    createElement('th', {}, 'Name'),
+                    createElement('th', {}, 'Value'),
+                    createElement('th', {}, 'Path'),
+                    createElement('th', {}, 'Expires'),
+                    createElement('th', {}, 'Expand')
+                )
+            )
+        );
+        const tbody = createElement('tbody');
         cookiesByDomain[domain].forEach(cookie => {
             const expiresText = cookie.expirationDate ? new Date(cookie.expirationDate * 1000).toLocaleString() : 'Session';
             const isLongValue = cookie.value.length > 30 || cookie.name.length > 20 || cookie.path.length > 15;
 
-            tableHTML += `
-                <tr class="cookie-row">
-                    <td><span class="cookie-text-container" title="${cookie.name}">${cookie.name}</span></td>
-                    <td><span class="cookie-text-container" title="${cookie.value}">${cookie.value}</span></td>
-                    <td><span class="cookie-text-container" title="${cookie.path}">${cookie.path}</span></td>
-                    <td><span class="cookie-text-container" title="${expiresText}">${expiresText}</span></td>
-                    <td>
-                        ${isLongValue ? '<button class="row-expand-btn" title="Expand Row">...</button>' : ''}
-                    </td>
-                </tr>
-            `;
+            const tr = createElement('tr', { className: 'cookie-row' },
+                createElement('td', {}, createElement('span', { className: 'cookie-text-container', title: cookie.name }, cookie.name)),
+                createElement('td', {}, createElement('span', { className: 'cookie-text-container', title: cookie.value }, cookie.value)),
+                createElement('td', {}, createElement('span', { className: 'cookie-text-container', title: cookie.path }, cookie.path)),
+                createElement('td', {}, createElement('span', { className: 'cookie-text-container', title: expiresText }, expiresText)),
+                createElement('td', {}, isLongValue ? createElement('button', { className: 'row-expand-btn', title: 'Expand Row' }, '...') : null)
+            );
+            tbody.appendChild(tr);
         });
-
-        tableHTML += `</tbody></table>`;
-        tableContainer.innerHTML = tableHTML;
+        table.appendChild(tbody);
+        tableContainer.appendChild(table);
         domainSection.appendChild(tableContainer);
         fragment.appendChild(domainSection);
     });
 
-    cookieTableContainer.innerHTML = '';
+    cookieTableContainer.textContent = '';
     cookieTableContainer.appendChild(fragment);
 }
 
 export async function deleteCookiesInDomain(domain, filter) {
-    if (!confirm(`Are you sure you want to delete all cookies in ${domain}?`)) return;
+    if (!(await showConfirm(`Are you sure you want to delete all cookies in ${domain}?`))) return;
 
     const cookies = await chrome.cookies.getAll({ domain: domain });
     await Promise.all(
@@ -142,7 +136,7 @@ export async function deleteCookiesInDomain(domain, filter) {
 }
 
 export async function clearAllCookies() {
-    if (!confirm('Are you sure you want to clear all cookies?')) return;
+    if (!(await showConfirm('Are you sure you want to clear all cookies?'))) return;
 
     const cookies = await chrome.cookies.getAll({});
     await Promise.all(
@@ -158,7 +152,7 @@ export async function clearAllCookies() {
 }
 
 export async function clearSiteData() {
-    if (!confirm('Are you sure you want to clear all site data?')) return;
+    if (!(await showConfirm('Are you sure you want to clear all site data?'))) return;
 
     await chrome.browsingData.remove(
         { since: 0 },
@@ -243,16 +237,14 @@ export function renderWhitelist() {
     const { whitelistList } = elements;
     if (!whitelistList) return;
 
-    whitelistList.innerHTML = '';
+    whitelistList.textContent = '';
     const whitelist = settings.whitelist || [];
 
     whitelist.forEach(domain => {
-        const tag = document.createElement('div');
-        tag.className = 'whitelist-tag';
-        tag.innerHTML = `
-            <span>${domain}</span>
-            <span class="whitelist-remove" data-domain="${domain}">×</span>
-        `;
+        const tag = createElement('div', { className: 'whitelist-tag' },
+            createElement('span', {}, domain),
+            createElement('span', { className: 'whitelist-remove', dataset: { domain: domain } }, '×')
+        );
         whitelistList.appendChild(tag);
     });
 
@@ -276,43 +268,39 @@ export async function renderCurrentTabCookies(host) {
         if (currentTabDomainName) currentTabDomainName.textContent = host;
 
         if (cookies.length === 0) {
-            currentTabCookieTable.innerHTML = `<p class="empty-msg" style="margin: 10px 0; color: var(--text-muted);">No cookies found for this domain.</p>`;
+            currentTabCookieTable.textContent = '';
+            currentTabCookieTable.appendChild(createElement('p', { className: 'empty-msg', style: { margin: '10px 0', color: 'var(--text-muted)' } }, 'No cookies found for this domain.'));
             return;
         }
 
-        let tableHTML = `
-            <table class="cookies-table" style="width: 100%; border-collapse: collapse;">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Value</th>
-                        <th>Path</th>
-                        <th>Expires</th>
-                        <th>Expand</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-
+        const table = createElement('table', { className: 'cookies-table', style: { width: '100%', borderCollapse: 'collapse' } },
+            createElement('thead', {},
+                createElement('tr', {},
+                    createElement('th', {}, 'Name'),
+                    createElement('th', {}, 'Value'),
+                    createElement('th', {}, 'Path'),
+                    createElement('th', {}, 'Expires'),
+                    createElement('th', {}, 'Expand')
+                )
+            )
+        );
+        const tbody = createElement('tbody');
         cookies.forEach(cookie => {
             const expiresText = cookie.expirationDate ? new Date(cookie.expirationDate * 1000).toLocaleString() : 'Session';
             const isLongValue = cookie.value.length > 30 || cookie.name.length > 20 || cookie.path.length > 15;
 
-            tableHTML += `
-                <tr class="cookie-row">
-                    <td><span class="cookie-text-container" title="${cookie.name}">${cookie.name}</span></td>
-                    <td><span class="cookie-text-container" title="${cookie.value}">${cookie.value}</span></td>
-                    <td><span class="cookie-text-container" title="${cookie.path}">${cookie.path}</span></td>
-                    <td><span class="cookie-text-container" title="${expiresText}">${expiresText}</span></td>
-                    <td>
-                        ${isLongValue ? '<button class="row-expand-btn" title="Expand Row">...</button>' : ''}
-                    </td>
-                </tr>
-            `;
+            const tr = createElement('tr', { className: 'cookie-row' },
+                createElement('td', {}, createElement('span', { className: 'cookie-text-container', title: cookie.name }, cookie.name)),
+                createElement('td', {}, createElement('span', { className: 'cookie-text-container', title: cookie.value }, cookie.value)),
+                createElement('td', {}, createElement('span', { className: 'cookie-text-container', title: cookie.path }, cookie.path)),
+                createElement('td', {}, createElement('span', { className: 'cookie-text-container', title: expiresText }, expiresText)),
+                createElement('td', {}, isLongValue ? createElement('button', { className: 'row-expand-btn', title: 'Expand Row' }, '...') : null)
+            );
+            tbody.appendChild(tr);
         });
-
-        tableHTML += `</tbody></table>`;
-        currentTabCookieTable.innerHTML = tableHTML;
+        table.appendChild(tbody);
+        currentTabCookieTable.textContent = '';
+        currentTabCookieTable.appendChild(table);
 
         currentTabCookieTable.querySelectorAll('.row-expand-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -326,7 +314,8 @@ export async function renderCurrentTabCookies(host) {
 
     } catch (err) {
         console.error(err);
-        currentTabCookieTable.innerHTML = `<p class="empty-msg" style="color: var(--danger-color, #ef4444);">Failed to load cookies.</p>`;
+        currentTabCookieTable.textContent = '';
+        currentTabCookieTable.appendChild(createElement('p', { className: 'empty-msg', style: { color: 'var(--danger-color, #ef4444)' } }, 'Failed to load cookies.'));
     }
 }
 

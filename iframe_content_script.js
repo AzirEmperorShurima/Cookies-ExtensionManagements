@@ -2,8 +2,59 @@
 // This script runs inside all frames and handles Privacy Player navigation.
 
 (function () {
-    // Only run this script if it's inside an iframe (not the top-level document)
-    if (window.self !== window.top) {
+    // ------------------ CSS Element Hiding Adblocker ------------------
+    try {
+        chrome.storage.local.get(['appSettings', 'adblockCssRules', 'userZappedCssRules'], (res) => {
+            const settings = res.appSettings || {};
+            if (settings.adblockEnabled === false) return;
+
+            const cssRules = res.adblockCssRules || {};
+            const zappedRules = res.userZappedCssRules || {};
+            const host = window.location.hostname;
+            const selectors = [];
+
+            const mergeRules = (domain) => {
+                if (Array.isArray(cssRules[domain])) selectors.push(...cssRules[domain]);
+                if (Array.isArray(zappedRules[domain])) selectors.push(...zappedRules[domain]);
+            };
+
+            // 1. Lấy quy tắc CSS toàn cục (global)
+            mergeRules('global');
+
+            // 2. Lấy quy tắc CSS theo domain hiện tại
+            if (host) {
+                const parts = host.split('.');
+                for (let i = 0; i < parts.length - 1; i++) {
+                    const domain = parts.slice(i).join('.');
+                    mergeRules(domain);
+                }
+            }
+
+            // 3. Tiêm style ẩn phần tử quảng cáo
+            if (selectors.length > 0) {
+                const style = document.createElement('style');
+                style.id = 'adblock-element-hiding-style';
+                style.textContent = selectors.join(', ') + ' { display: none !important; }';
+                
+                const parent = document.head || document.documentElement;
+                if (parent) {
+                    parent.appendChild(style);
+                } else {
+                    document.addEventListener('DOMContentLoaded', () => {
+                        (document.head || document.documentElement).appendChild(style);
+                    });
+                }
+            }
+        });
+    } catch (e) {
+        console.warn('[Adblock] CSS element hiding failed:', e);
+    }
+    // ------------------------------------------------------------------
+
+    // Ensure we are inside a Privacy Player frame (by checking if the parent is our extension)
+    const isExtensionFrame = location.ancestorOrigins && location.ancestorOrigins.length > 0 && Array.from(location.ancestorOrigins).some(origin => origin.startsWith('chrome-extension://'));
+    if (window.self !== window.top && isExtensionFrame) {
+
         const currentUrl = window.location.href;
 
         // 0. Kiểm tra an toàn: Nếu là trang Cloudflare, hcaptcha hoặc bot-check
@@ -66,128 +117,55 @@
             }
         }
         chrome.storage.onChanged.addListener(storageListener);
+        // ------------------ MAIN WORLD INJECTION (WINDOW.OPEN HOOK) ------------------
+        // We inject a script into the main page to hook window.open so we can intercept popups
+        // and route them according to Privacy Player settings, preventing popunders.
+        const script = document.createElement('script');
+        script.textContent = `
+            (function() {
+                const origin = window.location.origin;
+                const url = window.location.href;
 
-        // document.addEventListener('click', (event) => {
-        //     let target = event.target;
+                // Safe pages (cloudflare, etc.) shouldn't be hooked aggressively
+                const isSecurityPage = 
+                    url.includes('cloudflare.com') || 
+                    url.includes('hcaptcha.com') || 
+                    url.includes('turnstile') ||
+                    document.getElementById('cf-turnstile-response') ||
+                    window._cf_chl_opt;
+                if (isSecurityPage) return;
 
-        //     // Traverse up the DOM tree to find an anchor tag or element with data-url
-        //     while (target && target !== document) {
-        //         const tagName = target.tagName;
-        //         const href = target.href || target.getAttribute('href') || target.getAttribute('data-href') || target.getAttribute('data-url');
+                const originalOpen = window.open;
+                window.open = function(targetUrl, target, features) {
+                    if (!targetUrl || typeof targetUrl !== 'string') {
+                        return originalOpen.apply(this, arguments);
+                    }
 
-        //         if ((tagName === 'A' || target.hasAttribute('data-url') || target.hasAttribute('data-href')) && href) {
-        //             // Ignore non-navigation links
-        //             if (href === '#' || href.startsWith('javascript:')) {
-        //                 target = target.parentNode;
-        //                 continue;
-        //             }
+                    // Suspicious ad popunders
+                    const isSuspicious = (
+                        targetUrl.includes('tsyndicate') || 
+                        targetUrl.includes('tsyndicads') ||
+                        targetUrl.includes('/pop?') || 
+                        targetUrl.includes('adserver') ||
+                        targetUrl.includes('trafficstars') ||
+                        targetUrl.includes('exoclick')
+                    );
+                    if (isSuspicious) {
+                        console.log('[Privacy Player] Blocked suspicious popup:', targetUrl);
+                        return null;
+                    }
 
-        //             // Resolve URL
-        //             let finalUrl;
-        //             try {
-        //                 finalUrl = new URL(href, window.location.href).toString();
-        //             } catch (e) {
-        //                 finalUrl = href;
-        //             }
+                    // Forward to content script via postMessage
+                    window.postMessage({ type: 'WINDOW_OPEN_ATTEMPT', url: targetUrl }, '*');
+                    return null;
+                };
+            })();
+        `;
+        (document.head || document.documentElement).appendChild(script);
+        script.remove();
+        // -----------------------------------------------------------------------------
 
-        //             // If it's a mailto or other non-http link, let it be
-        //             if (!finalUrl.startsWith('http')) {
-        //                 return; // Let browser handle it
-        //             }
-
-        //             const requiresNewTab = target.target === '_blank' ||
-        //                 event.ctrlKey ||
-        //                 event.metaKey ||
-        //                 event.shiftKey ||
-        //                 event.button === 1;
-
-        //             // 1. Detection Logic for Cốc Cốc
-        //             const userAgent = navigator.userAgent;
-        //             const isCoccocBrowser = userAgent.includes('CocCoc') || userAgent.includes('coc_coc_browser');
-        //             const hostname = window.location.hostname;
-        //             const isCoccocSearchPage = (hostname.includes('coccoc.com') || hostname.includes('coccoc.vn')) &&
-        //                 window.location.pathname.includes('/search');
-
-        //             // Effective settings
-        //             let effectiveBehavior = settings.playerLinkBehavior;
-        //             let effectiveApply = settings.playerLinkFilter === 'all' || requiresNewTab;
-
-        //             // 2. Cốc Cốc Specific Override Logic
-        //             // Cốc Cốc Search often forces target="_blank" on results. 
-        //             // If user sets (Block + New Tab Links Only), it would block all results.
-        //             // We override this to allow results to open INSIDE the player.
-        //             if (isCoccocSearchPage) {
-        //                 if (effectiveBehavior === 'block' && settings.playerLinkFilter === 'newTabOnly') {
-        //                     effectiveApply = false; // Don't block, open inside
-        //                     effectiveBehavior = 'inside';
-        //                 } else if (settings.playerLinkFilter === 'newTabOnly') {
-        //                     effectiveApply = false; // Always force inside for search results
-        //                     effectiveBehavior = 'inside';
-        //                 }
-        //             }
-        //             // 3. Handling for other Search Engines (Google, Bing, etc.)
-        //             // These will follow the standard rules as requested, without the Cốc Cốc exception.
-        //             else {
-        //                 const isOtherSearchEngine = hostname.includes('google.') ||
-        //                     hostname.includes('duckduckgo.com') ||
-        //                     hostname.includes('bing.com') ||
-        //                     hostname.includes('yahoo.com');
-
-        //                 if (isOtherSearchEngine) {
-        //                     // For other search engines, we still provide a "Smart Inside" override 
-        //                     // ONLY IF behavior is 'inside' or filter is 'newTabOnly', 
-        //                     // but we respect the 'block' setting if that's what the user wants.
-        //                     if (effectiveBehavior === 'inside' || (settings.playerLinkFilter === 'newTabOnly' && effectiveBehavior !== 'block')) {
-        //                         effectiveApply = false;
-        //                     }
-        //                 }
-        //             }
-
-        //             if (!effectiveApply) {
-        //                 // Force internal navigation for non-applied links (default behavior: open inside)
-        //                 event.preventDefault();
-        //                 event.stopPropagation();
-        //                 window.location.href = finalUrl;
-        //                 return;
-        //             }
-
-        //             // Apply behavior for the link
-        //             if (effectiveBehavior === 'block') {
-        //                 event.preventDefault();
-        //                 event.stopPropagation();
-        //                 chrome.runtime.sendMessage({
-        //                     type: 'privacyPlayerLinkClicked',
-        //                     action: 'block',
-        //                     url: finalUrl
-        //                 });
-        //                 return;
-        //             }
-
-        //             if (effectiveBehavior === 'newTab' || effectiveBehavior === 'incognito') {
-        //                 event.preventDefault();
-        //                 event.stopPropagation();
-        //                 chrome.runtime.sendMessage({
-        //                     type: 'privacyPlayerLinkClicked',
-        //                     action: effectiveBehavior,
-        //                     url: finalUrl
-        //                 });
-        //                 return;
-        //             }
-
-        //             // If behavior is 'inside', force internal navigation
-        //             if (effectiveBehavior === 'inside') {
-        //                 event.preventDefault();
-        //                 event.stopPropagation();
-        //                 window.location.href = finalUrl;
-        //                 return;
-        //             }
-        //         }
-        //         target = target.parentNode;
-        //     }
-        // }, true);
-
-        // Theater Mode Logic
-        // === THAY TOÀN BỘ document.addEventListener('click' ...) bằng đoạn này ===
+        // Theater Mode Logicment.addEventListener('click' ...) bằng đoạn này ===
 
         document.addEventListener('click', (event) => {
             let target = event.target;
@@ -299,6 +277,42 @@
                 toggleTheaterMode();
             } else if (event.data && event.data.type === 'togglePip') {
                 togglePip();
+            } else if (event.data && event.data.type === 'WINDOW_OPEN_ATTEMPT') {
+                const targetUrl = event.data.url;
+                if (!targetUrl || targetUrl === 'about:blank') return;
+
+                let finalUrl;
+                try {
+                    finalUrl = new URL(targetUrl, window.location.href).toString();
+                } catch (e) {
+                    finalUrl = targetUrl;
+                }
+
+                if (!finalUrl.startsWith('http')) return;
+
+                const behavior = settings.playerLinkBehavior;
+                
+                if (behavior === 'block') {
+                    console.log('[Privacy Player] Blocked window.open popup to:', finalUrl);
+                    chrome.runtime.sendMessage({
+                        type: 'privacyPlayerLinkClicked',
+                        action: 'block',
+                        url: finalUrl
+                    }).catch(() => {});
+                    return;
+                }
+
+                if (behavior === 'newTab' || behavior === 'incognito') {
+                    chrome.runtime.sendMessage({
+                        type: 'privacyPlayerLinkClicked',
+                        action: behavior,
+                        url: finalUrl
+                    }).catch(() => {});
+                    return;
+                }
+
+                // behavior === 'inside'
+                window.location.href = finalUrl;
             }
         });
 
@@ -652,5 +666,36 @@
             document.documentElement.style.removeProperty('background');
             document.documentElement.style.removeProperty('overflow');
         }
+
+        // Video Speed & Volume Booster control listener via postMessage from Popup
+        window.addEventListener('message', (event) => {
+            if (!event.data || !event.data.type) return;
+
+            if (event.data.type === 'boostVideoSpeed') {
+                const speed = parseFloat(event.data.speed);
+                const videos = document.querySelectorAll('video');
+                videos.forEach(v => {
+                    v.playbackRate = speed;
+                });
+            } else if (event.data.type === 'boostVideoVolume') {
+                const volumeFactor = parseFloat(event.data.volume);
+                const videos = document.querySelectorAll('video');
+                videos.forEach(v => {
+                    try {
+                        if (!v.__audioCtx) {
+                            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                            v.__audioCtx = new AudioContextClass();
+                            v.__gainNode = v.__audioCtx.createGain();
+                            v.__sourceNode = v.__audioCtx.createMediaElementSource(v);
+                            v.__sourceNode.connect(v.__gainNode);
+                            v.__gainNode.connect(v.__audioCtx.destination);
+                        }
+                        v.__gainNode.gain.value = volumeFactor;
+                    } catch (e) {
+                        v.volume = Math.min(1.0, volumeFactor);
+                    }
+                });
+            }
+        });
     }
 })();
