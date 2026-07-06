@@ -639,15 +639,39 @@
             if (!event.data || !event.data.type) return;
 
             if (event.data.type === 'boostVideoSpeed') {
-                window.__privacyPlayerSpeed = parseFloat(event.data.speed);
+                const newSpeed = parseFloat(event.data.speed);
+                if (window.__privacyPlayerSpeed === newSpeed) return;
+                window.__privacyPlayerSpeed = newSpeed;
+                
+                // Broadcast to child iframes
+                document.querySelectorAll('iframe').forEach(f => {
+                    try { f.contentWindow?.postMessage(event.data, '*'); } catch(e) {}
+                });
             } else if (event.data.type === 'boostVideoVolume') {
-                window.__privacyPlayerVolume = parseFloat(event.data.volume);
+                const newVol = parseFloat(event.data.volume);
+                if (window.__privacyPlayerVolume === newVol) return;
+                window.__privacyPlayerVolume = newVol;
                 window.__privacyPlayerVolumeBoostEnabled = window.__privacyPlayerVolume > 1.0;
+                
+                // Broadcast to child iframes
+                document.querySelectorAll('iframe').forEach(f => {
+                    try { f.contentWindow?.postMessage(event.data, '*'); } catch(e) {}
+                });
             }
         });
 
         // Continuously enforce speed and volume on all videos (handles dynamically added videos and player resets)
         setInterval(() => {
+            // Broadcast current settings to any nested child iframes
+            if (window.__privacyPlayerSpeed !== 1.0 || window.__privacyPlayerVolume !== 1.0) {
+                document.querySelectorAll('iframe').forEach(f => {
+                    try { 
+                        f.contentWindow?.postMessage({ type: 'boostVideoSpeed', speed: window.__privacyPlayerSpeed }, '*');
+                        f.contentWindow?.postMessage({ type: 'boostVideoVolume', volume: window.__privacyPlayerVolume }, '*');
+                    } catch(e) {}
+                });
+            }
+
             const videos = document.querySelectorAll('video');
             videos.forEach(v => {
                 // Enforce Speed

@@ -3,12 +3,23 @@
 
   // Biến lưu trữ cấu hình
   let cachedSeed = null;
+  let cachedGeoMode = 'us';
 
   // Khởi chạy: Lấy installSeed ngay khi script load để giảm độ trễ
-  chrome.storage.local.get('installSeed', (res) => {
+  chrome.storage.local.get(['installSeed', 'privacyPlayerGeoMode'], (res) => {
     if (res.installSeed) {
       cachedSeed = res.installSeed;
     }
+    if (res.privacyPlayerGeoMode) {
+      cachedGeoMode = res.privacyPlayerGeoMode;
+    }
+  });
+
+  chrome.storage.onChanged.addListener((changes, area) => {
+      if (area === 'local' && changes.privacyPlayerGeoMode) {
+          cachedGeoMode = changes.privacyPlayerGeoMode.newValue;
+          window.postMessage({ type: '__NOISE_RESPONSE__', geoMode: cachedGeoMode }, '*');
+      }
   });
 
   // Helper: Băm chuỗi (SHA-256 đơn giản hóa hoặc băm 32-bit nhanh)
@@ -58,7 +69,7 @@
       const domain = getETLDPlus1(hostname);
       
       const noise = hashString(cachedSeed + '|' + domain);
-      window.postMessage({ type: '__NOISE_RESPONSE__', domainNoise: noise }, '*');
+      window.postMessage({ type: '__NOISE_RESPONSE__', domainNoise: noise, geoMode: cachedGeoMode }, '*');
     } else {
       // Nhánh 2: IFRAME - Chống cross-site tracking
       // Phải nhờ Background lấy eTLD+1 của Top-Level Tab (đã giải quyết opaque origins như data:/about:blank)
@@ -66,13 +77,13 @@
         if (chrome.runtime.lastError) {
            // Có thể extension context bị lỗi/reload, fallback dùng domain của chính nó
            const fallbackNoise = hashString(cachedSeed + '|' + getETLDPlus1(window.location.hostname));
-           window.postMessage({ type: '__NOISE_RESPONSE__', domainNoise: fallbackNoise }, '*');
+           window.postMessage({ type: '__NOISE_RESPONSE__', domainNoise: fallbackNoise, geoMode: cachedGeoMode }, '*');
            return;
         }
 
         if (response && response.domain) {
           const noise = hashString(cachedSeed + '|' + response.domain);
-          window.postMessage({ type: '__NOISE_RESPONSE__', domainNoise: noise }, '*');
+          window.postMessage({ type: '__NOISE_RESPONSE__', domainNoise: noise, geoMode: cachedGeoMode }, '*');
         }
       });
     }

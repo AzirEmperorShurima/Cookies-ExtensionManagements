@@ -3,15 +3,16 @@ import { isValidUrl, createElement } from './utils.js';
 
 const translations = window.translations;
 
-let playerScale = 100;
+let playerWidth = 600;
 let playerHeight = 400;
 let playerHistory = [];
 let currentUrlIndex = -1;
 let isNavigating = false;
 let _messageListenerAdded = false;
-let _isFullscreen = false;
 let currentBoostSpeed = 1.0;
 let currentBoostVolume = 1.0;
+let preFocusWidth = 600;
+let preFocusHeight = 400;
 
 // Search engine map - dùng settings.searchEngine của user
 const SEARCH_ENGINES = {
@@ -145,16 +146,6 @@ function openStealthWindowInternal(url) {
     });
 }
 
-// ─── Fullscreen ───────────────────────────────────────────────────────────────
-function toggleFullscreen() {
-    const container = elements.playerContainer;
-    if (!container) return;
-    if (!document.fullscreenElement) {
-        (container.requestFullscreen || container.webkitRequestFullscreen || (() => {})).call(container);
-    } else {
-        (document.exitFullscreen || document.webkitExitFullscreen || (() => {})).call(document);
-    }
-}
 
 // ─── Add current page to favorites ───────────────────────────────────────────
 function addCurrentPageToFavorites() {
@@ -248,15 +239,28 @@ export function updatePlayerSize() {
     const { playerContainer } = elements;
     if (!playerContainer) return;
 
-    playerContainer.style.width = '100%';
-    playerContainer.style.marginLeft = '0';
-    playerContainer.style.height = `${playerHeight}px`;
+    // Detect if we are running in a Side Panel (responsive mode)
+    const isPanelMode = window.innerWidth < 800 && window.innerHeight > 600;
+    
+    if (isPanelMode) {
+        document.body.classList.add('is-panel');
+        // Let CSS handle the dimensions (100% width/height)
+        document.body.style.width = '';
+        document.body.style.height = '';
+        playerContainer.style.width = '';
+        playerContainer.style.height = '';
+    } else {
+        document.body.classList.remove('is-panel');
+        playerContainer.style.width = '100%';
+        playerContainer.style.marginLeft = '0';
+        playerContainer.style.height = `${playerHeight}px`;
 
-    const extraHeight = Math.max(0, playerHeight - 400);
-    const targetHeight = Math.min(650, 500 + extraHeight);
+        const extraHeight = Math.max(0, playerHeight - 400);
+        const targetHeight = Math.min(650, 500 + extraHeight);
 
-    document.body.style.width = '800px';
-    document.body.style.height = `${targetHeight}px`;
+        document.body.style.width = `${playerWidth}px`;
+        document.body.style.height = `${targetHeight}px`;
+    }
 }
 
 // ─── Nav State ────────────────────────────────────────────────────────────────
@@ -388,14 +392,14 @@ export function init() {
     }).catch(() => {});
 
     if (settings.followDefaultPlayerSize) {
-        playerScale = settings.defaultPlayerWidth || 100;
+        playerWidth = settings.defaultPlayerWidth || 600;
         playerHeight = settings.defaultPlayerHeight || 400;
     }
     updatePlayerSize();
     checkStealthLock();
 
     // Khôi phục giá trị speed và volume từ storage
-    chrome.storage.local.get(['privacyPlayerSpeed', 'privacyPlayerVolume'], (res) => {
+    chrome.storage.local.get(['privacyPlayerSpeed', 'privacyPlayerVolume', 'privacyPlayerGeoMode'], (res) => {
         if (res.privacyPlayerSpeed !== undefined) {
             currentBoostSpeed = res.privacyPlayerSpeed;
             applySpeed(currentBoostSpeed);
@@ -429,6 +433,12 @@ export function init() {
                     vDropdown.value = 'custom';
                     document.getElementById('customVolumeWrapper')?.classList.remove('hidden');
                 }
+            }
+        }
+        if (res.privacyPlayerGeoMode !== undefined) {
+            const geoDropdown = document.getElementById('geoDropdown');
+            if (geoDropdown) {
+                geoDropdown.value = res.privacyPlayerGeoMode;
             }
         }
     });
@@ -516,14 +526,16 @@ export function init() {
     if (enlargePlayer) {
         enlargePlayer.addEventListener('click', () => {
             if (playerHeight < 800) {
-                playerHeight += 50;
+                playerHeight += 35;
+                if (playerWidth < 800) playerWidth += 50;
                 updatePlayerSize();
                 if (!settings.followDefaultPlayerSize) {
                     settings.defaultPlayerHeight = playerHeight;
+                    settings.defaultPlayerWidth = playerWidth;
                     saveSettings();
                 }
             } else {
-                notify('Đã đạt chiều cao tối đa.', 'warning');
+                notify('Đã đạt kích thước tối đa.', 'warning');
             }
         });
     }
@@ -531,14 +543,16 @@ export function init() {
     if (shrinkPlayer) {
         shrinkPlayer.addEventListener('click', () => {
             if (playerHeight > 250) {
-                playerHeight -= 50;
+                playerHeight -= 35;
+                if (playerWidth > 400) playerWidth -= 50;
                 updatePlayerSize();
                 if (!settings.followDefaultPlayerSize) {
                     settings.defaultPlayerHeight = playerHeight;
+                    settings.defaultPlayerWidth = playerWidth;
                     saveSettings();
                 }
             } else {
-                notify('Đã đạt chiều cao tối thiểu.', 'warning');
+                notify('Đã đạt kích thước tối thiểu.', 'warning');
             }
         });
     }
@@ -554,6 +568,7 @@ export function init() {
             updatePlayerNavState();
             chrome.storage.local.remove(['lastPlayerUrl']);
             
+            playerWidth = 600;
             playerHeight = 400;
             updatePlayerSize();
             
@@ -615,12 +630,8 @@ export function init() {
         });
     }
 
-    const fullscreenBtn = document.getElementById('fullscreenPlayer');
-    if (fullscreenBtn) {
-        fullscreenBtn.addEventListener('click', toggleFullscreen);
-    }
-
     const focusModeBtn = document.getElementById('focusModePlayer');
+    const exitFocusModeBtn = document.getElementById('exitFocusModeBtn');
     if (focusModeBtn) {
         focusModeBtn.addEventListener('click', () => {
             const stealthSection = document.getElementById('stealthSection');
@@ -629,34 +640,32 @@ export function init() {
                 document.body.classList.toggle('has-focus-mode', isActive);
                 focusModeBtn.classList.toggle('active', isActive);
                 focusModeBtn.title = isActive ? 'Tắt Chế độ tập trung' : 'Chế độ tập trung (Focus Mode)';
+                if (exitFocusModeBtn) {
+                    exitFocusModeBtn.classList.toggle('hidden', !isActive);
+                }
                 
-                // Vô hiệu hóa các nút resize khi ở Focus Mode
-                const shrinkBtn = document.getElementById('shrinkPlayer');
-                const enlargeBtn = document.getElementById('enlargePlayer');
-                const resetBtn = document.getElementById('resetPlayer');
-                if (shrinkBtn) shrinkBtn.disabled = isActive;
-                if (enlargeBtn) enlargeBtn.disabled = isActive;
-                if (resetBtn) resetBtn.disabled = isActive;
-
                 if (isActive) {
-                    const container = elements.playerContainer;
-                    if (container) {
-                        container.style.width = '100%';
-                        container.style.marginLeft = '0';
-                        container.style.height = '100%';
-                    }
+                    // Save pre-focus dimensions
+                    preFocusWidth = playerWidth;
+                    preFocusHeight = playerHeight;
+                    // Maximize width and height for immersive experience
+                    playerWidth = 800;
+                    playerHeight = 600;
+                    updatePlayerSize();
                 } else {
-                    // Reset inline styles được gán khi bật focus mode trước khi gọi updatePlayerSize
-                    const container = elements.playerContainer;
-                    if (container) {
-                        container.style.width = '';
-                        container.style.marginLeft = '';
-                        container.style.height = '';
-                    }
+                    // Restore dimensions
+                    playerWidth = preFocusWidth;
+                    playerHeight = preFocusHeight;
                     updatePlayerSize();
                 }
                 notify(isActive ? 'Đã bật Chế độ tập trung' : 'Đã tắt Chế độ tập trung', 'success');
             }
+        });
+    }
+
+    if (exitFocusModeBtn) {
+        exitFocusModeBtn.addEventListener('click', () => {
+            if (focusModeBtn) focusModeBtn.click();
         });
     }
     document.addEventListener('fullscreenchange', () => {
@@ -849,6 +858,15 @@ export function init() {
                 if (customVolumeWrapper) customVolumeWrapper.classList.add('hidden');
                 applyVolume(parseInt(val));
             }
+        });
+    }
+
+    const geoDropdown = document.getElementById('geoDropdown');
+    if (geoDropdown) {
+        geoDropdown.addEventListener('change', (e) => {
+            const val = e.target.value;
+            chrome.storage.local.set({ privacyPlayerGeoMode: val });
+            notify('Đã cập nhật vị trí giả lập!', 'success');
         });
     }
 

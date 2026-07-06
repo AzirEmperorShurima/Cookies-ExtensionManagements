@@ -4,6 +4,7 @@
   // ============ 1. Cấu hình Two-Tier Seed ============
   let activeNoise = 'DEFAULT_FALLBACK_SEED_186626EB39E9A89A';
   let isNoiseReal = false;
+  window.__activeGeoMode = window.__activeGeoMode || 'us';
 
   // Lắng nghe phản hồi từ bridge
   window.addEventListener('message', (e) => {
@@ -12,6 +13,9 @@
       if (e.data.domainNoise && !isNoiseReal) {
         activeNoise = e.data.domainNoise;
         isNoiseReal = true;
+      }
+      if (e.data.geoMode) {
+        window.__activeGeoMode = e.data.geoMode;
       }
     }
   });
@@ -259,18 +263,16 @@
   function applyGeolocationSpoof() {
     if (!window.navigator || !window.navigator.geolocation) return;
     
-    const fakePosition = {
-      coords: {
-        latitude: 40.7128, // New York
-        longitude: -74.0060,
-        accuracy: 100,
-        altitude: null,
-        altitudeAccuracy: null,
-        heading: null,
-        speed: null
-      },
-      timestamp: Date.now()
-    };
+    function getFakePosition() {
+        if (window.__activeGeoMode === 'uk') {
+            return { coords: { latitude: 51.5074, longitude: -0.1278, accuracy: 100, altitude: null, altitudeAccuracy: null, heading: null, speed: null }, timestamp: Date.now() };
+        }
+        if (window.__activeGeoMode === 'jp') {
+            return { coords: { latitude: 35.6762, longitude: 139.6503, accuracy: 100, altitude: null, altitudeAccuracy: null, heading: null, speed: null }, timestamp: Date.now() };
+        }
+        // Default to US
+        return { coords: { latitude: 40.7128, longitude: -74.0060, accuracy: 100, altitude: null, altitudeAccuracy: null, heading: null, speed: null }, timestamp: Date.now() };
+    }
 
     const proto = Geolocation.prototype;
     
@@ -278,9 +280,18 @@
     if (proto.getCurrentPosition) {
       const spoofedGetCurrentPosition = createNativeProxy(proto.getCurrentPosition, {
         apply(target, thisArg, args) {
-          const [successCallback] = args;
+          if (window.__activeGeoMode === 'default') {
+              return Reflect.apply(target, thisArg, args);
+          }
+          const [successCallback, errorCallback] = args;
+          if (window.__activeGeoMode === 'block') {
+              if (typeof errorCallback === 'function') {
+                  setTimeout(() => errorCallback({ code: 1, message: "User denied Geolocation" }), 50);
+              }
+              return;
+          }
           if (typeof successCallback === 'function') {
-            setTimeout(() => successCallback(fakePosition), 50);
+            setTimeout(() => successCallback(getFakePosition()), 50);
           }
         }
       }, 'getCurrentPosition');
@@ -295,9 +306,18 @@
     if (proto.watchPosition) {
       const spoofedWatchPosition = createNativeProxy(proto.watchPosition, {
         apply(target, thisArg, args) {
-          const [successCallback] = args;
+          if (window.__activeGeoMode === 'default') {
+              return Reflect.apply(target, thisArg, args);
+          }
+          const [successCallback, errorCallback] = args;
+          if (window.__activeGeoMode === 'block') {
+              if (typeof errorCallback === 'function') {
+                  setTimeout(() => errorCallback({ code: 1, message: "User denied Geolocation" }), 50);
+              }
+              return Math.floor(Math.random() * 10000); // Fake watch ID
+          }
           if (typeof successCallback === 'function') {
-            setTimeout(() => successCallback(fakePosition), 50);
+            setTimeout(() => successCallback(getFakePosition()), 50);
           }
           return Math.floor(Math.random() * 10000); // Fake watch ID
         }
@@ -307,6 +327,28 @@
         writable: true,
         configurable: true
       });
+    }
+
+    // Spoof navigator.permissions.query for geolocation
+    if (window.navigator && window.navigator.permissions && window.navigator.permissions.query) {
+        const originalQuery = window.navigator.permissions.query;
+        const spoofedQuery = createNativeProxy(originalQuery, {
+            apply(target, thisArg, args) {
+                if (args && args[0] && args[0].name === 'geolocation') {
+                    if (window.__activeGeoMode === 'default') {
+                        return Reflect.apply(target, thisArg, args);
+                    }
+                    const state = window.__activeGeoMode === 'block' ? 'denied' : 'granted';
+                    return Promise.resolve({ state: state, onchange: null });
+                }
+                return Reflect.apply(target, thisArg, args);
+            }
+        }, 'query');
+        Object.defineProperty(window.navigator.permissions, 'query', {
+            value: spoofedQuery,
+            writable: true,
+            configurable: true
+        });
     }
   }
 
