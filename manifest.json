@@ -23,19 +23,30 @@
         "sidePanel",
         "alarms",
         "browsingData",
-        "scripting"
+        "scripting",
+        "idle"
     ],
     "declarative_net_request": {
         "rule_resources": [
             {
-                "id": "easylist",
-                "enabled": false,
-                "path": "rules_easylist.json"
+                "id": "easylist_1",
+                "enabled": true,
+                "path": "rules_easylist_1.json"
             },
             {
-                "id": "easyprivacy",
-                "enabled": false,
-                "path": "rules_easyprivacy.json"
+                "id": "easylist_2",
+                "enabled": true,
+                "path": "rules_easylist_2.json"
+            },
+            {
+                "id": "easyprivacy_1",
+                "enabled": true,
+                "path": "rules_easyprivacy_1.json"
+            },
+            {
+                "id": "easyprivacy_2",
+                "enabled": true,
+                "path": "rules_easyprivacy_2.json"
             }
         ]
     },
@@ -83,7 +94,7 @@
         },
         {
             "matches": ["<all_urls>"],
-            "js": ["modules/spoof-inject.js"],
+            "js": ["modules/spoof-inject.js", "modules/window-open-hook.js"],
             "run_at": "document_start",
             "world": "MAIN",
             "all_frames": true,

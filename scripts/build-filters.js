@@ -38,6 +38,8 @@ function parseResourceTypeOptions(optionsStr) {
   return types;
 }
 
+const EXCLUDED_DOMAINS = ['jwpcdn.com', 'jwplayer.com', 'entitlements.jwplayer.com'];
+
 function convertLineToDNRRule(line, id) {
   if (line.includes('##') || line.includes('#@#')) return null;
 
@@ -49,6 +51,10 @@ function convertLineToDNRRule(line, id) {
 
   const domain = domainMatch[1];
   const options = domainMatch[2] || '';
+
+  if (EXCLUDED_DOMAINS.includes(domain)) {
+      return null;
+  }
 
   const resourceTypes = parseResourceTypeOptions(options);
 

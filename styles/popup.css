@@ -5871,6 +5871,37 @@ body.dark-mode .premium-row {
     100% { transform: rotateX(80deg) rotateZ(360deg); }
 }
 
+#zenTimerInput:focus {
+    box-shadow: 0 0 10px rgba(253,121,168,0.5) !important;
+}
+#stopZenModeBtn:hover {
+    background: #ff4757 !important;
+    color: white !important;
+}
+#zenAddCustomUrlBtn:hover {
+    opacity: 0.9;
+}
+.zen-custom-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    background: white;
+    border-radius: 6px;
+    margin-bottom: 5px;
+    border: 1px solid rgba(162,155,254,0.2);
+}
+.zen-custom-item-remove {
+    color: #ff4757;
+    cursor: pointer;
+    font-weight: bold;
+    padding: 0 5px;
+    border-radius: 4px;
+}
+.zen-custom-item-remove:hover {
+    background: rgba(255, 71, 87, 0.1);
+}
+
 @keyframes pulsateHalo {
     0% { opacity: 0.8; transform: scaleY(1.15) scaleX(0.95); }
     100% { opacity: 1; transform: scaleY(1.25) scaleX(1.05); }
@@ -5919,4 +5950,189 @@ body.dark-mode .premium-row {
 @keyframes textGlow {
     0% { opacity: 0.7; text-shadow: 0 0 5px #ffb478; transform: scale(0.98); }
     100% { opacity: 1; text-shadow: 0 0 25px #ff8c50, 0 0 40px #ffb478; transform: scale(1.02); }
+}
+
+/* Screen Time Section */
+.screentime-settings {
+    display: none;
+}
+.screentime-settings.show {
+    display: block;
+    animation: fadeIn 0.4s ease-out;
+}
+
+/* Tab Manager Section */
+.tab-manager-section {
+    display: none;
+}
+.tab-manager-section.show {
+    display: block;
+    animation: fadeIn 0.4s ease-out;
+}
+.tab-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 15px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    transition: var(--transition-smooth);
+    cursor: pointer;
+}
+.tab-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+.tab-item.active-tab {
+    background: linear-gradient(135deg, rgba(255, 126, 179, 0.1), rgba(255, 117, 140, 0.2));
+    border-color: rgba(255, 126, 179, 0.4);
+}
+.tab-item-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+.tab-item-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    background: white;
+    padding: 2px;
+}
+.tab-item-title {
+    color: var(--text-color);
+    font-size: 0.95rem;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.tab-close-btn {
+    background: rgba(255, 71, 87, 0.1);
+    border: none;
+    color: #ff4757;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    opacity: 0;
+}
+.tab-item:hover .tab-close-btn {
+    opacity: 1;
+}
+.tab-close-btn:hover {
+    background: #ff4757;
+    color: white;
+    transform: scale(1.1);
+}
+
+/* Tab Grouping */
+.group-toggle-btn {
+    background: rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+.group-toggle-btn:hover {
+    background: rgba(255, 126, 179, 0.1);
+    color: #ff7eb3;
+    border-color: rgba(255, 126, 179, 0.3);
+}
+.group-toggle-btn.active {
+    background: linear-gradient(135deg, #ff7eb3, #ff758c);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(255, 126, 179, 0.4);
+}
+.tab-group-container {
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.tab-group-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 5px 5px 5px;
+    color: var(--text-color);
+    font-size: 0.95rem;
+    font-weight: 600;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 5px;
+}
+.tab-group-count {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+/* Temp Mail Section */
+.temp-mail-section {
+    display: none;
+}
+.temp-mail-section.show {
+    display: block;
+    animation: fadeIn 0.4s ease-out;
+}
+.email-item {
+    display: flex;
+    flex-direction: column;
+    padding: 12px 15px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    transition: var(--transition-smooth);
+    cursor: pointer;
+}
+.email-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+.email-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+.email-sender {
+    font-weight: 600;
+    color: var(--text-color);
+    font-size: 0.95rem;
+}
+.email-time {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+.email-subject {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.primary-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 242, 254, 0.3);
+}
+.secondary-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
 }

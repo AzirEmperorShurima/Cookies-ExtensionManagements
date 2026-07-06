@@ -47,8 +47,10 @@ export async function initAdblockUI() {
         saveSettings();
         
         try {
-            await toggleFilterSource('easylist', settings.easylistEnabled);
-            await toggleFilterSource('easyprivacy', settings.easylistEnabled); // Bật/tắt theo easylist
+            await toggleFilterSource('easylist_1', settings.easylistEnabled);
+            await toggleFilterSource('easylist_2', settings.easylistEnabled);
+            await toggleFilterSource('easyprivacy_1', settings.easylistEnabled); // Bật/tắt theo easylist
+            await toggleFilterSource('easyprivacy_2', settings.easylistEnabled);
             
             // Thông báo background cập nhật lại quy tắc bảo vệ và custom rules
             chrome.runtime.sendMessage({ type: 'updateSecurityRules' });
@@ -71,13 +73,25 @@ export async function initAdblockUI() {
         zapperModeBtn.onclick = async () => {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             if (tab && !tab.url.startsWith('chrome://')) {
+                // Change UI state to active
+                zapperModeBtn.classList.add('pulse-anim');
+                zapperModeBtn.style.background = 'linear-gradient(135deg, #00d2ff, #3a7bd5)';
+                zapperModeBtn.style.boxShadow = '0 4px 15px rgba(0, 210, 255, 0.4)';
+                const textSpan = zapperModeBtn.querySelector('.btn-text');
+                if (textSpan) textSpan.innerText = getDict().zapperActive || 'Zapper Đang Bật...';
+                
                 await chrome.runtime.sendMessage({ type: 'ACTIVATE_ZAPPER', tabId: tab.id });
-                window.close();
+                notify(getDict().zapperActivatedNotify || 'Zapper đã sẵn sàng! Hãy click vào phần tử bạn muốn xóa trên trang.', 'success');
+                
+                // Do not close window, let user see the state change
+                setTimeout(() => window.close(), 2000);
             } else {
-                notify('Không thể dùng Zapper trên trang này.', 'error');
+                notify(getDict().zapperError || 'Không thể dùng Zapper trên trang này.', 'error');
             }
         };
     }
+
+    renderZapperManager();
 
     // Lưu cấu hình thủ công cho quy tắc tự viết
     saveAdblockSettingsBtn.onclick = async () => {
@@ -93,13 +107,23 @@ export async function initAdblockUI() {
 /**
  * Cập nhật số lượng quy tắc hiển thị trên giao diện
  */
-export function updateAdblockStats() {
+export async function updateAdblockStats() {
     const { adblockNetworkCount, adblockCssCount, adsBlockedCount, statAdsBlocked } = elements;
     
-    chrome.storage.local.get(['compiledAdblockRules', 'adblockCssRules', 'adsBlockedCount'], (res) => {
+    // Đếm các ruleset tĩnh được bật (EasyList, EasyPrivacy)
+    let staticRulesCount = 0;
+    try {
+        const enabledSets = await chrome.declarativeNetRequest.getEnabledRulesets();
+        if (enabledSets.includes('easylist_1') || enabledSets.includes('easylist_2')) staticRulesCount += 55380;
+        if (enabledSets.includes('easyprivacy_1') || enabledSets.includes('easyprivacy_2')) staticRulesCount += 46770;
+    } catch(e) { console.error('Error getting rulesets:', e); }
+
+    chrome.storage.local.get(['compiledAdblockRules', 'adblockCssRules', 'adsBlockedCount'], async (res) => {
         const networkRules = res.compiledAdblockRules || [];
         const cssRules = res.adblockCssRules || {};
-        const blockedCount = res.adsBlockedCount || 0;
+
+        // Tổng rules mạng = rules tĩnh (EasyList) + rules động (Custom)
+        const totalNetworkRules = networkRules.length + staticRulesCount;
 
         // Đếm tổng số CSS selector
         let cssTotalCount = 0;
@@ -109,11 +133,98 @@ export function updateAdblockStats() {
             }
         });
 
-        if (adblockNetworkCount) adblockNetworkCount.textContent = networkRules.length;
+        // Sum up last 7 days for blocked count
+        let totalBlocked7Days = 0;
+        const keys = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            keys.push(`stats_${d.toISOString().split('T')[0]}`);
+        }
+        const statsRes = await chrome.storage.local.get(keys);
+        keys.forEach(k => {
+            if (statsRes[k] && statsRes[k].trackersBlocked) {
+                totalBlocked7Days += statsRes[k].trackersBlocked;
+            }
+        });
+
+        if (adblockNetworkCount) adblockNetworkCount.textContent = totalNetworkRules;
+
+        
         if (adblockCssCount) adblockCssCount.textContent = cssTotalCount;
-        if (adsBlockedCount) adsBlockedCount.textContent = blockedCount;
-        if (statAdsBlocked) statAdsBlocked.textContent = blockedCount;
+        if (adsBlockedCount) adsBlockedCount.textContent = totalBlocked7Days;
+        if (statAdsBlocked) statAdsBlocked.textContent = totalBlocked7Days;
+        
+        chrome.storage.local.set({ adsBlockedCount: totalBlocked7Days });
+        
+        renderAnalyticsChart();
     });
+}
+
+/**
+ * Hiển thị biểu đồ thống kê Analytics
+ */
+async function renderAnalyticsChart() {
+    const canvas = document.getElementById('adblockAnalyticsChart');
+    if (!canvas || !window.Chart) return;
+    
+    // Lấy ngày hiện tại và 6 ngày trước
+    const dates = [];
+    const keys = [];
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        dates.push(dateStr.slice(5)); // Chỉ lấy MM-DD
+        keys.push(`stats_${dateStr}`);
+    }
+    
+    try {
+        const result = await chrome.storage.local.get(keys);
+        const dataPoints = keys.map(k => (result[k] && result[k].trackersBlocked) ? result[k].trackersBlocked : 0);
+        
+        if (window.adblockChartInstance) {
+            window.adblockChartInstance.destroy();
+        }
+        
+        window.adblockChartInstance = new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [{
+                    label: 'Trackers/Ads Blocked',
+                    data: dataPoints,
+                    borderColor: '#6c5ce7',
+                    backgroundColor: 'rgba(108, 92, 231, 0.2)',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255,255,255,0.1)' },
+                        ticks: { color: '#888' }
+                    },
+                    x: {
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: '#888' }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: '#888' }
+                    }
+                }
+            }
+        });
+    } catch(e) {
+        console.error("Error rendering chart:", e);
+    }
 }
 
 /**
@@ -144,13 +255,9 @@ async function fetchEasyList() {
     try {
         const response = await fetch(easyListUrl);
         if (!response.ok) throw new Error('HTTP error ' + response.status);
-        
         const text = await response.text();
         const lines = text.split('\n');
-        
         const easyListCssRules = {};
-
-        // Parse EasyList theo từng dòng
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i].trim();
             if (!line || line.startsWith('!')) continue; // Bỏ qua comment
@@ -194,7 +301,6 @@ async function fetchEasyList() {
         if (elapsed < minDuration) {
             await new Promise(resolve => setTimeout(resolve, minDuration - elapsed));
         }
-
         isFetchingEasyList = false;
         const fetchOverlay = document.getElementById('adblockFetchOverlay');
         if (fetchOverlay) fetchOverlay.classList.add('hidden');
@@ -220,7 +326,6 @@ async function compileAllRules() {
     const storage = await chrome.storage.local.get([
         'easyListParsedCssRules'
     ]);
-
     const easyListCss = settings.easylistEnabled ? (storage.easyListParsedCssRules || {}) : {};
 
     // 2. Phân tích quy tắc mạng tùy chỉnh của người dùng
@@ -312,4 +417,82 @@ async function compileAllRules() {
     
     // Cập nhật lại số liệu hiển thị
     updateAdblockStats();
+}
+
+async function renderZapperManager() {
+    const container = document.getElementById('zapperListContainer');
+    const badge = document.getElementById('zapperCountBadge');
+    if (!container || !badge) return;
+
+    const data = await chrome.storage.local.get(['userZappedCssRules']);
+    let zappedRules = data.userZappedCssRules || {};
+    
+    // Tự động dọn dẹp nếu rules bị hỏng bởi lỗi migration (quá lớn)
+    if (Object.keys(zappedRules).length > 500) {
+        zappedRules = {};
+        await chrome.storage.local.set({ userZappedCssRules: zappedRules });
+    }
+    
+    let totalItems = 0;
+    container.innerHTML = '';
+
+    for (const [domain, selectors] of Object.entries(zappedRules)) {
+        if (!selectors || selectors.length === 0) continue;
+        
+        selectors.forEach((selector, index) => {
+            totalItems++;
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'zapper-item';
+            itemDiv.style = 'display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 8px 12px; margin-bottom: 8px; border-radius: 8px; font-family: monospace; font-size: 12px;';
+            
+            const infoDiv = document.createElement('div');
+            infoDiv.style = 'flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
+            
+            const domainSpan = document.createElement('span');
+            domainSpan.innerText = domain + ': ';
+            domainSpan.style.color = 'var(--secondary)';
+            domainSpan.style.fontWeight = 'bold';
+            
+            const selectorSpan = document.createElement('span');
+            selectorSpan.innerText = selector;
+            selectorSpan.style.color = 'var(--text-muted)';
+            
+            infoDiv.appendChild(domainSpan);
+            infoDiv.appendChild(selectorSpan);
+            
+            const removeBtn = document.createElement('button');
+            removeBtn.innerHTML = '&times;';
+            removeBtn.title = getDict().unZapBtn || 'Xóa phần tử (Unzap)';
+            removeBtn.style = 'background: rgba(255,71,87,0.2); color: #ff4757; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; margin-left: 10px; transition: all 0.2s;';
+            removeBtn.onmouseover = () => removeBtn.style.background = '#ff4757';
+            removeBtn.onmouseout = () => removeBtn.style.background = 'rgba(255,71,87,0.2)';
+            
+            removeBtn.onclick = async () => {
+                // Remove selector from array
+                const updatedSelectors = zappedRules[domain].filter((_, i) => i !== index);
+                if (updatedSelectors.length === 0) {
+                    delete zappedRules[domain];
+                } else {
+                    zappedRules[domain] = updatedSelectors;
+                }
+                
+                await chrome.storage.local.set({ userZappedCssRules: zappedRules });
+                if (window.notify) window.notify(getDict().unZapSuccess || 'Đã khôi phục phần tử.', 'success');
+                renderZapperManager(); // re-render
+                
+                // Trình báo cho iframe_content_script hoặc reload lại trang nếu muốn (chỉ gửi message)
+                chrome.runtime.sendMessage({ type: 'UPDATE_ADBLOCK_RULES' });
+            };
+            
+            itemDiv.appendChild(infoDiv);
+            itemDiv.appendChild(removeBtn);
+            container.appendChild(itemDiv);
+        });
+    }
+
+    badge.innerText = `${totalItems} items`;
+    
+    if (totalItems === 0) {
+        container.innerHTML = `<div class="empty-state" style="text-align: center; color: var(--text-muted); padding: 20px; font-style: italic;">${getDict().zapperEmpty || 'Chưa có phần tử nào bị xóa bằng Zapper.'}</div>`;
+    }
 }

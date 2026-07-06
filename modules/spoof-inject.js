@@ -73,41 +73,100 @@
 
   // ============ 4. Áp dụng Spoofing cho Canvas ============
   function applyCanvasSpoof() {
-    if (!window.CanvasRenderingContext2D) return;
-    const proto = CanvasRenderingContext2D.prototype;
-    const originalGetImageData = proto.getImageData;
-
-    const spoofedGetImageData = createNativeProxy(
-      originalGetImageData,
-      {
-        apply(target, thisArg, args) {
-          const imageData = Reflect.apply(target, thisArg, args);
-          if (imageData && imageData.data) {
-            const hash = Math.abs(simpleHash(activeNoise));
-            const rShift = hash % 5;
-            const gShift = (hash >> 2) % 5;
-            const bShift = (hash >> 4) % 5;
-            const skip = (hash % 7) + 1;
-
-            const data = imageData.data;
-            for (let i = 0; i < data.length; i += 4) {
-              if (i % skip === 0) {
-                data[i] = (data[i] + rShift) % 256;
-                data[i + 1] = (data[i + 1] + gShift) % 256;
-                data[i + 2] = (data[i + 2] + bShift) % 256;
+    if (window.HTMLCanvasElement && window.HTMLCanvasElement.prototype.getContext) {
+      const originalGetContext = window.HTMLCanvasElement.prototype.getContext;
+      const spoofedGetContext = createNativeProxy(
+        originalGetContext,
+        {
+          apply(target, thisArg, args) {
+            if (args[0] === '2d') {
+              if (args.length < 2) args.push({});
+              if (typeof args[1] === 'object') {
+                args[1].willReadFrequently = true;
               }
             }
+            return Reflect.apply(target, thisArg, args);
           }
-          return imageData;
-        }
-      },
-      'getImageData'
-    );
+        },
+        'getContext'
+      );
+      Object.defineProperty(window.HTMLCanvasElement.prototype, 'getContext', {
+        value: spoofedGetContext,
+        writable: true,
+        configurable: true
+      });
+    }
 
-    Object.defineProperty(proto, 'getImageData', {
-      value: spoofedGetImageData,
-      writable: true,
-      configurable: true
+    if (!window.CanvasRenderingContext2D) return;
+    const proto = CanvasRenderingContext2D.prototype;
+    
+    // Spoof toDataURL to inject noise
+    if (window.HTMLCanvasElement && window.HTMLCanvasElement.prototype.toDataURL) {
+        const originalToDataURL = window.HTMLCanvasElement.prototype.toDataURL;
+        const spoofedToDataURL = createNativeProxy(
+            originalToDataURL,
+            {
+                apply(target, thisArg, args) {
+                    const ctx = thisArg.getContext('2d');
+                    if (ctx) {
+                        const width = thisArg.width;
+                        const height = thisArg.height;
+                        if (width > 0 && height > 0) {
+                            const hash = Math.abs(simpleHash(activeNoise));
+                            const rShift = hash % 5;
+                            const gShift = (hash >> 2) % 5;
+                            const bShift = (hash >> 4) % 5;
+                            ctx.fillStyle = `rgba(${rShift}, ${gShift}, ${bShift}, 0.01)`;
+                            ctx.fillRect(0, 0, 1, 1);
+                        }
+                    }
+                    return Reflect.apply(target, thisArg, args);
+                }
+            },
+            'toDataURL'
+        );
+        Object.defineProperty(window.HTMLCanvasElement.prototype, 'toDataURL', {
+            value: spoofedToDataURL,
+            writable: true,
+            configurable: true
+        });
+    }
+  }
+
+  // ============ 4.5 Áp dụng Spoofing cho AudioContext ============
+  function applyAudioSpoof() {
+    const audioContexts = [window.AudioContext, window.webkitAudioContext];
+    audioContexts.forEach(ctor => {
+        if (!ctor) return;
+        const proto = ctor.prototype;
+        if (!proto.createOscillator) return;
+        
+        const originalCreateOscillator = proto.createOscillator;
+        const spoofedCreateOscillator = createNativeProxy(originalCreateOscillator, {
+            apply(target, thisArg, args) {
+                const oscillator = Reflect.apply(target, thisArg, args);
+                const originalStart = oscillator.start;
+                const spoofedStart = createNativeProxy(originalStart, {
+                    apply(t, tArg, a) {
+                        // Apply subtle shift to frequency based on activeNoise
+                        const hash = Math.abs(simpleHash(activeNoise));
+                        const shift = (hash % 100) / 1000;
+                        if (tArg.frequency && tArg.frequency.value) {
+                            tArg.frequency.value += shift;
+                        }
+                        return Reflect.apply(t, tArg, a);
+                    }
+                }, 'start');
+                oscillator.start = spoofedStart;
+                return oscillator;
+            }
+        }, 'createOscillator');
+        
+        Object.defineProperty(proto, 'createOscillator', {
+            value: spoofedCreateOscillator,
+            writable: true,
+            configurable: true
+        });
     });
   }
 
@@ -177,13 +236,123 @@
         });
       }
     }
+
+    // Giả lập Ngôn ngữ (Language) thành en-US
+    ['language', 'languages'].forEach(prop => {
+      if (prop in navigator) {
+        const originalProp = Object.getOwnPropertyDescriptor(Navigator.prototype, prop);
+        if (originalProp && originalProp.get) {
+          const spoofedGet = createNativeProxy(originalProp.get, {
+            apply() { return prop === 'language' ? 'en-US' : ['en-US', 'en']; }
+          }, `get ${prop}`);
+          Object.defineProperty(Navigator.prototype, prop, {
+            get: spoofedGet,
+            enumerable: true,
+            configurable: true
+          });
+        }
+      }
+    });
+  }
+
+  // ============ 7. Áp dụng Spoofing cho Vị trí (Geolocation) ============
+  function applyGeolocationSpoof() {
+    if (!window.navigator || !window.navigator.geolocation) return;
+    
+    const fakePosition = {
+      coords: {
+        latitude: 40.7128, // New York
+        longitude: -74.0060,
+        accuracy: 100,
+        altitude: null,
+        altitudeAccuracy: null,
+        heading: null,
+        speed: null
+      },
+      timestamp: Date.now()
+    };
+
+    const proto = Geolocation.prototype;
+    
+    // Spoof getCurrentPosition
+    if (proto.getCurrentPosition) {
+      const spoofedGetCurrentPosition = createNativeProxy(proto.getCurrentPosition, {
+        apply(target, thisArg, args) {
+          const [successCallback] = args;
+          if (typeof successCallback === 'function') {
+            setTimeout(() => successCallback(fakePosition), 50);
+          }
+        }
+      }, 'getCurrentPosition');
+      Object.defineProperty(proto, 'getCurrentPosition', {
+        value: spoofedGetCurrentPosition,
+        writable: true,
+        configurable: true
+      });
+    }
+
+    // Spoof watchPosition
+    if (proto.watchPosition) {
+      const spoofedWatchPosition = createNativeProxy(proto.watchPosition, {
+        apply(target, thisArg, args) {
+          const [successCallback] = args;
+          if (typeof successCallback === 'function') {
+            setTimeout(() => successCallback(fakePosition), 50);
+          }
+          return Math.floor(Math.random() * 10000); // Fake watch ID
+        }
+      }, 'watchPosition');
+      Object.defineProperty(proto, 'watchPosition', {
+        value: spoofedWatchPosition,
+        writable: true,
+        configurable: true
+      });
+    }
+  }
+
+  // ============ 8. Áp dụng Spoofing cho Múi giờ (Timezone) ============
+  function applyTimezoneSpoof() {
+    // Spoof Intl.DateTimeFormat().resolvedOptions().timeZone
+    if (window.Intl && Intl.DateTimeFormat) {
+      const originalResolvedOptions = Intl.DateTimeFormat.prototype.resolvedOptions;
+      const spoofedResolvedOptions = createNativeProxy(originalResolvedOptions, {
+        apply(target, thisArg, args) {
+          const options = Reflect.apply(target, thisArg, args);
+          options.timeZone = 'America/New_York';
+          return options;
+        }
+      }, 'resolvedOptions');
+      Object.defineProperty(Intl.DateTimeFormat.prototype, 'resolvedOptions', {
+        value: spoofedResolvedOptions,
+        writable: true,
+        configurable: true
+      });
+    }
+
+    // Spoof Date.prototype.getTimezoneOffset
+    const originalGetTimezoneOffset = Date.prototype.getTimezoneOffset;
+    const spoofedGetTimezoneOffset = createNativeProxy(originalGetTimezoneOffset, {
+      apply(target, thisArg, args) {
+        // New York is UTC-5 (300 minutes) or UTC-4 (240 minutes) depending on DST.
+        // We'll return 240 as a generic offset for America/New_York summer time.
+        return 240; 
+      }
+    }, 'getTimezoneOffset');
+    Object.defineProperty(Date.prototype, 'getTimezoneOffset', {
+      value: spoofedGetTimezoneOffset,
+      writable: true,
+      configurable: true
+    });
   }
 
   // ============ Thực thi ngay ============
   try {
     applyCanvasSpoof();
+    applyAudioSpoof();
     applyWebGLSpoof();
     applyNavigatorSpoof();
+    applyGeolocationSpoof();
+    applyTimezoneSpoof();
   } catch (e) {
     // Im lặng bỏ qua lỗi nếu API không tồn tại trên môi trường hiện tại
   }

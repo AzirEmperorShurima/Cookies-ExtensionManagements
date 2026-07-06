@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blocked by Privacy Player</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #a29bfe;
+            --secondary: #fd79a8;
+            --bg-color: #050114;
+            --glass-bg: rgba(20, 15, 35, 0.45);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #ffffff;
+            --text-muted: #d0d0e0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* ----- SPACE BACKGROUND ----- */
+        .space-background {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: radial-gradient(circle at center, #1b0a33 0%, #050114 100%);
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .stars {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: 
+                radial-gradient(1px 1px at 25px 30px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 60px 80px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 140px 120px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(1.5px 1.5px at 180px 40px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 230px 190px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 280px 70px, #ffffff, rgba(0,0,0,0));
+            background-repeat: repeat;
+            background-size: 350px 350px;
+            animation: twinkle 5s infinite alternate linear, panStars 120s linear infinite;
+            opacity: 0.7;
+        }
+
+        @keyframes twinkle {
+            0% { opacity: 0.4; }
+            100% { opacity: 0.9; }
+        }
+        @keyframes panStars {
+            0% { background-position: 0 0; }
+            100% { background-position: 1000px 1000px; }
+        }
+
+        /* ----- SOLAR SYSTEM ----- */
+        .solar-system {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%; height: 100%;
+            pointer-events: none;
+            perspective: 1000px;
+        }
+
+        .sun {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 120px; height: 120px;
+            margin-top: -60px; margin-left: -60px;
+            background: radial-gradient(circle, #fff3e0, #ffb74d, #f57c00);
+            border-radius: 50%;
+            box-shadow: 0 0 50px #ffb74d, 0 0 120px #f57c00, inset 0 0 20px rgba(255,255,255,0.8);
+            animation: pulseSun 4s infinite alternate;
+        }
+
+        @keyframes pulseSun {
+            0% { box-shadow: 0 0 40px #ffb74d, 0 0 100px #f57c00; transform: scale(0.98); }
+            100% { box-shadow: 0 0 70px #ffb74d, 0 0 160px #f57c00; transform: scale(1.02); }
+        }
+
+        .orbit {
+            position: absolute;
+            top: 50%; left: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 50%;
+            transform-style: preserve-3d;
+            animation: spin linear infinite;
+            box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.02);
+        }
+
+        .orbit-1 { width: 340px; height: 340px; margin-top: -170px; margin-left: -170px; animation-duration: 15s; }
+        .orbit-2 { width: 560px; height: 560px; margin-top: -280px; margin-left: -280px; animation-duration: 25s; }
+        .orbit-3 { width: 850px; height: 850px; margin-top: -425px; margin-left: -425px; animation-duration: 45s; }
+
+        .planet {
+            position: absolute;
+            top: -50%; left: 50%;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .planet-1 { 
+            top: 0; left: 50%; 
+            width: 24px; height: 24px; 
+            background: linear-gradient(135deg, #00c6ff, #0072ff); 
+            box-shadow: 0 0 15px #0072ff, inset -4px -4px 10px rgba(0,0,0,0.5); 
+        }
+        
+        .planet-2 { 
+            top: 0; left: 50%; 
+            width: 44px; height: 44px; 
+            background: linear-gradient(135deg, #f83600, #f9d423); 
+            box-shadow: 0 0 25px #f83600, inset -8px -8px 15px rgba(0,0,0,0.5); 
+        }
+        
+        .planet-3 { 
+            top: 0; left: 50%; 
+            width: 60px; height: 60px; 
+            background: linear-gradient(135deg, #a18cd1, #fbc2eb); 
+            box-shadow: 0 0 30px #a18cd1, inset -10px -10px 20px rgba(0,0,0,0.5); 
+        }
+
+        /* Saturn Ring for Planet 3 */
+        .ring {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 110px; height: 30px;
+            transform: translate(-50%, -50%) rotate(30deg);
+            border: 8px solid rgba(251, 194, 235, 0.6);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(251, 194, 235, 0.4);
+        }
+
+        .moon-orbit {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 80px; height: 80px;
+            margin-top: -40px; margin-left: -40px;
+            border: 1px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            animation: spin 6s linear infinite;
+        }
+
+        .moon {
+            position: absolute;
+            top: 0; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 12px; height: 12px;
+            background: #e0e0e0;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #ffffff;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* ----- GLASS CONTAINER ----- */
+        .glass-container {
+            position: relative;
+            z-index: 10;
+            background: var(--glass-bg);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid var(--glass-border);
+            border-top: 1px solid rgba(255, 255, 255, 0.25);
+            border-left: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 28px;
+            padding: 60px 45px;
+            max-width: 520px;
+            text-align: center;
+            box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(255,255,255,0.05);
+            animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .glass-container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 40px 70px -15px rgba(0, 0, 0, 0.7), inset 0 0 30px rgba(255,255,255,0.08);
+        }
+
+        @keyframes slideUp {
+            0% { opacity: 0; transform: translateY(60px) scale(0.95); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .shield-icon {
+            width: 85px;
+            height: 85px;
+            margin: 0 auto 30px;
+            color: var(--secondary);
+            filter: drop-shadow(0 0 20px rgba(253, 121, 168, 0.6));
+            animation: iconFloat 4s ease-in-out infinite;
+        }
+
+        @keyframes iconFloat {
+            0% { transform: translateY(0px) scale(1); filter: drop-shadow(0 0 20px rgba(253, 121, 168, 0.6)); }
+            50% { transform: translateY(-10px) scale(1.05); filter: drop-shadow(0 0 35px rgba(253, 121, 168, 0.9)); }
+            100% { transform: translateY(0px) scale(1); filter: drop-shadow(0 0 20px rgba(253, 121, 168, 0.6)); }
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #ffffff 30%, #a29bfe 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        p {
+            font-size: 16px;
+            color: var(--text-muted);
+            line-height: 1.7;
+            margin-bottom: 45px;
+            font-weight: 400;
+        }
+
+        .back-btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            padding: 16px 40px;
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.1);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 10px 25px rgba(108, 92, 231, 0.4), inset 0 2px 4px rgba(255,255,255,0.2);
+        }
+
+        .back-btn:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 15px 35px rgba(108, 92, 231, 0.6), inset 0 2px 4px rgba(255,255,255,0.3);
+            background: linear-gradient(135deg, #7b6ae8, #b0aaff);
+        }
+
+        .back-btn:active {
+            transform: translateY(1px);
+            box-shadow: 0 5px 15px rgba(108, 92, 231, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="space-background">
+        <div class="stars"></div>
+        <div class="solar-system">
+            <div class="sun"></div>
+            
+            <div class="orbit orbit-1">
+                <div class="planet planet-1"></div>
+            </div>
+            
+            <div class="orbit orbit-2">
+                <div class="planet planet-2">
+                    <div class="moon-orbit">
+                        <div class="moon"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="orbit orbit-3">
+                <div class="planet planet-3">
+                    <div class="ring"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="glass-container">
+        <!-- We use an SVG shield but can be dynamically styled by script if needed -->
+        <svg class="shield-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            <path d="M12 8v4"></path>
+            <path d="M12 16h.01"></path>
+        </svg>
+        
+        <h1 id="pageTitle" data-i18n="blockPageTitle">Access Blocked</h1>
+        <p id="pageDesc" data-i18n="blockPageDesc">Privacy Player has prevented this page from loading because it matches our security and ad-blocking filters.</p>
+        
+        <button class="back-btn" id="goBackBtn" data-i18n="blockPageBack">Return to Safety</button>
+    </div>
+
+    <script src="block.js"></script>
+</body>
+</html>

@@ -103,6 +103,10 @@ export async function calculatePrivacyGrade() {
         score -= 5;
         issues.push('enableAutoClearStealth');
     }
+    if (!settings.adblockEnabled || !settings.easylistEnabled) {
+        score -= 15;
+        issues.push('enableAdblock');
+    }
 
     try {
         const dnt = await chrome.privacy.websites.doNotTrackEnabled.get({});
@@ -191,6 +195,19 @@ export async function fixPrivacyIssues(issues) {
                 break;
             case 'enableAutoClearStealth':
                 settings.autoClearStealth = true;
+                break;
+            case 'enableAdblock':
+                settings.adblockEnabled = true;
+                settings.easylistEnabled = true;
+                chrome.runtime.sendMessage({ type: 'updateSecurityRules' });
+                // We also try to toggle the static rulesets if the background script is listening,
+                // but the message to updateSecurityRules will handle the dynamic ones. 
+                // Let's directly invoke declarativeNetRequest if available to enable the static ones quickly.
+                try {
+                    chrome.declarativeNetRequest.updateEnabledRulesets({
+                        enableRulesetIds: ['easylist_1', 'easylist_2', 'easyprivacy_1', 'easyprivacy_2']
+                    }).catch(()=>{});
+                } catch(e) {}
                 break;
             case 'enableDNT':
                 try {
@@ -308,35 +325,156 @@ export function init() {
 
     let zenInterval;
     const checkZenStatus = () => {
-        chrome.storage.local.get(['zenEndTime'], (res) => {
+        chrome.storage.local.get(['zenEndTime', 'zenTotalSeconds'], (res) => {
             if (res.zenEndTime && res.zenEndTime > Date.now()) {
-                if (startZenModeBtn) startZenModeBtn.classList.add('hidden');
-                if (zenTimerInput) zenTimerInput.parentElement.classList.add('hidden');
+                if (zenInactiveState) zenInactiveState.classList.add('hidden');
                 if (zenActiveState) zenActiveState.classList.remove('hidden');
-                updateZenTimer(res.zenEndTime);
+                if (startZenModeBtn) startZenModeBtn.classList.add('hidden');
+                updateZenTimer(res.zenEndTime, res.zenTotalSeconds || 1500);
             } else {
-                if (startZenModeBtn) startZenModeBtn.classList.remove('hidden');
-                if (zenTimerInput) zenTimerInput.parentElement.classList.remove('hidden');
+                if (zenInactiveState) zenInactiveState.classList.remove('hidden');
                 if (zenActiveState) zenActiveState.classList.add('hidden');
-                if (zenInterval) clearInterval(zenInterval);
+                if (startZenModeBtn) startZenModeBtn.classList.remove('hidden');
             }
         });
     };
 
-    const updateZenTimer = (endTime) => {
+    const updateZenTimer = (endTime, totalSeconds) => {
         if (zenInterval) clearInterval(zenInterval);
-        zenInterval = setInterval(() => {
-            const left = Math.floor((endTime - Date.now()) / 1000);
-            if (left <= 0) {
-                clearInterval(zenInterval);
-                checkZenStatus();
-                return;
-            }
+        
+        const draw = () => {
+            const left = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
             const m = Math.floor(left / 60).toString().padStart(2, '0');
             const s = (left % 60).toString().padStart(2, '0');
             if (zenCountdown) zenCountdown.textContent = `${m}:${s}`;
+            
+            const circle = document.getElementById('zenProgressCircle');
+            if (circle && totalSeconds) {
+                const fraction = left / totalSeconds;
+                circle.style.strokeDashoffset = 283 * (1 - fraction);
+            }
+            return left;
+        };
+        
+        let remaining = draw();
+        if (remaining <= 0) {
+            checkZenStatus();
+            return;
+        }
+        
+        zenInterval = setInterval(() => {
+            const left = draw();
+            if (left <= 0) {
+                clearInterval(zenInterval);
+                checkZenStatus();
+            }
         }, 1000);
     };
+
+    const zenCustomUrlInput = document.getElementById('zenCustomUrlInput');
+    const zenAddCustomUrlBtn = document.getElementById('zenAddCustomUrlBtn');
+    const zenCustomUrlsList = document.getElementById('zenCustomUrlsList');
+
+    const zenToggleListBtn = document.getElementById('zenToggleListBtn');
+    const zenCustomUrlsContainer = document.getElementById('zenCustomUrlsContainer');
+
+    if (zenToggleListBtn && zenCustomUrlsContainer) {
+        zenToggleListBtn.addEventListener('click', () => {
+            const isHidden = zenCustomUrlsContainer.style.display === 'none';
+            zenCustomUrlsContainer.style.display = isHidden ? 'block' : 'none';
+            zenToggleListBtn.innerHTML = `Manage (${zenCustomUrlsList.children.length}) ${isHidden ? '▲' : '▼'}`;
+        });
+    }
+
+    const DEFAULT_ZEN_URLS = ['facebook.com', 'twitter.com', 'x.com', 'reddit.com', 'tiktok.com', 'instagram.com', 'netflix.com', 'youtube.com'];
+
+    const renderZenCustomUrls = () => {
+        chrome.storage.local.get(['zenCustomUrls'], (res) => {
+            const urls = res.zenCustomUrls !== undefined ? res.zenCustomUrls : DEFAULT_ZEN_URLS;
+            if (zenToggleListBtn) {
+                const isHidden = zenCustomUrlsContainer.style.display === 'none';
+                zenToggleListBtn.innerHTML = `Manage (${urls.length}) ${isHidden ? '▼' : '▲'}`;
+            }
+            if (zenCustomUrlsList) {
+                zenCustomUrlsList.innerHTML = '';
+                urls.forEach(url => {
+                    const li = document.createElement('li');
+                    li.className = 'zen-custom-item';
+                    li.innerHTML = `<span>${url}</span><span class="zen-custom-item-remove" data-url="${url}">✕</span>`;
+                    zenCustomUrlsList.appendChild(li);
+                });
+                document.querySelectorAll('.zen-custom-item-remove').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const targetUrl = e.target.getAttribute('data-url');
+                        const newUrls = urls.filter(u => u !== targetUrl);
+                        chrome.storage.local.set({ zenCustomUrls: newUrls }, renderZenCustomUrls);
+                    });
+                });
+            }
+        });
+    };
+
+    if (zenAddCustomUrlBtn && zenCustomUrlInput) {
+        const addUrl = () => {
+            const val = zenCustomUrlInput.value.trim().toLowerCase();
+            if (val) {
+                chrome.storage.local.get(['zenCustomUrls'], (res) => {
+                    const urls = res.zenCustomUrls !== undefined ? res.zenCustomUrls : DEFAULT_ZEN_URLS.slice();
+                    if (!urls.includes(val)) {
+                        urls.push(val);
+                        chrome.storage.local.set({ zenCustomUrls: urls }, () => {
+                            zenCustomUrlInput.value = '';
+                            renderZenCustomUrls();
+                        });
+                    }
+                });
+            }
+        };
+        zenAddCustomUrlBtn.addEventListener('click', addUrl);
+        zenCustomUrlInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addUrl();
+        });
+        renderZenCustomUrls();
+    }
+
+    // Schedule logic
+    const zenScheduleEnable = document.getElementById('zenScheduleEnable');
+    const zenScheduleSettings = document.getElementById('zenScheduleSettings');
+    const zenScheduleTime = document.getElementById('zenScheduleTime');
+    const zenScheduleDuration = document.getElementById('zenScheduleDuration');
+
+    if (zenScheduleEnable) {
+        chrome.storage.local.get(['zenSchedule'], (res) => {
+            const schedule = res.zenSchedule || { enabled: false, time: '08:00', duration: 60 };
+            zenScheduleEnable.checked = schedule.enabled;
+            zenScheduleTime.value = schedule.time;
+            zenScheduleDuration.value = schedule.duration;
+            zenScheduleSettings.style.display = schedule.enabled ? 'flex' : 'none';
+        });
+
+        const saveSchedule = () => {
+            const schedule = {
+                enabled: zenScheduleEnable.checked,
+                time: zenScheduleTime.value || '08:00',
+                duration: parseInt(zenScheduleDuration.value) || 60
+            };
+            zenScheduleSettings.style.display = schedule.enabled ? 'flex' : 'none';
+            chrome.storage.local.set({ zenSchedule: schedule }, () => {
+                chrome.runtime.sendMessage({ type: 'UPDATE_ZEN_SCHEDULE' });
+            });
+        };
+
+        zenScheduleEnable.addEventListener('change', saveSchedule);
+        zenScheduleTime.addEventListener('change', saveSchedule);
+        zenScheduleDuration.addEventListener('change', saveSchedule);
+    }
+
+    const setupFocusSoundsBtn = document.getElementById('setupFocusSoundsBtn');
+    if (setupFocusSoundsBtn) {
+        setupFocusSoundsBtn.addEventListener('click', () => {
+            chrome.tabs.create({ url: chrome.runtime.getURL('playlist.html') });
+        });
+    }
 
     if (startZenModeBtn) {
         startZenModeBtn.addEventListener('click', () => {
@@ -369,7 +507,11 @@ export function init() {
                     elements.cardEphemeral.style.borderColor = isEps ? 'rgba(255, 71, 87, 0.5)' : 'rgba(255, 159, 67, 0.3)';
                 });
             } else {
-                if(elements.ephemeralStatus) elements.ephemeralStatus.textContent = 'N/A';
+                if(elements.ephemeralStatus) {
+                    elements.ephemeralStatus.textContent = 'Không hỗ trợ';
+                    elements.ephemeralStatus.style.color = 'var(--text-muted)';
+                    elements.cardEphemeral.style.borderColor = 'var(--border-color)';
+                }
             }
         });
 

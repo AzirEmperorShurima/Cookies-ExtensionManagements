@@ -1,7 +1,7 @@
 import { calculatePrivacyGrade, setTrackStyle } from './modules/dashboard.js';
 import { createElement, parseHTML } from './modules/utils.js';
 import { initAdblockUI } from './modules/adblock.js';
-import { syncToCloud } from './modules/sync.js';
+import { initSyncUI } from './modules/sync.js';
 
 const translations = window.translations;
 
@@ -18,6 +18,16 @@ export const elements = {
     toggleTracking: document.getElementById('toggleTracking'),
     filterInput: document.getElementById('filterInput'),
     notification: document.getElementById('notification'),
+
+    tabManagerBtn: document.getElementById('tabManagerBtn'),
+    tabManagerSection: document.getElementById('tabManagerSection'),
+    tabSearchInput: document.getElementById('tabSearchInput'),
+    tabListContainer: document.getElementById('tabListContainer'),
+    groupTabsBtn: document.getElementById('groupTabsBtn'),
+    tempMailBtn: document.getElementById('tempMailBtn'),
+    tempMailSection: document.getElementById('tempMailSection'),
+    enableTempMailToggle: document.getElementById('enableTempMailToggle'),
+    enableTabManagerToggle: document.getElementById('enableTabManagerToggle'),
     totalCookies: document.getElementById('totalCookies'),
     cookieTableContainer: document.getElementById('cookieTableContainer'),
     privacySettings: document.getElementById('privacySettings'),
@@ -248,6 +258,7 @@ export const state = {
     secretCode: null,
     isStealthUnlocked: false,
     isVaultUnlocked: false,
+    isGroupedByDomain: false,
     currentCookiesByDomain: {},
     currentVideos: [],
     currentTelegramItems: []
@@ -265,6 +276,8 @@ export let settings = {
     searchEngine: 'google',
     favoriteWebsites: [],
     useSidePanel: false,
+    enableTempMail: false,
+    enableTabManager: false,
     realTimeProtection: true,
     blockClickjacking: true,
     blockCryptoMining: true,
@@ -563,6 +576,10 @@ export function applySettings() {
     if (elements.cookieDestroyerToggle) elements.cookieDestroyerToggle.checked = settings.cookieDestroyer;
     if (elements.historyIncognitoToggle) elements.historyIncognitoToggle.checked = settings.historyIncognito;
     if (elements.useSidePanelToggle) elements.useSidePanelToggle.checked = settings.useSidePanel || false;
+    if (elements.enableTempMailToggle) elements.enableTempMailToggle.checked = settings.enableTempMail ?? false;
+    if (elements.enableTabManagerToggle) elements.enableTabManagerToggle.checked = settings.enableTabManager ?? false;
+    if (elements.tempMailBtn) elements.tempMailBtn.style.display = (settings.enableTempMail ?? false) ? 'flex' : 'none';
+    if (elements.tabManagerBtn) elements.tabManagerBtn.style.display = (settings.enableTabManager ?? false) ? 'flex' : 'none';
     if (elements.realTimeProtectionToggle) elements.realTimeProtectionToggle.checked = settings.realTimeProtection ?? true;
     if (elements.blockClickjackingToggle) elements.blockClickjackingToggle.checked = settings.blockClickjacking ?? true;
     if (elements.blockCryptoMiningToggle) elements.blockCryptoMiningToggle.checked = settings.blockCryptoMining ?? true;
@@ -654,7 +671,6 @@ export function updateUILanguage() {
 
     calculatePrivacyGrade();
 }
-
 export async function toggleSection(section) {
     const {
         extensionsList, cookiesList, controls,
@@ -674,19 +690,21 @@ export async function toggleSection(section) {
         (section === 'telegram' && elements.telegramDownloaderBtn?.classList.contains('active')) ||
         (section === 'video' && elements.videoDownloaderBtn?.classList.contains('active')) ||
         (section === 'multiAccount' && elements.multiAccountBtn?.classList.contains('active')) ||
+        (section === 'tabManager' && elements.tabManagerBtn?.classList.contains('active')) ||
+        (section === 'tempMail' && elements.tempMailBtn?.classList.contains('active')) ||
         (section === 'adblock' && adblockBtn?.classList.contains('active'));
 
     const allSections = [
         extensionsList, cookiesList, controls, privacySettings, stealthSection, appSettings,
         homeSection, historySection, vaultSection, elements.telegramSection, elements.videoDownloaderSection, elements.multiAccountSection,
-        adblockSection
+        adblockSection, elements.tabManagerSection, elements.tempMailSection
     ];
     allSections.forEach(el => el?.classList.remove('show'));
 
     const allBtns = [
         extensionManager, cookiesManager, privacyPlayer, appSettingsBtn, historyManagerBtn,
         vaultBtn, elements.telegramDownloaderBtn, elements.videoDownloaderBtn, elements.multiAccountBtn,
-        adblockBtn
+        adblockBtn, elements.tabManagerBtn, elements.tempMailBtn
     ];
     allBtns.forEach(el => el?.classList.remove('active'));
 
@@ -815,6 +833,15 @@ export async function toggleSection(section) {
         if (elements.adblockBtn) elements.adblockBtn.classList.add('active');
         await ModuleLoader.load('adblock');
         import('./modules/adblock.js').then(m => m.initAdblockUI());
+
+    } else if (section === 'tabManager') {
+        if (elements.tabManagerSection) elements.tabManagerSection.classList.add('show');
+        if (elements.tabManagerBtn) elements.tabManagerBtn.classList.add('active');
+        renderTabManager();
+    } else if (section === 'tempMail') {
+        if (elements.tempMailSection) elements.tempMailSection.classList.add('show');
+        if (elements.tempMailBtn) elements.tempMailBtn.classList.add('active');
+        import('./modules/tempmail.js').then(m => m.initTempMailUI());
     }
 }
 
@@ -917,6 +944,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     elements.videoDownloaderBtn.addEventListener('click', () => toggleSection('video'));
     elements.multiAccountBtn.addEventListener('click', () => toggleSection('multiAccount'));
     elements.adblockBtn.addEventListener('click', () => toggleSection('adblock'));
+
+    if (elements.tempMailBtn) elements.tempMailBtn.addEventListener('click', () => toggleSection('tempMail'));
+    if (elements.tabManagerBtn) {
+        elements.tabManagerBtn.addEventListener('click', () => toggleSection('tabManager'));
+    }
+    if (elements.tabSearchInput) {
+        elements.tabSearchInput.addEventListener('input', (e) => renderTabManager(e.target.value));
+    }
+    if (elements.groupTabsBtn) {
+        elements.groupTabsBtn.addEventListener('click', () => {
+            state.isGroupedByDomain = !state.isGroupedByDomain;
+            if (state.isGroupedByDomain) {
+                elements.groupTabsBtn.classList.add('active');
+            } else {
+                elements.groupTabsBtn.classList.remove('active');
+            }
+            renderTabManager(elements.tabSearchInput ? elements.tabSearchInput.value : '');
+        });
+    }
     if (elements.cardAdblock) {
         elements.cardAdblock.addEventListener('click', () => toggleSection('adblock'));
     }
@@ -984,3 +1030,100 @@ export function showConfirm(message) {
     });
 }
 
+
+
+
+
+function renderTabManager(searchQuery = '') {
+    if (!elements.tabListContainer) return;
+    chrome.tabs.query({}, (tabs) => {
+        elements.tabListContainer.innerHTML = '';
+        const filteredTabs = tabs.filter(tab => 
+            tab.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+            (tab.url && tab.url.toLowerCase().includes(searchQuery.toLowerCase()))
+        );
+
+        if (filteredTabs.length === 0) {
+            elements.tabListContainer.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--text-muted);">No tabs found.</div>';
+            return;
+        }
+
+        const createTabItem = (tab) => {
+            const item = document.createElement('div');
+            item.className = 'tab-item' + (tab.active ? ' active-tab' : '');
+            
+            let favIconUrl = tab.favIconUrl || 'icons/icon48.png';
+            if (favIconUrl.startsWith('chrome://')) {
+                favIconUrl = 'icons/icon48.png';
+            }
+            
+            item.innerHTML = `
+                <div class="tab-item-left">
+                    <img src="${favIconUrl}" class="tab-item-icon">
+                    <span class="tab-item-title" title="${tab.title}">${tab.title}</span>
+                </div>
+                <button class="tab-close-btn" title="Close Tab">&times;</button>
+            `;
+
+            item.querySelector('.tab-item-icon').addEventListener('error', function() {
+                this.src = 'icons/icon48.png';
+            });
+
+            item.querySelector('.tab-item-left').addEventListener('click', () => {
+                chrome.tabs.update(tab.id, { active: true });
+                chrome.windows.update(tab.windowId, { focused: true });
+            });
+
+            item.querySelector('.tab-close-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                chrome.tabs.remove(tab.id, () => {
+                    item.style.opacity = '0';
+                    setTimeout(() => renderTabManager(elements.tabSearchInput ? elements.tabSearchInput.value : ''), 300);
+                });
+            });
+            return item;
+        };
+
+        if (!state.isGroupedByDomain) {
+            filteredTabs.forEach(tab => {
+                elements.tabListContainer.appendChild(createTabItem(tab));
+            });
+        } else {
+            const groups = {};
+            filteredTabs.forEach(tab => {
+                let domain = 'Other';
+                try {
+                    if (tab.url && !tab.url.startsWith('chrome://')) {
+                        domain = new URL(tab.url).hostname;
+                    }
+                } catch(e) {}
+                if (!groups[domain]) groups[domain] = [];
+                groups[domain].push(tab);
+            });
+
+            for (const domain in groups) {
+                const groupHeader = document.createElement('div');
+                groupHeader.className = 'tab-group-header';
+                
+                let favIconUrl = groups[domain][0].favIconUrl || 'icons/icon48.png';
+                if (favIconUrl.startsWith('chrome://')) favIconUrl = 'icons/icon48.png';
+
+                groupHeader.innerHTML = `
+                    <img src="${favIconUrl}" width="16" height="16" onerror="this.src='icons/icon48.png'">
+                    <span style="flex:1">${domain}</span>
+                    <span class="tab-group-count">${groups[domain].length}</span>
+                `;
+
+                const groupContainer = document.createElement('div');
+                groupContainer.className = 'tab-group-container';
+                
+                groups[domain].forEach(tab => {
+                    groupContainer.appendChild(createTabItem(tab));
+                });
+
+                elements.tabListContainer.appendChild(groupHeader);
+                elements.tabListContainer.appendChild(groupContainer);
+            }
+        }
+    });
+}

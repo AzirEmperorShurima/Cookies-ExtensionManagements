@@ -15,8 +15,53 @@
                 cursor: crosshair !important;
                 transition: outline 0.1s, background-color 0.1s;
             }
+            #pm-zapper-banner {
+                position: fixed !important;
+                top: 20px !important;
+                left: 50% !important;
+                transform: translateX(-50%) !important;
+                background: linear-gradient(135deg, #ff4757, #ff6b81) !important;
+                color: white !important;
+                padding: 12px 24px !important;
+                border-radius: 30px !important;
+                font-family: sans-serif !important;
+                font-weight: bold !important;
+                font-size: 14px !important;
+                box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4) !important;
+                z-index: 2147483647 !important;
+                pointer-events: none !important;
+                animation: pm-pulse 2s infinite !important;
+            }
+            @keyframes pm-pulse {
+                0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7) !important; }
+                70% { box-shadow: 0 0 0 10px rgba(255, 71, 87, 0) !important; }
+                100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0) !important; }
+            }
         `;
         document.head.appendChild(style);
+        
+        // Add Banner
+        const banner = document.createElement('div');
+        banner.id = 'pm-zapper-banner';
+        
+        const textSpan = document.createElement('span');
+        textSpan.innerText = 'Zapper Mode Active: Click element to Zap, Press ESC to Cancel ';
+        banner.appendChild(textSpan);
+        
+        const closeBtn = document.createElement('span');
+        closeBtn.innerHTML = '&#10006;'; // X character
+        closeBtn.style.cssText = 'cursor:pointer; margin-left:10px; font-weight:bold; background:rgba(255,255,255,0.2); padding:2px 6px; border-radius:50%; transition:background 0.2s;';
+        closeBtn.title = 'Thoát Zapper';
+        closeBtn.onmouseover = () => closeBtn.style.background = 'rgba(255,255,255,0.4)';
+        closeBtn.onmouseout = () => closeBtn.style.background = 'rgba(255,255,255,0.2)';
+        closeBtn.onclick = (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            exitZapper();
+        };
+        
+        banner.appendChild(closeBtn);
+        document.documentElement.appendChild(banner);
     }
 
     let currentTarget = null;
@@ -82,14 +127,26 @@
         }
     }
 
+    function onKeyDown(e) {
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            exitZapper();
+        }
+    }
+
     function exitZapper() {
         document.removeEventListener('mouseover', onMouseOver, true);
         document.removeEventListener('mouseout', onMouseOut, true);
         document.removeEventListener('click', onClick, true);
+        document.removeEventListener('keydown', onKeyDown, true);
         
         // Remove style
         const style = document.getElementById(styleId);
         if (style) style.remove();
+        
+        const banner = document.getElementById('pm-zapper-banner');
+        if (banner) banner.remove();
         
         if (currentTarget) currentTarget.classList.remove('pm-zapper-highlight');
         window._zapperActive = false;
@@ -98,17 +155,9 @@
         chrome.runtime.sendMessage({ type: 'ZAP_EXITED' });
     }
 
-    // Attach listeners in capture phase to ensure we intercept them
+    // Attach events in capture phase
     document.addEventListener('mouseover', onMouseOver, true);
     document.addEventListener('mouseout', onMouseOut, true);
     document.addEventListener('click', onClick, true);
-    
-    // Allow pressing Escape to cancel
-    document.addEventListener('keydown', function onKeyDown(e) {
-        if (e.key === 'Escape') {
-            document.removeEventListener('keydown', onKeyDown, true);
-            exitZapper();
-        }
-    }, true);
-
+    document.addEventListener('keydown', onKeyDown, true);
 })();

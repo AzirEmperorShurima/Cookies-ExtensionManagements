@@ -37,7 +37,17 @@ function normalizeInputUrl(input) {
 function buildSearchUrl(query) {
     const engine = settings.searchEngine || 'google';
     const base = SEARCH_ENGINES[engine] || SEARCH_ENGINES.google;
-    return `${base}${encodeURIComponent(query)}`;
+    let url = `${base}${encodeURIComponent(query)}`;
+    
+    // Force US region & English for Google to spoof location IP detection
+    if (engine === 'google' || (!settings.searchEngine)) {
+        url += '&gl=us&hl=en';
+        
+        // Apply SafeSearch override (blur, active/filter, off)
+        const safeMode = settings.googleSafeSearch || 'blur';
+        url += `&safe=${safeMode}`;
+    }
+    return url;
 }
 
 function normalizeForHistory(u) {
@@ -90,7 +100,7 @@ function showInlineConfirm(message, onConfirm) {
 // ─── Internal: load URL into iframe ──────────────────────────────────────────
 function _loadIntoPlayer(url) {
     const { stealthPlayer, playerContainer } = elements;
-    if (!stealthPlayer) return;
+    if (!stealthPlayer || !url || url === 'undefined' || url === 'null') return;
     setPlayerLoading(true);
     stealthPlayer.src = url;
     updateInfoBar(url);
@@ -187,7 +197,7 @@ export function loadPlayerContent() {
                     _loadIntoPlayer(lastUrl);
                     updatePlayerNavState();
                     notify('Privacy Player: Đã khôi phục lịch sử', 'success');
-                } else if (result.lastPlayerUrl) {
+                } else if (result.lastPlayerUrl && result.lastPlayerUrl !== 'undefined' && result.lastPlayerUrl !== 'null') {
                     playerHistory = [result.lastPlayerUrl];
                     currentUrlIndex = 0;
                     stealthUrl.value = result.lastPlayerUrl;
@@ -326,7 +336,7 @@ export function checkStealthLock() {
         const { stealthPlayer } = elements;
         if (stealthPlayer && (!stealthPlayer.src || stealthPlayer.src === 'about:blank' || stealthPlayer.src === location.href)) {
             chrome.storage.local.get(['lastPlayerUrl'], (res) => {
-                if (res.lastPlayerUrl) {
+                if (res.lastPlayerUrl && res.lastPlayerUrl !== 'undefined' && res.lastPlayerUrl !== 'null') {
                     _loadIntoPlayer(res.lastPlayerUrl);
                     if (elements.stealthUrl) elements.stealthUrl.value = res.lastPlayerUrl;
                     if (!playerHistory.includes(res.lastPlayerUrl)) {
@@ -384,6 +394,45 @@ export function init() {
     updatePlayerSize();
     checkStealthLock();
 
+    // Khôi phục giá trị speed và volume từ storage
+    chrome.storage.local.get(['privacyPlayerSpeed', 'privacyPlayerVolume'], (res) => {
+        if (res.privacyPlayerSpeed !== undefined) {
+            currentBoostSpeed = res.privacyPlayerSpeed;
+            applySpeed(currentBoostSpeed);
+            
+            // Sync dropdown if it matches a preset
+            const sDropdown = document.getElementById('speedDropdown');
+            if (sDropdown) {
+                const options = Array.from(sDropdown.options).map(o => o.value);
+                if (options.includes(currentBoostSpeed.toString())) {
+                    sDropdown.value = currentBoostSpeed.toString();
+                    document.getElementById('customSpeedWrapper')?.classList.add('hidden');
+                } else {
+                    sDropdown.value = 'custom';
+                    document.getElementById('customSpeedWrapper')?.classList.remove('hidden');
+                }
+            }
+        }
+        if (res.privacyPlayerVolume !== undefined) {
+            currentBoostVolume = res.privacyPlayerVolume;
+            const volumePercent = Math.round(currentBoostVolume * 100);
+            applyVolume(volumePercent);
+
+            // Sync dropdown if it matches a preset
+            const vDropdown = document.getElementById('volumeDropdown');
+            if (vDropdown) {
+                const options = Array.from(vDropdown.options).map(o => o.value);
+                if (options.includes(volumePercent.toString())) {
+                    vDropdown.value = volumePercent.toString();
+                    document.getElementById('customVolumeWrapper')?.classList.add('hidden');
+                } else {
+                    vDropdown.value = 'custom';
+                    document.getElementById('customVolumeWrapper')?.classList.remove('hidden');
+                }
+            }
+        }
+    });
+
     // Enter key in URL bar
     const stealthUrlInput = elements.stealthUrl;
     if (stealthUrlInput) {
@@ -402,13 +451,11 @@ export function init() {
                 elements.playerContainer?.classList.add('has-content');
                 updateInfoBar(stealthPlayer.src);
 
-                // Tự động áp dụng boost speed/volume hiện tại vào các video
-                chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                    if (tabs[0]) {
-                        chrome.tabs.sendMessage(tabs[0].id, { type: 'boostVideoSpeed', speed: currentBoostSpeed }).catch(() => {});
-                        chrome.tabs.sendMessage(tabs[0].id, { type: 'boostVideoVolume', volume: currentBoostVolume }).catch(() => {});
-                    }
-                });
+                // Tự động áp dụng boost speed/volume hiện tại vào trang vừa load —
+                // dùng đúng applySpeed()/applyVolume() (postMessage tới contentWindow),
+                // KHÔNG dùng chrome.tabs.sendMessage nữa
+                applySpeed(currentBoostSpeed);
+                applyVolume(Math.round(currentBoostVolume * 100));
 
                 // Cập nhật lại UI của slider và dropdowns
                 const sSlider = document.getElementById('speedSlider');
@@ -761,10 +808,11 @@ export function init() {
         currentBoostSpeed = speed;
         if (speedSlider) speedSlider.value = speed;
         if (speedVal) speedVal.textContent = `${speed.toFixed(2)}x`;
-        const playerFrame = document.getElementById('playerFrame');
+        const playerFrame = document.getElementById('stealthPlayer');
         if (playerFrame && playerFrame.contentWindow) {
             playerFrame.contentWindow.postMessage({ type: 'boostVideoSpeed', speed: currentBoostSpeed }, '*');
         }
+        chrome.storage.local.set({ privacyPlayerSpeed: currentBoostSpeed });
     }
 
     // Helper to apply volume
@@ -772,10 +820,11 @@ export function init() {
         currentBoostVolume = volumePercent / 100;
         if (volumeSlider) volumeSlider.value = volumePercent;
         if (volumeVal) volumeVal.textContent = `${volumePercent}%`;
-        const playerFrame = document.getElementById('playerFrame');
+        const playerFrame = document.getElementById('stealthPlayer');
         if (playerFrame && playerFrame.contentWindow) {
             playerFrame.contentWindow.postMessage({ type: 'boostVideoVolume', volume: currentBoostVolume }, '*');
         }
+        chrome.storage.local.set({ privacyPlayerVolume: currentBoostVolume });
     }
 
     // 3. Dropdowns changes

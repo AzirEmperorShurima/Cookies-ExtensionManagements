@@ -212,11 +212,6 @@ chrome.runtime.onInstalled.addListener(async (details) => {
         await chrome.storage.local.set({ installSeed: newSeed });
     } else if (details.reason === 'update') {
         try {
-            // Migration cho Zapper
-            const legacy = await chrome.storage.local.get(['easyListParsedCssRules']);
-            if (legacy.easyListParsedCssRules) {
-                await chrome.storage.local.set({ userZappedCssRules: legacy.easyListParsedCssRules });
-            }
             const result = await chrome.storage.local.get(['adblockSettings']);
             const settings = result.adblockSettings || {};
             const enabledSources = settings.enabledSources || [];
@@ -1606,10 +1601,12 @@ updateSecurityRules();
 if (chrome.declarativeNetRequest && chrome.declarativeNetRequest.onRuleMatchedDebug) {
     chrome.declarativeNetRequest.onRuleMatchedDebug.addListener((info) => {
         if (info.rule && info.rule.ruleId >= 1004 && info.request && info.request.method !== 'OPTIONS') {
-            chrome.storage.local.get(['adsBlockedCount'], (res) => {
-                const current = res.adsBlockedCount || 0;
-                chrome.storage.local.set({ adsBlockedCount: current + 1 });
-            });
+            try {
+                const url = new URL(info.request.url);
+                incrementDailyStat(url.hostname);
+            } catch (e) {
+                incrementDailyStat('ad-network');
+            }
         }
     });
 }
@@ -1655,3 +1652,52 @@ chrome.tabs.onRemoved.addListener((tabId) => {
     } catch (e) { }
 });
 
+
+
+// Zen Mode Context Menu
+chrome.runtime.onInstalled.addListener(() => {
+    chrome.contextMenus.create({
+        id: "add-to-zen-mode",
+        title: "Add current site to Zen Mode block",
+        contexts: ["page"]
+    });
+});
+
+function safeGetDomain(urlStr) {
+    try {
+        return new URL(urlStr).hostname;
+    } catch (e) {
+        return null;
+    }
+}
+
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+    if (info.menuItemId === "add-to-zen-mode") {
+        const domain = safeGetDomain(tab.url);
+        if (!domain) return;
+        chrome.storage.local.get(['zenCustomUrls'], (result) => {
+            let urls = result.zenCustomUrls;
+            if (!urls || !Array.isArray(urls) || urls.length === 0) {
+                urls = ['facebook.com', 'tiktok.com', 'youtube.com', 'instagram.com', 'twitter.com', 'x.com', 'reddit.com', 'netflix.com'];
+            }
+            if (!urls.includes(domain)) {
+                urls.push(domain);
+                chrome.storage.local.set({ zenCustomUrls: urls }, () => {
+                    chrome.notifications.create({
+                        type: "basic",
+                        iconUrl: "icons/icon48.png",
+                        title: "Zen Mode",
+                        message: "Added " + domain + " to Zen Mode blocklist!"
+                    });
+                });
+            } else {
+                chrome.notifications.create({
+                    type: "basic",
+                    iconUrl: "icons/icon48.png",
+                    title: "Zen Mode",
+                    message: domain + " is already blocked in Zen Mode."
+                });
+            }
+        });
+    }
+});

@@ -405,11 +405,11 @@ function setupPasswordToggle(inputId, toggleId) {
 
 export async function init() {
     const {
-        darkModeToggle, autoClearToggle, showNotifyToggle, useSidePanelToggle,
+        darkModeToggle, autoClearToggle, showNotifyToggle, useSidePanelToggle, enableTabManagerToggle, enableTempMailToggle, tabManagerBtn, tempMailBtn,
         realTimeProtectionToggle, blockClickjackingToggle, blockCryptoMiningToggle,
         strongPasswordToggle, passwordRequirementText, alwaysRequirePasswordToggle,
         showPasswordToggle, verifyOldPass, oldPassInput, newPassRow, saveNewPass,
-        newPassInput, confirmNewPassInput, searchEngineSelect, addSafeUrlBtn,
+        newPassInput, confirmNewPassInput, searchEngineSelect, googleSafeSearchSelect, addSafeUrlBtn,
         newSafeUrlInput, panicActionSelect, changeShortcutBtn, saveSessionBtn,
         sessionNameInput, sessionTabTypeSelect, selectAllTabsBtn, deselectAllTabsBtn,
         cancelSaveSessionBtn, confirmSaveSessionBtn, tabSelectionArea, settingsSearchInput,
@@ -455,6 +455,20 @@ export async function init() {
         });
     }
 
+    if (enableTabManagerToggle) {
+        enableTabManagerToggle.addEventListener('change', (e) => {
+            settings.enableTabManager = e.target.checked;
+            if (tabManagerBtn) tabManagerBtn.style.display = settings.enableTabManager ? 'flex' : 'none';
+            saveSettings();
+        });
+    }
+    if (enableTempMailToggle) {
+        enableTempMailToggle.addEventListener('change', (e) => {
+            settings.enableTempMail = e.target.checked;
+            if (tempMailBtn) tempMailBtn.style.display = settings.enableTempMail ? 'flex' : 'none';
+            saveSettings();
+        });
+    }
     if (useSidePanelToggle) {
         useSidePanelToggle.addEventListener('change', (e) => {
             settings.useSidePanel = e.target.checked;
@@ -635,6 +649,14 @@ export async function init() {
             settings.searchEngine = e.target.value;
             saveSettings();
             notify((settings.language === 'en' ? 'Default search engine set to ' : 'Đã thay đổi công cụ tìm kiếm mặc định thành ') + settings.searchEngine, 'success');
+        });
+    }
+
+    if (googleSafeSearchSelect) {
+        googleSafeSearchSelect.addEventListener('change', (e) => {
+            settings.googleSafeSearch = e.target.value;
+            saveSettings();
+            notify('Google SafeSearch Override set to ' + settings.googleSafeSearch, 'success');
         });
     }
 

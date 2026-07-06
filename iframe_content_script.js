@@ -118,51 +118,7 @@
         }
         chrome.storage.onChanged.addListener(storageListener);
         // ------------------ MAIN WORLD INJECTION (WINDOW.OPEN HOOK) ------------------
-        // We inject a script into the main page to hook window.open so we can intercept popups
-        // and route them according to Privacy Player settings, preventing popunders.
-        const script = document.createElement('script');
-        script.textContent = `
-            (function() {
-                const origin = window.location.origin;
-                const url = window.location.href;
-
-                // Safe pages (cloudflare, etc.) shouldn't be hooked aggressively
-                const isSecurityPage = 
-                    url.includes('cloudflare.com') || 
-                    url.includes('hcaptcha.com') || 
-                    url.includes('turnstile') ||
-                    document.getElementById('cf-turnstile-response') ||
-                    window._cf_chl_opt;
-                if (isSecurityPage) return;
-
-                const originalOpen = window.open;
-                window.open = function(targetUrl, target, features) {
-                    if (!targetUrl || typeof targetUrl !== 'string') {
-                        return originalOpen.apply(this, arguments);
-                    }
-
-                    // Suspicious ad popunders
-                    const isSuspicious = (
-                        targetUrl.includes('tsyndicate') || 
-                        targetUrl.includes('tsyndicads') ||
-                        targetUrl.includes('/pop?') || 
-                        targetUrl.includes('adserver') ||
-                        targetUrl.includes('trafficstars') ||
-                        targetUrl.includes('exoclick')
-                    );
-                    if (isSuspicious) {
-                        console.log('[Privacy Player] Blocked suspicious popup:', targetUrl);
-                        return null;
-                    }
-
-                    // Forward to content script via postMessage
-                    window.postMessage({ type: 'WINDOW_OPEN_ATTEMPT', url: targetUrl }, '*');
-                    return null;
-                };
-            })();
-        `;
-        (document.head || document.documentElement).appendChild(script);
-        script.remove();
+        // Hook is now handled securely by modules/window-open-hook.js via manifest.json
         // -----------------------------------------------------------------------------
 
         // Theater Mode Logicment.addEventListener('click' ...) bằng đoạn này ===
@@ -244,10 +200,17 @@
                     return;
                 }
 
-                event.preventDefault();
-                event.stopPropagation();
-                window.location.href = finalUrl;
-                return;
+                if (behavior === 'inside') {
+                    if (requiresNewTab) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        window.location.href = finalUrl;
+                        return;
+                    } else {
+                        // Already opening inside, let the browser and SPAs handle it natively
+                        return;
+                    }
+                }
             }
 
             target = target.parentNode;
@@ -668,19 +631,32 @@
         }
 
         // Video Speed & Volume Booster control listener via postMessage from Popup
+        window.__privacyPlayerSpeed = 1.0;
+        window.__privacyPlayerVolume = 1.0;
+        window.__privacyPlayerVolumeBoostEnabled = false;
+
         window.addEventListener('message', (event) => {
             if (!event.data || !event.data.type) return;
 
             if (event.data.type === 'boostVideoSpeed') {
-                const speed = parseFloat(event.data.speed);
-                const videos = document.querySelectorAll('video');
-                videos.forEach(v => {
-                    v.playbackRate = speed;
-                });
+                window.__privacyPlayerSpeed = parseFloat(event.data.speed);
             } else if (event.data.type === 'boostVideoVolume') {
-                const volumeFactor = parseFloat(event.data.volume);
-                const videos = document.querySelectorAll('video');
-                videos.forEach(v => {
+                window.__privacyPlayerVolume = parseFloat(event.data.volume);
+                window.__privacyPlayerVolumeBoostEnabled = window.__privacyPlayerVolume > 1.0;
+            }
+        });
+
+        // Continuously enforce speed and volume on all videos (handles dynamically added videos and player resets)
+        setInterval(() => {
+            const videos = document.querySelectorAll('video');
+            videos.forEach(v => {
+                // Enforce Speed
+                if (window.__privacyPlayerSpeed !== 1.0 && v.playbackRate !== window.__privacyPlayerSpeed) {
+                    v.playbackRate = window.__privacyPlayerSpeed;
+                }
+
+                // Enforce Volume
+                if (window.__privacyPlayerVolumeBoostEnabled) {
                     try {
                         if (!v.__audioCtx) {
                             const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -690,12 +666,20 @@
                             v.__sourceNode.connect(v.__gainNode);
                             v.__gainNode.connect(v.__audioCtx.destination);
                         }
-                        v.__gainNode.gain.value = volumeFactor;
+                        if (v.__gainNode.gain.value !== window.__privacyPlayerVolume) {
+                            v.__gainNode.gain.value = window.__privacyPlayerVolume;
+                        }
                     } catch (e) {
-                        v.volume = Math.min(1.0, volumeFactor);
+                        // Silent fallback for cross-origin CORS errors
+                        if (v.volume !== 1.0) v.volume = 1.0;
                     }
-                });
-            }
-        });
+                } else {
+                    // Normal volume (<= 100%)
+                    if (v.volume !== window.__privacyPlayerVolume) {
+                        v.volume = window.__privacyPlayerVolume;
+                    }
+                }
+            });
+        }, 500);
     }
 })();
