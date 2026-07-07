@@ -548,6 +548,11 @@ chrome.webRequest.onBeforeRequest.addListener(
                 count: trackerCount[details.tabId],
                 list: trackerList[details.tabId]
             }).catch(() => { });
+
+            // Thống kê số lượng bị chặn
+            if (typeof incrementDailyStat === 'function') {
+                incrementDailyStat(domain);
+            }
         }
 
         // Detect videos via URL patterns
@@ -1378,7 +1383,7 @@ async function updateSecurityRules() {
             },
             condition: {
                 urlFilter: '*',
-                resourceTypes: ['main_frame', 'sub_frame'],
+                resourceTypes: ['main_frame'],
                 excludedRequestDomains: allExclusions
             }
         });
@@ -1596,6 +1601,22 @@ async function updateSecurityRules() {
 
 // Khởi chạy khi extension được load
 updateSecurityRules();
+
+// Hàm cộng dồn số liệu vào biểu đồ theo ngày (Local Time)
+function incrementDailyStat(domain) {
+    const d = new Date();
+    // Chuyển về giờ Local dưới dạng YYYY-MM-DD
+    const offset = d.getTimezoneOffset() * 60000; 
+    const localDateStr = new Date(d.getTime() - offset).toISOString().split('T')[0];
+    const key = `stats_${localDateStr}`;
+    
+    chrome.storage.local.get([key], (res) => {
+        const data = res[key] || { trackersBlocked: 0, details: {} };
+        data.trackersBlocked = (data.trackersBlocked || 0) + 1;
+        data.details[domain] = (data.details[domain] || 0) + 1;
+        chrome.storage.local.set({ [key]: data });
+    });
+}
 
 // Thống kê quảng cáo bị chặn (Debug mode / Developer mode hỗ trợ onRuleMatchedDebug)
 if (chrome.declarativeNetRequest && chrome.declarativeNetRequest.onRuleMatchedDebug) {

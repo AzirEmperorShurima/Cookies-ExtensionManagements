@@ -387,6 +387,68 @@
     });
   }
 
+  // ============ 9. Anti-Adblock & Player Bypass ============
+  function applyAntiAdblockSpoof() {
+    // 1. Spoof common AdBlock detection variables
+    const adblockProps = [
+        'adblocker', '_adblock', 'isAdBlockActive', 'adblock', 'fuckAdBlock', 'FuckAdBlock', 'sniffAdBlock', '_adb'
+    ];
+    adblockProps.forEach(prop => {
+        try {
+            Object.defineProperty(window, prop, {
+                get: () => false,
+                set: () => {},
+                configurable: true
+            });
+        } catch(e) {}
+    });
+
+    // 2. Prevent video player AbortErrors & forced pausing by ads
+    if (window.HTMLMediaElement) {
+        // Intercept play() to swallow AbortErrors caused by adblockers blocking VAST
+        const originalPlay = HTMLMediaElement.prototype.play;
+        const spoofedPlay = createNativeProxy(originalPlay, {
+            apply(target, thisArg, args) {
+                const playPromise = Reflect.apply(target, thisArg, args);
+                if (playPromise !== undefined && typeof playPromise.catch === 'function') {
+                    playPromise.catch(error => {
+                        if (error.name === 'AbortError') {
+                            console.log('[Privacy Player] Bypassed AbortError caused by blocked ads (My Machine, My Rules).');
+                            // Retry playing to force the player to continue without ads
+                            setTimeout(() => {
+                                try { Reflect.apply(target, thisArg, args).catch(()=>{}); } catch(e) {}
+                            }, 500);
+                        }
+                    });
+                }
+                return playPromise;
+            }
+        }, 'play');
+
+        Object.defineProperty(HTMLMediaElement.prototype, 'play', {
+            value: spoofedPlay,
+            writable: true,
+            configurable: true
+        });
+    }
+
+    // 3. Mock Google IMA SDK / VAST (để đánh lừa các trình phát video)
+    try {
+        if (!window.google) window.google = {};
+        if (!window.google.ima) {
+            window.google.ima = {
+                AdDisplayContainer: function() { this.initialize = () => {}; this.destroy = () => {}; },
+                AdsRequest: function() {},
+                AdsLoader: function() { this.requestAds = () => {}; this.addEventListener = () => {}; this.contentComplete = () => {}; this.destroy = () => {}; },
+                AdsManagerLoadedEvent: { Type: { ADS_MANAGER_LOADED: 'adsManagerLoaded' } },
+                AdErrorEvent: { Type: { AD_ERROR: 'adError' } },
+                ViewMode: { NORMAL: 'normal', FULLSCREEN: 'fullscreen' },
+                ImaSdkSettings: function() { this.setLocale = () => {}; this.setVpaidMode = () => {}; }
+            };
+        }
+    } catch (e) {}
+  }
+
   // ============ Thực thi ngay ============
   try {
     applyCanvasSpoof();
@@ -395,6 +457,7 @@
     applyNavigatorSpoof();
     applyGeolocationSpoof();
     applyTimezoneSpoof();
+    applyAntiAdblockSpoof();
   } catch (e) {
     // Im lặng bỏ qua lỗi nếu API không tồn tại trên môi trường hiện tại
   }

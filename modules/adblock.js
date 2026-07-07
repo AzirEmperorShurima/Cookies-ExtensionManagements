@@ -139,7 +139,9 @@ export async function updateAdblockStats() {
         for (let i = 6; i >= 0; i--) {
             const d = new Date();
             d.setDate(d.getDate() - i);
-            keys.push(`stats_${d.toISOString().split('T')[0]}`);
+            const offset = d.getTimezoneOffset() * 60000;
+            const localDateStr = new Date(d.getTime() - offset).toISOString().split('T')[0];
+            keys.push(`stats_${localDateStr}`);
         }
         const statsRes = await chrome.storage.local.get(keys);
         keys.forEach(k => {
@@ -174,7 +176,8 @@ async function renderAnalyticsChart() {
     for (let i = 6; i >= 0; i--) {
         const d = new Date();
         d.setDate(d.getDate() - i);
-        const dateStr = d.toISOString().split('T')[0];
+        const offset = d.getTimezoneOffset() * 60000;
+        const dateStr = new Date(d.getTime() - offset).toISOString().split('T')[0];
         dates.push(dateStr.slice(5)); // Chỉ lấy MM-DD
         keys.push(`stats_${dateStr}`);
     }
