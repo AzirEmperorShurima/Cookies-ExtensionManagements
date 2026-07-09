@@ -1609,20 +1609,48 @@
                         <span id="adsBlockedCount" class="stat-value">0</span>
                     </div>
                 </div>
-                <div class="card-title-row" style="margin-top: 25px;">
-                    <svg class="title-icon text-blue" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2">
-                        <path d="M3 3v18h18"></path>
-                        <path d="M18 17V9"></path>
-                        <path d="M13 17V5"></path>
-                        <path d="M8 17v-3"></path>
-                    </svg>
-                    <h3 data-i18n="adblockAnalytics">Analytics & Insights</h3>
+                <div class="card-title-row" style="margin-top: 25px; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <svg class="title-icon text-blue" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M3 3v18h18"></path>
+                            <path d="M18 17V9"></path>
+                            <path d="M13 17V5"></path>
+                            <path d="M8 17v-3"></path>
+                        </svg>
+                        <h3 data-i18n="adblockAnalytics">Analytics & Insights</h3>
+                    </div>
+                    <div class="view-toggle" style="display: flex; background: rgba(162, 155, 254, 0.1); border-radius: 8px; padding: 2px; border: 1px solid rgba(162, 155, 254, 0.2);">
+                        <button id="btnViewChart" style="background: #a29bfe; color: white; border: none; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold; box-shadow: 0 2px 5px rgba(162, 155, 254, 0.3); transition: all 0.2s;">Biểu đồ</button>
+                        <button id="btnViewList" style="background: transparent; color: var(--text-muted); border: none; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold; transition: all 0.2s;">Chi tiết</button>
+                    </div>
                 </div>
-                <div class="premium-stats"
+                
+                <div class="premium-stats" id="adblockChartContainer"
                     style="padding: 15px; margin-bottom: 20px; text-align: center; background: rgba(255,255,255,0.05); border-radius: 12px; border: 1px solid rgba(162, 155, 254, 0.2);">
                     <canvas id="adblockAnalyticsChart" width="400" height="200"
                         style="width: 100%; max-width: 100%;"></canvas>
+                </div>
+                
+                <div class="analytics-details glass-card" style="margin-bottom: 20px; display: none;" id="adblockDetailsContainer">
+                    <div class="card-title-row" style="margin-bottom: 10px; font-size: 14px; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="#a29bfe" stroke-width="2" width="18" height="18">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                <polyline points="10 9 9 9 8 9"></polyline>
+                            </svg>
+                            <h4 style="margin: 0; color: #a29bfe;">Danh sách chặn</h4>
+                        </div>
+                        <select id="adblockDateSelect" style="background: rgba(162, 155, 254, 0.1); border: 1px solid rgba(162, 155, 254, 0.3); color: var(--text-color); border-radius: 6px; padding: 4px 8px; font-size: 12px; outline: none; cursor: pointer; border-right: 8px solid transparent;">
+                            <!-- Options -->
+                        </select>
+                    </div>
+                    <div id="adblockDetailsList" class="premium-scrollbar" style="max-height: 220px; overflow-y: auto; background: var(--bg-secondary, rgba(255,255,255,0.05)); border-radius: 8px; padding: 5px; text-align: left; font-size: 13px; border: 1px solid rgba(162, 155, 254, 0.1);">
+                        <div class="empty-state" style="text-align: center; color: var(--text-muted); font-style: italic; padding: 15px;">Không có dữ liệu chi tiết.</div>
+                    </div>
                 </div>
             </div>
             <div class="settings-card hover-lift delay-3 glass-card zapper-manager">

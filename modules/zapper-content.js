@@ -20,22 +20,27 @@
                 top: 20px !important;
                 left: 50% !important;
                 transform: translateX(-50%) !important;
-                background: linear-gradient(135deg, #ff4757, #ff6b81) !important;
-                color: white !important;
+                background: rgba(15, 23, 42, 0.9) !important;
+                backdrop-filter: blur(8px) !important;
+                -webkit-backdrop-filter: blur(8px) !important;
+                color: #ff4757 !important;
                 padding: 12px 24px !important;
                 border-radius: 30px !important;
-                font-family: sans-serif !important;
-                font-weight: bold !important;
+                font-family: 'Inter', system-ui, sans-serif !important;
+                font-weight: 600 !important;
                 font-size: 14px !important;
-                box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4) !important;
+                border: 1px solid rgba(255, 71, 87, 0.3) !important;
+                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
                 z-index: 2147483647 !important;
-                pointer-events: none !important;
-                animation: pm-pulse 2s infinite !important;
+                pointer-events: auto !important; /* Allow clicking close button */
+                display: flex !important;
+                align-items: center !important;
+                gap: 15px !important;
+                animation: pm-slide-down 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important;
             }
-            @keyframes pm-pulse {
-                0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7) !important; }
-                70% { box-shadow: 0 0 0 10px rgba(255, 71, 87, 0) !important; }
-                100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0) !important; }
+            @keyframes pm-slide-down {
+                0% { top: -50px !important; opacity: 0 !important; }
+                100% { top: 20px !important; opacity: 1 !important; }
             }
         `;
         document.head.appendChild(style);
@@ -45,7 +50,7 @@
         banner.id = 'pm-zapper-banner';
         
         const textSpan = document.createElement('span');
-        textSpan.innerText = 'Zapper Mode Active: Click element to Zap, Press ESC to Cancel ';
+        textSpan.innerHTML = '🎯 <strong>Chế độ Zapper</strong>: Click để xóa phần tử (ESC để thoát)';
         banner.appendChild(textSpan);
         
         const closeBtn = document.createElement('span');

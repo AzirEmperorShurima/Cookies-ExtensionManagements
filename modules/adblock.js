@@ -185,6 +185,94 @@ async function renderAnalyticsChart() {
     try {
         const result = await chrome.storage.local.get(keys);
         const dataPoints = keys.map(k => (result[k] && result[k].trackersBlocked) ? result[k].trackersBlocked : 0);
+        const detailsList = keys.map(k => (result[k] && result[k].details) ? result[k].details : {});
+        
+        const dateSelect = document.getElementById('adblockDateSelect');
+        const btnViewChart = document.getElementById('btnViewChart');
+        const btnViewList = document.getElementById('btnViewList');
+        const chartContainer = document.getElementById('adblockChartContainer');
+        const detailsContainer = document.getElementById('adblockDetailsContainer');
+
+        // Setup Date Select options
+        if (dateSelect) {
+            dateSelect.innerHTML = '';
+            dates.forEach((date, i) => {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = date;
+                dateSelect.appendChild(opt);
+            });
+            dateSelect.value = 6;
+            
+            dateSelect.addEventListener('change', (e) => {
+                const idx = parseInt(e.target.value);
+                renderDetailsView(dates[idx], detailsList[idx]);
+            });
+        }
+
+        // Setup View Toggles
+        if (btnViewChart && btnViewList && chartContainer && detailsContainer) {
+            btnViewChart.addEventListener('click', () => {
+                btnViewChart.style.background = '#a29bfe';
+                btnViewChart.style.color = 'white';
+                btnViewChart.style.boxShadow = '0 2px 5px rgba(162, 155, 254, 0.3)';
+                
+                btnViewList.style.background = 'transparent';
+                btnViewList.style.color = 'var(--text-muted)';
+                btnViewList.style.boxShadow = 'none';
+                
+                chartContainer.style.display = 'block';
+                detailsContainer.style.display = 'none';
+            });
+            
+            btnViewList.addEventListener('click', () => {
+                btnViewList.style.background = '#a29bfe';
+                btnViewList.style.color = 'white';
+                btnViewList.style.boxShadow = '0 2px 5px rgba(162, 155, 254, 0.3)';
+                
+                btnViewChart.style.background = 'transparent';
+                btnViewChart.style.color = 'var(--text-muted)';
+                btnViewChart.style.boxShadow = 'none';
+                
+                chartContainer.style.display = 'none';
+                detailsContainer.style.display = 'block';
+                
+                const idx = parseInt(dateSelect.value || 6);
+                renderDetailsView(dates[idx], detailsList[idx]);
+            });
+        }
+
+        // Helper func để render list
+        const renderDetailsView = (dateStr, detailsObj) => {
+            const list = document.getElementById('adblockDetailsList');
+            if (dateSelect) dateSelect.value = dates.indexOf(dateStr);
+            if (!list) return;
+            
+            if (!detailsObj || Object.keys(detailsObj).length === 0) {
+                list.innerHTML = '<div class="empty-state" style="text-align: center; color: var(--text-muted); font-style: italic; padding: 15px;">Không có dữ liệu chi tiết.</div>';
+                return;
+            }
+            
+            const sortedDomains = Object.entries(detailsObj).sort((a, b) => b[1] - a[1]);
+            let html = '';
+            for (const [domain, count] of sortedDomains) {
+                html += `<div class="adblock-detail-item" style="display: flex; justify-content: space-between; padding: 10px 8px; border-bottom: 1px solid rgba(162, 155, 254, 0.1); border-radius: 4px; transition: background 0.2s; background: transparent;">
+                            <span style="color: var(--text-color, #333); word-break: break-all;">${domain}</span>
+                            <span style="color: #ff7675; font-weight: bold; min-width: 30px; text-align: right;">${count}</span>
+                         </div>`;
+            }
+            list.innerHTML = html;
+            
+            // Fix CSP Violation: Dùng JS event listener thay vì inline onmouseover/onmouseout
+            const items = list.querySelectorAll('.adblock-detail-item');
+            items.forEach(item => {
+                item.addEventListener('mouseenter', () => item.style.background = 'rgba(162, 155, 254, 0.05)');
+                item.addEventListener('mouseleave', () => item.style.background = 'transparent');
+            });
+        };
+
+        // Render default (hôm nay)
+        renderDetailsView(dates[6], detailsList[6]);
         
         if (window.adblockChartInstance) {
             window.adblockChartInstance.destroy();
@@ -207,6 +295,14 @@ async function renderAnalyticsChart() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                onClick: (e, elements) => {
+                    if (elements && elements.length > 0) {
+                        const idx = elements[0].index;
+                        // Chuyển sang tab Danh sách và hiện dữ liệu của ngày đó
+                        if (btnViewList) btnViewList.click();
+                        renderDetailsView(dates[idx], detailsList[idx]);
+                    }
+                },
                 scales: {
                     y: {
                         beginAtZero: true,
@@ -221,6 +317,25 @@ async function renderAnalyticsChart() {
                 plugins: {
                     legend: {
                         labels: { color: '#888' }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            afterBody: function(context) {
+                                const idx = context[0].dataIndex;
+                                const detailsObj = detailsList[idx];
+                                if (!detailsObj || Object.keys(detailsObj).length === 0) return '';
+                                
+                                const sorted = Object.entries(detailsObj).sort((a, b) => b[1] - a[1]).slice(0, 5);
+                                let lines = [];
+                                sorted.forEach(([domain, count]) => {
+                                    lines.push(`• ${domain}: ${count}`);
+                                });
+                                if (Object.keys(detailsObj).length > 5) {
+                                    lines.push(`...và ${Object.keys(detailsObj).length - 5} tên miền khác`);
+                                }
+                                return lines;
+                            }
+                        }
                     }
                 }
             }
@@ -245,15 +360,24 @@ async function fetchEasyList() {
 
     if (fetchEasyListBtn) {
         fetchEasyListBtn.disabled = true;
+        
+        // Hiệu ứng click & thay đổi text
+        fetchEasyListBtn.style.transform = 'scale(0.95)';
+        fetchEasyListBtn.style.opacity = '0.8';
+        setTimeout(() => { fetchEasyListBtn.style.transform = 'scale(1)'; }, 200);
+        
         const fetchIcon = fetchEasyListBtn.querySelector('.fetch-icon');
         const spinnerIcon = fetchEasyListBtn.querySelector('.spinner-icon');
+        const btnText = fetchEasyListBtn.querySelector('.btn-text');
         
         if (fetchIcon) fetchIcon.classList.add('hidden');
         if (spinnerIcon) spinnerIcon.classList.remove('hidden');
+        if (btnText) btnText.innerText = 'Đang cập nhật...';
     }
 
     // URL dự phòng ổn định của EasyList
     const easyListUrl = 'https://easylist.to/easylist/easylist.txt';
+    let success = false;
 
     try {
         const response = await fetch(easyListUrl);
@@ -292,29 +416,39 @@ async function fetchEasyList() {
             easyListParsedCssRules: easyListCssRules
         });
 
-        notify(dict.easyListSuccess || 'Đã nạp thành công EasyList!');
         await compileAllRules();
+        success = true;
 
     } catch (error) {
         console.error('[Adblock] Failed to fetch EasyList:', error);
-        notify(dict.easyListFail || 'Lỗi khi tải EasyList. Vui lòng kiểm tra kết nối mạng.');
     } finally {
         const elapsed = Date.now() - startTime;
         const minDuration = 4500; // 4.5 seconds
         if (elapsed < minDuration) {
             await new Promise(resolve => setTimeout(resolve, minDuration - elapsed));
         }
+        
         isFetchingEasyList = false;
         const fetchOverlay = document.getElementById('adblockFetchOverlay');
         if (fetchOverlay) fetchOverlay.classList.add('hidden');
+        
+        // Hiện thông báo SAU KHI animation (overlay) biến mất
+        if (success) {
+            notify(dict.easyListSuccess || 'Đã nạp thành công EasyList!');
+        } else {
+            notify(dict.easyListFail || 'Lỗi khi tải EasyList. Vui lòng kiểm tra kết nối mạng.');
+        }
 
         if (fetchEasyListBtn) {
             fetchEasyListBtn.disabled = false;
+            fetchEasyListBtn.style.opacity = '1';
             const fetchIcon = fetchEasyListBtn.querySelector('.fetch-icon');
             const spinnerIcon = fetchEasyListBtn.querySelector('.spinner-icon');
+            const btnText = fetchEasyListBtn.querySelector('.btn-text');
             
             if (fetchIcon) fetchIcon.classList.remove('hidden');
             if (spinnerIcon) spinnerIcon.classList.add('hidden');
+            if (btnText) btnText.innerText = dict.fetchEasyList || 'Nạp & Cập nhật';
         }
     }
 }

@@ -697,6 +697,13 @@ export async function init() {
         });
     }
 
+    if (elements.mainPanicBtn) {
+        elements.mainPanicBtn.addEventListener('click', () => {
+            chrome.runtime.sendMessage({ type: 'ACTIVATE_PANIC' });
+            window.close(); // Close popup immediately
+        });
+    }
+
     if (changeShortcutBtn) {
         changeShortcutBtn.addEventListener('click', () => {
             chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });

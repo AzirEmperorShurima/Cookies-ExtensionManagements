@@ -997,6 +997,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
         });
         return;
+    } else if (request.type === 'ACTIVATE_PANIC') {
+        executePanic();
+        return;
     } else if (request.type === 'ACTIVATE_ZAPPER') {
         chrome.scripting.executeScript({
             target: { tabId: request.tabId },
@@ -1169,7 +1172,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
  * Panic Button Logic
  */
 async function executePanic() {
-    chrome.storage.local.get(['appSettings'], (result) => {
+    try {
+        const result = await chrome.storage.local.get(['appSettings']);
         const settings = result.appSettings ? { ...DEFAULT_SETTINGS, ...result.appSettings } : DEFAULT_SETTINGS;
         const action = settings.panicAction || 'closeIncognito';
 
@@ -1182,43 +1186,41 @@ async function executePanic() {
         }
 
         switch (action) {
-            case 'closeIncognito':
-                chrome.windows.getAll({ populate: true }, (windows) => {
-                    const normalWindow = windows.find(win => !win.incognito);
-                    if (normalWindow) {
-                        chrome.tabs.create({ windowId: normalWindow.id, url: safeUrl }).catch(() => { });
-                    } else {
-                        chrome.windows.create({ url: safeUrl }).catch(() => { });
-                    }
-                    windows.forEach(win => {
-                        if (win.incognito) {
-                            chrome.windows.remove(win.id).catch(() => { });
-                        }
-                    });
-                });
+            case 'closeIncognito': {
+                const windows = await chrome.windows.getAll({ populate: true });
+                const normalWindow = windows.find(win => !win.incognito);
+                if (normalWindow) {
+                    await chrome.tabs.create({ windowId: normalWindow.id, url: safeUrl }).catch(() => { });
+                } else {
+                    await chrome.windows.create({ url: safeUrl }).catch(() => { });
+                }
+                const promises = windows
+                    .filter(win => win.incognito)
+                    .map(win => chrome.windows.remove(win.id).catch(() => { }));
+                await Promise.all(promises);
                 break;
-            case 'redirectAll':
-                chrome.tabs.query({}, (tabs) => {
-                    tabs.forEach(tab => {
-                        if (tab.url !== safeUrl) {
-                            chrome.tabs.update(tab.id, { url: safeUrl }).catch(() => { });
-                        }
-                    });
-                });
+            }
+            case 'redirectAll': {
+                const tabs = await chrome.tabs.query({});
+                const redirectPromises = tabs
+                    .filter(tab => tab.url !== safeUrl && !tab.url.startsWith('chrome://'))
+                    .map(tab => chrome.tabs.update(tab.id, { url: safeUrl }).catch(() => { }));
+                await Promise.all(redirectPromises);
                 break;
-            case 'closeAll':
-                chrome.windows.create({ url: safeUrl, focused: true }, (newWin) => {
-                    chrome.windows.getAll({ populate: true }, (windows) => {
-                        windows.forEach(win => {
-                            if (win.id !== newWin.id) {
-                                chrome.windows.remove(win.id).catch(() => { });
-                            }
-                        });
-                    });
-                });
+            }
+            case 'closeAll': {
+                const newWin = await chrome.windows.create({ url: safeUrl, focused: true });
+                const windows = await chrome.windows.getAll({ populate: true });
+                const closePromises = windows
+                    .filter(win => win.id !== newWin.id)
+                    .map(win => chrome.windows.remove(win.id).catch(() => { }));
+                await Promise.all(closePromises);
                 break;
+            }
         }
-    });
+    } catch (e) {
+        console.error('[Adblock] Panic Mode Execution Error:', e);
+    }
 }
 
 /**
@@ -1602,6 +1604,10 @@ async function updateSecurityRules() {
 // Khởi chạy khi extension được load
 updateSecurityRules();
 
+// Biến lưu trữ tạm (cache) để tránh data race và quá tải storage
+let dailyStatsCache = {};
+let isFlushingStats = false;
+
 // Hàm cộng dồn số liệu vào biểu đồ theo ngày (Local Time)
 function incrementDailyStat(domain) {
     const d = new Date();
@@ -1610,13 +1616,48 @@ function incrementDailyStat(domain) {
     const localDateStr = new Date(d.getTime() - offset).toISOString().split('T')[0];
     const key = `stats_${localDateStr}`;
     
-    chrome.storage.local.get([key], (res) => {
-        const data = res[key] || { trackersBlocked: 0, details: {} };
-        data.trackersBlocked = (data.trackersBlocked || 0) + 1;
-        data.details[domain] = (data.details[domain] || 0) + 1;
-        chrome.storage.local.set({ [key]: data });
-    });
+    if (!dailyStatsCache[key]) {
+        dailyStatsCache[key] = { trackersBlocked: 0, details: {} };
+    }
+    
+    dailyStatsCache[key].trackersBlocked += 1;
+    dailyStatsCache[key].details[domain] = (dailyStatsCache[key].details[domain] || 0) + 1;
 }
+
+// Lưu cache xuống Storage định kỳ mỗi 2 giây
+setInterval(() => {
+    if (Object.keys(dailyStatsCache).length === 0 || isFlushingStats) return;
+    
+    isFlushingStats = true;
+    const keysToFetch = Object.keys(dailyStatsCache);
+    const cacheCopy = { ...dailyStatsCache };
+    dailyStatsCache = {}; // Reset cache ngay lập tức để nhận request mới
+    
+    chrome.storage.local.get(keysToFetch, (res) => {
+        let updates = {};
+        for (const key of keysToFetch) {
+            const currentData = res[key] || { trackersBlocked: 0, details: {} };
+            const cacheData = cacheCopy[key];
+            
+            // Merge dữ liệu
+            let mergedTrackers = currentData.trackersBlocked + cacheData.trackersBlocked;
+            let mergedDetails = { ...currentData.details };
+            
+            for (const [domain, count] of Object.entries(cacheData.details)) {
+                mergedDetails[domain] = (mergedDetails[domain] || 0) + count;
+            }
+            
+            updates[key] = {
+                trackersBlocked: mergedTrackers,
+                details: mergedDetails
+            };
+        }
+        
+        chrome.storage.local.set(updates, () => {
+            isFlushingStats = false;
+        });
+    });
+}, 2000);
 
 // Thống kê quảng cáo bị chặn (Debug mode / Developer mode hỗ trợ onRuleMatchedDebug)
 if (chrome.declarativeNetRequest && chrome.declarativeNetRequest.onRuleMatchedDebug) {
