@@ -1,6 +1,22 @@
 (function () {
   'use strict';
 
+  // ============ 0. Bypass Bot Verifications ============
+  try {
+      const href = window.location.href || '';
+      const isBotVerification = 
+          href.includes('cloudflare.com') ||
+          href.includes('challenges.cloudflare.com') ||
+          href.includes('hcaptcha.com') ||
+          href.includes('recaptcha.net') ||
+          href.includes('google.com/recaptcha');
+          
+      if (isBotVerification) {
+          console.log('[Privacy Player] Bypassed spoofing for bot verification site:', href);
+          return;
+      }
+  } catch (e) {}
+
   // ============ 1. Cấu hình Two-Tier Seed ============
   let activeNoise = 'DEFAULT_FALLBACK_SEED_186626EB39E9A89A';
   let isNoiseReal = false;

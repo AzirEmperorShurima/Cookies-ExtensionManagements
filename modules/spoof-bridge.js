@@ -1,6 +1,22 @@
 (function () {
   'use strict';
 
+  // ============ 0. Bypass Bot Verifications ============
+  try {
+      const href = window.location.href || '';
+      const isBotVerification = 
+          href.includes('cloudflare.com') ||
+          href.includes('challenges.cloudflare.com') ||
+          href.includes('hcaptcha.com') ||
+          href.includes('recaptcha.net') ||
+          href.includes('google.com/recaptcha');
+          
+      if (isBotVerification) {
+          console.log('[Privacy Player] Bypassed bridge for bot verification site:', href);
+          return;
+      }
+  } catch (e) {}
+
   // Biến lưu trữ cấu hình
   let cachedSeed = null;
   let cachedGeoMode = 'us';
