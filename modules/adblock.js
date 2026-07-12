@@ -633,3 +633,20 @@ async function renderZapperManager() {
         container.innerHTML = `<div class="empty-state" style="text-align: center; color: var(--text-muted); padding: 20px; font-style: italic;">${getDict().zapperEmpty || 'Chưa có phần tử nào bị xóa bằng Zapper.'}</div>`;
     }
 }
+
+// Lắng nghe thay đổi storage để cập nhật Filter Statistics real-time
+chrome.storage.onChanged.addListener((changes, namespace) => {
+    if (namespace === 'local') {
+        const d = new Date();
+        const offset = d.getTimezoneOffset() * 60000;
+        const localDateStr = new Date(d.getTime() - offset).toISOString().split('T')[0];
+        const key = `stats_${localDateStr}`;
+        
+        if (changes[key] || changes['compiledAdblockRules'] || changes['adblockCssRules'] || changes['adsBlockedCount']) {
+            // Kiểm tra xem Adblock Manager có đang được mở không
+            if (document.getElementById('adblockNetworkCount')) {
+                updateAdblockStats();
+            }
+        }
+    }
+});

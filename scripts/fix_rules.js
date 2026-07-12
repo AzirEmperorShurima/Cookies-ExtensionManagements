@@ -9,9 +9,6 @@ filesToFix.forEach(filename => {
     if (!fs.existsSync(filePath)) return;
     
     let content = fs.readFileSync(filePath, 'utf8');
-    // We want to replace "type": "block" for jwpcdn.com and jwplayer.com to "type": "allow"
-    // Since parsing JSON and stringifying will take a while and rewrite the whole file,
-    // we can parse it, find the rules, and modify them.
     
     console.log(`Processing ${filename}...`);
     try {

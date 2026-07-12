@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Nhật ký lọc - Privacy Manager</title>
+    <link rel="stylesheet" href="styles/logger.css">
+</head>
+<body>
+    <div class="logger-container">
+        <!-- Toolbar -->
+        <header class="toolbar">
+            <div class="toolbar-left">
+                <div class="custom-select">
+                    <select id="contextSelect">
+                        <option value="extension">Tiện ích</option>
+                        <option value="background">Thẻ chạy nền</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="toolbar-actions">
+                <button class="icon-btn active-record" id="toggleRecordBtn" title="Tạm dừng/Tiếp tục ghi">
+                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <circle cx="12" cy="12" r="4" fill="currentColor"></circle>
+                    </svg>
+                </button>
+                <button class="icon-btn text-orange" id="clearBtn" title="Xóa thùng rác">
+                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                </button>
+                <button class="icon-btn text-green" id="refreshBtn">
+                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <polyline points="1 20 1 14 7 14"></polyline>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                    </svg>
+                    Làm mới
+                </button>
+            </div>
+
+            <div class="search-container">
+                <svg class="search-icon" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="searchInput" placeholder="Tìm kiếm">
+            </div>
+        </header>
+
+        <!-- Filters -->
+        <div class="filters-bar">
+            <!-- Source Group -->
+            <div class="filter-group" data-group="source">
+                <button class="pill active" data-filter="all">Tất cả</button>
+                <button class="pill" data-filter="1p">1P</button>
+                <button class="pill" data-filter="3p">3P</button>
+            </div>
+
+            <!-- Status Group -->
+            <div class="filter-group" data-group="status">
+                <button class="pill active" data-filter="all">Tất cả</button>
+                <button class="pill" data-filter="normal">Thông thường</button>
+                <button class="pill" data-filter="allowed">Đã cho phép</button>
+                <button class="pill" data-filter="blocked">Đã chặn</button>
+                <button class="pill" data-filter="modified">Đã chỉnh sửa</button>
+            </div>
+
+            <!-- Rule Type Group -->
+            <div class="filter-group" data-group="rule">
+                <button class="pill pill-outline" data-filter="user">Quy tắc người dùng</button>
+            </div>
+
+            <!-- Resource Type Group -->
+            <div class="filter-group" data-group="type">
+                <button class="pill active" data-filter="all">Tất cả</button>
+                <button class="pill" data-filter="main_frame,sub_frame">HTML</button>
+                <button class="pill" data-filter="stylesheet">CSS</button>
+                <button class="pill" data-filter="script">JS</button>
+                <button class="pill" data-filter="xmlhttprequest">XHR</button>
+                <button class="pill" data-filter="image">Img</button>
+                <button class="pill" data-filter="media">Media</button>
+                <button class="pill" data-filter="other">Khác</button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Data Table -->
+            <div class="table-container">
+                <table id="logTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 100px">Thời gian</th>
+                            <th style="width: 130px">Trạng thái</th>
+                            <th>URL</th>
+                            <th style="width: 80px">Loại</th>
+                            <th style="width: 120px">Quy tắc lọc</th>
+                            <th style="width: 120px">Bộ lọc</th>
+                            <th style="width: 120px">Nguồn</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logBody">
+                        <!-- Rows injected via JS -->
+                    </tbody>
+                </table>
+                
+                <!-- Empty State -->
+                <div class="empty-state" id="emptyState" style="display: none;">
+                    <svg viewBox="0 0 24 24" width="64" height="64" stroke="currentColor" stroke-width="1.5" fill="none">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                        <circle cx="16" cy="16" r="4" fill="#181818"></circle>
+                        <line x1="16" y1="14" x2="16" y2="16" stroke="#89d185"></line>
+                        <line x1="16" y1="18" x2="16.01" y2="18" stroke="#89d185" stroke-width="2"></line>
+                    </svg>
+                    <p>Không tìm thấy gì. <a href="#" id="resetFiltersLink" class="text-green-link">Tắt bộ lọc</a> hoặc <a href="#" id="reloadPageLink" class="text-green-link">tải lại trang</a><br>để xem các bản ghi nhật trình</p>
+                </div>
+            </div>
+
+            <!-- Details Panel -->
+            <div class="details-panel" id="detailsPanel">
+                <div class="panel-header">
+                    <button id="closePanelBtn">
+                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                    <h2>Chi tiết yêu cầu</h2>
+                </div>
+                <div class="panel-body">
+                    <div class="detail-section">
+                        <h3>Trạng thái</h3>
+                        <div class="status-badges">
+                            <span class="badge-outline" id="detailStatusCode">---</span>
+                            <span class="badge-outline" id="detailMethod">GET</span>
+                        </div>
+                    </div>
+                    <div class="detail-section">
+                        <h3>Trạng thái đang lọc</h3>
+                        <p id="detailStatus" class="status-filtering">Đang tải...</p>
+                    </div>
+                    <div class="detail-section">
+                        <h3>URL</h3>
+                        <p id="detailUrl" class="word-break line-clamp"></p>
+                        <div class="url-actions">
+                            <a href="#" id="showFullUrlBtn">Hiện toàn bộ URL</a>
+                            <a href="#" id="openInNewTabBtn" target="_blank">Mở trong thẻ mới</a>
+                        </div>
+                    </div>
+                    <div class="detail-section">
+                        <h3>Loại</h3>
+                        <p id="detailType"></p>
+                    </div>
+                    <div class="detail-section">
+                        <h3>Nguồn</h3>
+                        <p id="detailInitiator"></p>
+                    </div>
+                    <div class="detail-section" id="detailRuleSection" style="display: none;">
+                        <h3 style="display: flex; justify-content: space-between; align-items: center;">
+                            Quy tắc giả định:
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-allowed)" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                        </h3>
+                        <p id="detailRule" class="rule-text-content"></p>
+                    </div>
+                    <div class="detail-section" id="detailRulesetSection" style="display: none;">
+                        <h3>Bộ lọc</h3>
+                        <p id="detailRuleset"></p>
+                    </div>
+                </div>
+                <div class="panel-footer">
+                    <button id="blockActionBtn" class="action-btn-large">Bỏ chặn</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="scripts/logger.js"></script>
+</body>
+</html>

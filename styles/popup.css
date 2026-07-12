@@ -6188,3 +6188,9 @@ body.dark-mode .premium-row {
     background: rgba(255, 0, 128, 0.8);
     transform: scale(1.05);
 }
+
+
+/* Fix rounded corners on hover for settings cards */
+.settings-card, .glass-card {
+    border-radius: var(--radius-md);
+}

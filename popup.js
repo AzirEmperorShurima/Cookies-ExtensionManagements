@@ -130,6 +130,7 @@ export const elements = {
     gradeCard: document.querySelector('.grade-card-modern'),
 
     vaultBtn: document.getElementById('vaultBtn'),
+    networkLoggerBtn: document.getElementById('networkLoggerBtn'),
     vaultSection: document.getElementById('vaultSection'),
     vaultLockScreen: document.getElementById('vaultLockScreen'),
     vaultPassInput: document.getElementById('vaultPassInput'),
@@ -1125,5 +1126,17 @@ function renderTabManager(searchQuery = '') {
                 elements.tabListContainer.appendChild(groupContainer);
             }
         }
+    });
+}
+
+// Network Logger
+if (elements.networkLoggerBtn) {
+    elements.networkLoggerBtn.addEventListener('click', () => {
+        chrome.windows.create({
+            url: chrome.runtime.getURL("logger.html"),
+            type: "popup",
+            width: 1100,
+            height: 700
+        });
     });
 }
