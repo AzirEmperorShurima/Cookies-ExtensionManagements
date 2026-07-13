@@ -590,9 +590,13 @@ export function applySettings() {
     if (elements.playerIsolatedIdentityToggle) elements.playerIsolatedIdentityToggle.checked = settings.playerIsolatedIdentity ?? true;
 
     if (elements.telegramDownloaderToggle) elements.telegramDownloaderToggle.checked = settings.telegramDownloaderEnabled || false;
+    
     if (elements.videoDownloaderToggle) elements.videoDownloaderToggle.checked = settings.videoDownloaderEnabled || false;
+    
     if (elements.pipToggle) elements.pipToggle.checked = settings.pipEnabled || false;
+    
     if (elements.multiAccountToggle) elements.multiAccountToggle.checked = settings.multiAccountEnabled || false;
+    
     if (elements.hibernationToggle) elements.hibernationToggle.checked = settings.hibernationEnabled || false;
 
     if (elements.telegramDownloaderBtn) elements.telegramDownloaderBtn.classList.toggle('hidden', !settings.telegramDownloaderEnabled);
@@ -715,6 +719,10 @@ export async function toggleSection(section) {
     }
 
     if (section === 'home') {
+        // Reset body dimensions that might have been modified by Privacy Player or other modules
+        document.body.style.width = '';
+        document.body.style.height = '';
+        
         await ModuleLoader.load('dashboard');
         homeSection?.classList.add('show');
         return;

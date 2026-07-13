@@ -406,6 +406,8 @@ function setupPasswordToggle(inputId, toggleId) {
 export async function init() {
     const {
         darkModeToggle, autoClearToggle, showNotifyToggle, useSidePanelToggle, enableTabManagerToggle, enableTempMailToggle, tabManagerBtn, tempMailBtn,
+        telegramDownloaderToggle, videoDownloaderToggle, pipToggle, multiAccountToggle, hibernationToggle, historyIncognitoToggle,
+        telegramDownloaderBtn, videoDownloaderBtn, togglePip, multiAccountBtn,
         realTimeProtectionToggle, blockClickjackingToggle, blockCryptoMiningToggle,
         strongPasswordToggle, passwordRequirementText, alwaysRequirePasswordToggle,
         showPasswordToggle, verifyOldPass, oldPassInput, newPassRow, saveNewPass,
@@ -469,10 +471,69 @@ export async function init() {
             saveSettings();
         });
     }
+    
+    if (telegramDownloaderToggle) {
+        telegramDownloaderToggle.addEventListener('change', (e) => {
+            settings.telegramDownloaderEnabled = e.target.checked;
+            if (telegramDownloaderBtn) telegramDownloaderBtn.classList.toggle('hidden', !settings.telegramDownloaderEnabled);
+            saveSettings();
+        });
+    }
+
+    if (videoDownloaderToggle) {
+        videoDownloaderToggle.addEventListener('change', (e) => {
+            settings.videoDownloaderEnabled = e.target.checked;
+            if (videoDownloaderBtn) videoDownloaderBtn.classList.toggle('hidden', !settings.videoDownloaderEnabled);
+            saveSettings();
+        });
+    }
+
+    if (pipToggle) {
+        pipToggle.addEventListener('change', (e) => {
+            settings.pipEnabled = e.target.checked;
+            if (togglePip) togglePip.classList.toggle('hidden', !settings.pipEnabled);
+            saveSettings();
+        });
+    }
+
+    if (multiAccountToggle) {
+        multiAccountToggle.addEventListener('change', (e) => {
+            if (e.target.checked && !chrome.contextualIdentities) {
+                e.target.checked = false;
+                const lang = settings.language || 'vi';
+                const dict = window.translations ? window.translations[lang] || window.translations.vi : {};
+                notify(dict.apiNotSupported || 'Trình duyệt của bạn không hỗ trợ Multi-Account Containers API.', 'error');
+                return;
+            }
+            settings.multiAccountEnabled = e.target.checked;
+            if (multiAccountBtn) multiAccountBtn.classList.toggle('hidden', !settings.multiAccountEnabled);
+            saveSettings();
+        });
+    }
+
+    if (hibernationToggle) {
+        hibernationToggle.addEventListener('change', (e) => {
+            settings.hibernationEnabled = e.target.checked;
+            saveSettings();
+        });
+    }
+
+    if (historyIncognitoToggle) {
+        historyIncognitoToggle.addEventListener('change', (e) => {
+            settings.historyIncognito = e.target.checked;
+            saveSettings();
+        });
+    }
     if (useSidePanelToggle) {
         useSidePanelToggle.addEventListener('change', (e) => {
             settings.useSidePanel = e.target.checked;
             saveSettings();
+            
+            // Apply immediately without requiring reload
+            if (chrome.sidePanel && chrome.sidePanel.setPanelBehavior) {
+                chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: settings.useSidePanel }).catch(console.error);
+            }
+            
             notify(`${getDict().useSidePanel || 'Default to side panel'} ${settings.useSidePanel ? (getDict().enabled || 'enabled') : (getDict().disabled || 'disabled')}`, 'success');
         });
     }

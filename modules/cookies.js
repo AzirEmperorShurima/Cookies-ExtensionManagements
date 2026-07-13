@@ -301,17 +301,7 @@ export async function renderCurrentTabCookies(host) {
         table.appendChild(tbody);
         currentTabCookieTable.textContent = '';
         currentTabCookieTable.appendChild(table);
-
-        currentTabCookieTable.querySelectorAll('.row-expand-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const targetRow = btn.closest('.cookie-row');
-                if (targetRow) {
-                    targetRow.classList.toggle('expanded');
-                    btn.classList.toggle('active');
-                }
-            });
-        });
-
+        // Event delegation for row-expand-btn is handled globally in init()
     } catch (err) {
         console.error(err);
         currentTabCookieTable.textContent = '';
@@ -327,7 +317,26 @@ export function init() {
     } = elements;
 
     if (cookieTableContainer) {
+        // Shared logic for both tables
+        const handleExpandClick = (e) => {
+            const expandBtn = e.target.closest('.row-expand-btn');
+            if (expandBtn) {
+                const targetRow = expandBtn.closest('.cookie-row');
+                if (targetRow) {
+                    targetRow.classList.toggle('expanded');
+                    expandBtn.classList.toggle('active');
+                }
+            }
+        };
+
+        const currentTabCookieTable = document.getElementById('currentTabCookieTable');
+        if (currentTabCookieTable) {
+            currentTabCookieTable.addEventListener('click', handleExpandClick);
+        }
+
         cookieTableContainer.addEventListener('click', (e) => {
+            handleExpandClick(e);
+            
             const copyBtn = e.target.closest('.copy-domain-btn');
             if (copyBtn) {
                 const domain = copyBtn.dataset.domain;
@@ -344,16 +353,6 @@ export function init() {
             if (clearBtn) {
                 const domain = clearBtn.dataset.domain;
                 deleteCookiesInDomain(domain, filterInput?.value || '');
-                return;
-            }
-
-            const expandBtn = e.target.closest('.row-expand-btn');
-            if (expandBtn) {
-                const targetRow = expandBtn.closest('.cookie-row');
-                if (targetRow) {
-                    targetRow.classList.toggle('expanded');
-                    expandBtn.classList.toggle('active');
-                }
                 return;
             }
         });

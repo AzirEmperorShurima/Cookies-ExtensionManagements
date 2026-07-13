@@ -4,15 +4,17 @@ Privacy & Cookies Manager is a comprehensive browser extension designed to prote
 
 ## ✨ Core Features
 
-- 🍪 **Cookie Manager**: Easily view, copy, paste, and delete cookies for any website.
-- 🛡️ **Adblock & Privacy Manager**: Advanced ad and tracker blocking utilizing EasyList/EasyPrivacy rules. Includes a built-in **Zapper Mode** to visually select and destroy annoying web elements.
-- 🎭 **Anti-Fingerprinting (Spoofing)**: Built-in protections to prevent websites from tracking your browser fingerprint.
-- 🎬 **Privacy Player (PiP)**: Isolated video viewing experience. Watch videos securely in a Picture-in-Picture window.
+- 🛡️ **Cookie Manager**: Easily view, copy, paste, and delete cookies. Includes **Auto-Cookie Destroyer** to clean up cookies instantly when a tab is closed.
+- 🚫 **Adblock & Privacy Manager**: Advanced ad and tracker blocking utilizing EasyList/EasyPrivacy rules. Includes a built-in **Zapper Mode** to visually select and destroy annoying web elements.
+- 🕵️ **Anti-Fingerprinting (Spoofing)**: Built-in protections to prevent websites from tracking your browser fingerprint.
+- 📺 **Privacy Player (PiP)**: Isolated video viewing experience. Watch videos securely in a Picture-in-Picture window with auto-clear stealth history.
 - 🚨 **Panic Button**: Instantly hide your activity when someone approaches. Configure to close incognito tabs, redirect to a safe URL, or close all windows.
-- 🔐 **Secure Vault**: Save and protect sensitive links behind a master password.
-- 📦 **Multi-Account Containers**: Log in to multiple accounts on the same website simultaneously by isolating cookie storage.
+- 🗄️ **Secure Vault**: Save and protect sensitive links behind a master password.
+- 👥 **Multi-Account Containers**: Isolate cookie storage for different accounts (Requires Firefox).
 - 📧 **Temp Mail**: Quick access to temporary email addresses to avoid spam.
-- 🔄 **History & Sync**: Manage your browsing history and synchronize your settings.
+- 📥 **Media Downloaders**: Built-in Video Downloader and Telegram Web Media Downloader.
+- 📑 **Tab Management**: Advanced Tab Manager with grouping, and Tab Hibernation to save memory.
+- 🔄 **History & Sync**: Manage your browsing history, open links in incognito, and synchronize your settings to the cloud.
 
 ## 🚀 Getting Started
 
