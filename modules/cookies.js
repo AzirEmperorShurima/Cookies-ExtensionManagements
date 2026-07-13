@@ -1,4 +1,4 @@
-import { elements, settings, notify, saveSettings, showConfirm } from '../popup.js';
+import { elements, ASSETS, settings, notify, saveSettings, showConfirm } from '../popup.js';
 import { debounce, createElement } from './utils.js';
 
 let currentCookiesByDomain = {};
@@ -56,13 +56,13 @@ export async function loadCookies(filter = '', forceRefresh = false) {
         actionsContainer.className = 'domain-actions';
 
         const copyIcon = document.createElement('img');
-        copyIcon.src = 'icons/copy.png';
+        copyIcon.src = ASSETS.icons.copy;
         copyIcon.title = 'Copy Domain Cookies';
         copyIcon.className = 'copy-domain-btn';
         copyIcon.dataset.domain = domain;
 
         const clearIcon = document.createElement('img');
-        clearIcon.src = 'icons/clear.png';
+        clearIcon.src = ASSETS.icons.clear;
         clearIcon.title = 'Clear Domain Cookies';
         clearIcon.className = 'clear-domain-btn';
         clearIcon.dataset.domain = domain;

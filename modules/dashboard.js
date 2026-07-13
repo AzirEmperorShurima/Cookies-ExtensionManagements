@@ -1,5 +1,5 @@
 import { elements, settings, notify, saveSettings, updateUILanguage, toggleSection, showConfirm } from '../popup.js';
-import { createElement } from './utils.js';
+import { createElement, ASSETS } from './utils.js';
 
 const translations = window.translations;
 let dashboardUpdateTimeout = null;
@@ -298,7 +298,7 @@ export function showTrackerDetails(trackers) {
 export function setTrackStyle(element, status) {
     const trackingIcon = document.getElementById('trackingprotectionicon');
     if (trackingIcon) {
-        trackingIcon.src = status ? 'icons/skincell.png' : 'icons/tracking_protection.png';
+        trackingIcon.src = status ? ASSETS.icons.skincell : ASSETS.icons.trackingProtection;
     }
     if (element) {
         element.className = `tracking-button ${status ? 'enabled' : 'disabled'}`;

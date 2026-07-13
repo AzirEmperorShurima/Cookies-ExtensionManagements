@@ -1,0 +1,107 @@
+
+function safeGetDomain(urlOrHostname) {
+    if (!urlOrHostname) return '';
+    try {
+        if (self.tldts && self.tldts.parse) {
+            const parsed = self.tldts.parse(urlOrHostname);
+            return parsed.domain || parsed.hostname || urlOrHostname;
+        }
+        const hostname = urlOrHostname.includes('://') ? new URL(urlOrHostname).hostname : urlOrHostname;
+        return hostname.replace(/^www\./, '');
+    } catch (e) {
+        return '';
+    }
+}
+
+async function updateTabBadge(tabId) {
+    const videosCount = detectedVideos[tabId] ? detectedVideos[tabId].length : 0;
+    if (videosCount > 0) {
+        chrome.action.setBadgeText({ text: videosCount.toString(), tabId });
+        chrome.action.setBadgeBackgroundColor({ color: '#e53e3e', tabId });
+        return;
+    }
+
+    try {
+        const result = await chrome.storage.local.get(['adblockSettings']);
+        const settings = result.adblockSettings || {};
+        const enabledSources = settings.enabledSources || [];
+        if (enabledSources.length > 0) {
+            chrome.action.setBadgeText({ text: 'ON', tabId });
+            chrome.action.setBadgeBackgroundColor({ color: '#38a169', tabId });
+        } else {
+            chrome.action.setBadgeText({ text: '', tabId });
+        }
+    } catch (e) {
+        chrome.action.setBadgeText({ text: '', tabId });
+    }
+}
+
+
+const ASSETS = {
+    icons: {
+        default: "icons/icon48.png",
+        icon128: "icons/icon128.png",
+        extension: "icons/extension.png",
+        extensionDefault: "icons/extension-default.png",
+        dev: "icons/dev.png",
+        store: "icons/store.png",
+        admin: "icons/admin.png",
+        other: "icons/other.png",
+        aboutUs: "icons/about-us.png",
+        skincell: "icons/skincell.png",
+        trackingProtection: "icons/tracking_protection.png",
+        copy: "icons/copy.png",
+        clear: "icons/clear.png"
+    },
+    images: {
+        defaultBg: "images/anh-phong-canh-66-1.jpg"
+    }
+};
+
+const DEFAULT_SETTINGS = {
+    darkMode: false,
+    autoClearStealth: true,
+    showNotifications: true,
+    cookieDestroyer: false,
+    historyIncognito: false,
+    defaultPlayerWidth: 100,
+    defaultPlayerHeight: 400,
+    followDefaultPlayerSize: true,
+    searchEngine: 'google',
+    favoriteWebsites: [],
+    useSidePanel: false,
+    realTimeProtection: true,
+    blockClickjacking: true,
+    blockCryptoMining: true,
+    protectionLevel: 'standard',
+    language: 'vi',
+    playerBackgroundType: 'default',
+    playerLinkBehavior: 'inside',
+    playerLinkFilter: 'all',
+    customBgUrl: '',
+    customBgList: [],
+    panicAction: 'closeIncognito',
+    safeRedirectUrl: 'https://www.google.com',
+    savedSessions: [],
+    telegramDownloaderEnabled: false,
+    videoDownloaderEnabled: false,
+    multiAccountEnabled: false,
+    accountContainers: [],
+    hibernationEnabled: false,
+    hibernationTimeout: 30,
+    whitelist: ['google.com', 'facebook.com', 'gmail.com', 'youtube.com', 'github.com'],
+    alwaysRequirePassword: true,
+    vaultSyncEnabled: false,
+    masterSyncKey: null,
+    linkClickBehavior: 'player',
+    appliedLinkType: 'all',
+    safeUrls: [],
+    requireStrongPassword: false,
+    showPasswordInSettings: true,
+    playerIsolatedIdentity: true,
+    adblockEnabled: true,
+    easylistEnabled: true,
+    customAdblockRules: '',
+    customAdblockCssRules: ''
+};
+

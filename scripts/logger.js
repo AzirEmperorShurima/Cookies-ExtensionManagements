@@ -18,6 +18,12 @@ const emptyState = document.getElementById('emptyState');
 const toggleRecordBtn = document.getElementById('toggleRecordBtn');
 const contextSelect = document.getElementById('contextSelect');
 
+// Escape HTML
+function escapeHTML(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
 // Format time
 function formatTime(ts) {
     const d = new Date(ts);
@@ -122,18 +128,22 @@ function renderTable() {
         else if (log.status === 'error') { statusBadge = 'status-error'; statusText = 'Lỗi'; }
         else if (log.status === 'pending') { statusText = 'Đang tải'; }
 
-        const domain = getDomain(log.url);
+        const domain = escapeHTML(getDomain(log.url));
         const urlClass = isBlocked ? 'url-text blocked-url' : 'url-text';
-        const ruleText = log.ruleId ? `#${log.ruleId}` : '-';
+        const ruleText = log.ruleId ? `#${escapeHTML(log.ruleId)}` : '-';
+        const eUrl = escapeHTML(log.url);
+        const eType = escapeHTML(log.type || 'khác');
+        const eRuleset = escapeHTML(log.rulesetId || '-');
+        const eInitiator = escapeHTML(getDomain(log.initiator));
 
         tr.innerHTML = `
             <td>${formatTime(log.timestamp)}</td>
             <td><span class="status-badge ${statusBadge}">${statusText}</span></td>
-            <td title="${log.url}"><span class="${urlClass}">${domain}</span></td>
-            <td>${log.type || 'khác'}</td>
+            <td title="${eUrl}"><span class="${urlClass}">${domain}</span></td>
+            <td>${eType}</td>
             <td class="rule-text">${ruleText}</td>
-            <td>${log.rulesetId || '-'}</td>
-            <td title="${log.initiator}">${getDomain(log.initiator)}</td>
+            <td>${eRuleset}</td>
+            <td title="${escapeHTML(log.initiator)}">${eInitiator}</td>
         `;
 
         tr.addEventListener('click', () => {

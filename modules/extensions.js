@@ -1,20 +1,20 @@
 import { elements, notify, showConfirm } from '../popup.js';
 import { updateDashboard } from './dashboard.js';
-import { createElement } from './utils.js';
+import { createElement, ASSETS } from './utils.js';
 
 function getInstallTypeInfo(installType) {
     const info = {
-        development: { icon: 'icons/dev.png', tooltip: 'Development Mode' },
-        normal: { icon: 'icons/store.png', tooltip: 'Chrome Web Store' },
-        admin: { icon: 'icons/admin.png', tooltip: 'Admin Installed' },
-        sideload: { icon: 'icons/other.png', tooltip: 'Sideloaded' },
-        other: { icon: 'icons/other.png', tooltip: 'Other Source' }
+        development: { icon: ASSETS.icons.dev, tooltip: 'Development Mode' },
+        normal: { icon: ASSETS.icons.store, tooltip: 'Chrome Web Store' },
+        admin: { icon: ASSETS.icons.admin, tooltip: 'Admin Installed' },
+        sideload: { icon: ASSETS.icons.other, tooltip: 'Sideloaded' },
+        other: { icon: ASSETS.icons.other, tooltip: 'Other Source' }
     };
-    return info[installType] || { icon: 'icons/other.png', tooltip: 'Unknown' };
+    return info[installType] || { icon: ASSETS.icons.other, tooltip: 'Unknown' };
 }
 
 function createExtensionCardHTML(ext) {
-    const iconUrl = ext.icons?.length ? ext.icons[ext.icons.length - 1].url : 'icons/extension-default.png';
+    const iconUrl = ext.icons?.length ? ext.icons[ext.icons.length - 1].url : ASSETS.icons.extensionDefault;
     const { icon, tooltip } = getInstallTypeInfo(ext.installType);
 
     const typeMapping = {
@@ -68,7 +68,7 @@ function createExtensionCardHTML(ext) {
     permissionsBox.appendChild(tagContainer);
 
     const iconImg = createElement('img', { src: iconUrl, alt: ext.name, className: 'extension-large-icon' });
-    iconImg.onerror = () => { iconImg.onerror = null; iconImg.src = 'icons/extension.png'; };
+    iconImg.onerror = () => { iconImg.onerror = null; iconImg.src = ASSETS.icons.extension; };
 
     const checkbox = createElement('input', { type: 'checkbox' });
     if (ext.enabled) checkbox.checked = true;

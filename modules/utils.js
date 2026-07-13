@@ -180,3 +180,26 @@ export function parseHTML(htmlString) {
     }
     return fragment;
 }
+
+
+export const ASSETS = {
+    icons: {
+        default: ASSETS.icons.default,
+        icon128: ASSETS.icons.icon128,
+        extension: "icons/extension.png",
+        extensionDefault: "icons/extension-default.png",
+        dev: "icons/dev.png",
+        store: "icons/store.png",
+        admin: "icons/admin.png",
+        other: "icons/other.png",
+        aboutUs: "icons/about-us.png",
+        skincell: "icons/skincell.png",
+        trackingProtection: "icons/tracking_protection.png",
+        copy: "icons/copy.png",
+        clear: "icons/clear.png"
+    },
+    images: {
+        defaultBg: "images/anh-phong-canh-66-1.jpg"
+    }
+};
+

@@ -1,4 +1,4 @@
-import { elements, settings, notify, toggleSection, showConfirm } from '../popup.js';
+import { elements, ASSETS, settings, notify, toggleSection, showConfirm } from '../popup.js';
 import { debounce, createElement } from './utils.js';
 
 const translations = window.translations;
@@ -28,7 +28,7 @@ function createHistoryItemUI(item, type) {
 
     div.textContent = '';
     const imgNode = createElement('img', { src: favicon, className: 'history-icon' });
-    imgNode.onerror = () => { imgNode.onerror = null; imgNode.src = 'icons/extension.png'; };
+    imgNode.onerror = () => { imgNode.onerror = null; imgNode.src = ASSETS.icons.extension; };
     div.appendChild(imgNode);
     div.appendChild(
         createElement('div', { className: 'history-info' },
@@ -49,7 +49,7 @@ function createHistoryItemUI(item, type) {
 
     const img = div.querySelector('.history-icon');
     if (img) {
-        img.onerror = () => { img.onerror = null; img.src = 'icons/extension.png'; };
+        img.onerror = () => { img.onerror = null; img.src = ASSETS.icons.extension; };
     }
 
     return div;
@@ -207,7 +207,7 @@ export async function loadHistoryAndSessions(query = '') {
                         const img = document.createElement('img');
                         img.src = favicon;
                         img.className = 'device-icon';
-                        img.onerror = function () { this.onerror = null; this.src = 'icons/extension.png'; };
+                        img.onerror = function () { this.onerror = null; this.src = ASSETS.icons.extension; };
                         item.appendChild(img);
 
                         const infoDiv = document.createElement('div');

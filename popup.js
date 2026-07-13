@@ -1,5 +1,5 @@
 import { calculatePrivacyGrade, setTrackStyle } from './modules/dashboard.js';
-import { createElement, parseHTML } from './modules/utils.js';
+import { createElement, parseHTML, ASSETS } from './modules/utils.js';
 import { initAdblockUI } from './modules/adblock.js';
 import { initSyncUI } from './modules/sync.js';
 
@@ -356,7 +356,7 @@ export function setupUnifiedLockScreen(container, passInput, unlockBtn, onSucces
                 header.textContent = '';
                 header.appendChild(
                     createElement('div', { className: 'lock-icon-wrapper' },
-                        createElement('img', { src: 'icons/icon128.png', alt: 'security', className: 'lock-icon' }),
+                        createElement('img', { src: ASSETS.icons.icon128, alt: 'security', className: 'lock-icon' }),
                         createElement('div', { className: 'lock-pulse' })
                     )
                 );
@@ -471,7 +471,7 @@ export function setupUnifiedLockScreen(container, passInput, unlockBtn, onSucces
                 header.textContent = '';
                 header.appendChild(
                     createElement('div', { className: 'lock-icon-wrapper' },
-                        createElement('img', { src: 'icons/icon128.png', alt: 'security', className: 'lock-icon' }),
+                        createElement('img', { src: ASSETS.icons.icon128, alt: 'security', className: 'lock-icon' }),
                         createElement('div', { className: 'lock-pulse' })
                     )
                 );
@@ -560,7 +560,7 @@ export function notify(message, status) {
     setTimeout(() => notification.classList.remove('show'), 3000);
 }
 
-export function notifySend(message, title = 'Cookie Manager', type = 'basic', iconUrl = 'icons/icon48.png') {
+export function notifySend(message, title = 'Cookie Manager', type = 'basic', iconUrl = ASSETS.icons.default) {
     chrome.runtime.sendMessage({
         type: 'createNotification',
         options: { type, message, title, iconUrl }
@@ -1061,9 +1061,9 @@ function renderTabManager(searchQuery = '') {
             const item = document.createElement('div');
             item.className = 'tab-item' + (tab.active ? ' active-tab' : '');
             
-            let favIconUrl = tab.favIconUrl || 'icons/icon48.png';
+            let favIconUrl = tab.favIconUrl || ASSETS.icons.default;
             if (favIconUrl.startsWith('chrome://')) {
-                favIconUrl = 'icons/icon48.png';
+                favIconUrl = ASSETS.icons.default;
             }
             
             item.innerHTML = `
@@ -1075,7 +1075,7 @@ function renderTabManager(searchQuery = '') {
             `;
 
             item.querySelector('.tab-item-icon').addEventListener('error', function() {
-                this.src = 'icons/icon48.png';
+                this.src = ASSETS.icons.default;
             });
 
             item.querySelector('.tab-item-left').addEventListener('click', () => {
@@ -1114,11 +1114,11 @@ function renderTabManager(searchQuery = '') {
                 const groupHeader = document.createElement('div');
                 groupHeader.className = 'tab-group-header';
                 
-                let favIconUrl = groups[domain][0].favIconUrl || 'icons/icon48.png';
-                if (favIconUrl.startsWith('chrome://')) favIconUrl = 'icons/icon48.png';
+                let favIconUrl = groups[domain][0].favIconUrl || ASSETS.icons.default;
+                if (favIconUrl.startsWith('chrome://')) favIconUrl = ASSETS.icons.default;
 
                 groupHeader.innerHTML = `
-                    <img src="${favIconUrl}" width="16" height="16" onerror="this.src='icons/icon48.png'">
+                    <img src="${favIconUrl}" width="16" height="16" onerror="this.src=ASSETS.icons.default">
                     <span style="flex:1">${domain}</span>
                     <span class="tab-group-count">${groups[domain].length}</span>
                 `;

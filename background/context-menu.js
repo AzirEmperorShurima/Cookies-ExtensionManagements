@@ -1,0 +1,315 @@
+/**
+ * Context Menu Management
+ * Using Resilient Manifest V3 style to ensure menus are recreated when needed.
+ */
+function createAllContextMenus() {
+    chrome.contextMenus.removeAll(() => {
+        checkLastError("sessionManager");
+        chrome.contextMenus.create({ id: "addToVault", title: "Add to Privacy Vault 🔐", contexts: ["page", "link"] });
+        chrome.contextMenus.create({ id: "addToFavorites", title: "Add to Favorite Websites ⭐", contexts: ["page", "link"] });
+        chrome.contextMenus.create({ id: "quickPanic", title: "Quick Panic Button 🚨", contexts: ["all"] });
+        chrome.contextMenus.create({ id: "quickSaveSession", title: "Quick Save Session 📋", contexts: ["all"] });
+        chrome.contextMenus.create({
+            id: "sessionManager",
+            title: "📋 Session Manager",
+            contexts: ["page", "link"]
+        });
+
+        // 2. Create static session items
+        const staticItems = [
+            { id: "saveAllTabs", title: "💾 Save All Tabs" },
+            { id: "saveNormalTabs", title: "🌐 Save Normal Tabs" },
+            { id: "saveIncognitoTabs", title: "🔒 Save Incognito Tabs" },
+            { id: "saveCurrentTab", title: "📄 Save Current Tab" },
+            { id: "separator_session", type: "separator" },
+            { id: "restoreSessionParent", title: "📂 Restore Session..." }
+        ];
+
+        staticItems.forEach(item => {
+            chrome.contextMenus.create({
+                id: item.id,
+                parentId: "sessionManager",
+                title: item.title,
+                type: item.type || "normal",
+                contexts: ["page", "link"]
+            });
+            checkLastError(item.id);
+        });
+
+        // 3. Update restore session items from storage
+        chrome.storage.local.get(['appSettings'], (result) => {
+            const settings = result.appSettings ? { ...DEFAULT_SETTINGS, ...result.appSettings } : DEFAULT_SETTINGS;
+            const sessions = settings.savedSessions || [];
+
+            if (sessions.length === 0) {
+                checkLastError("noSessions");
+                chrome.contextMenus.create({
+                    id: "noSessions",
+                    parentId: "restoreSessionParent",
+                    title: "(No saved sessions)",
+                    enabled: false,
+                    contexts: ["page", "link"]
+                });
+            } else {
+                // Show up to 5 most recent sessions
+                sessions.slice(0, 5).forEach((session, index) => {
+                    chrome.contextMenus.create({
+                        id: `restoreSession_${session.id}`,
+                        parentId: "restoreSessionParent",
+                        title: `${index + 1}. ${session.name}`,
+                        contexts: ["page", "link"]
+                    });
+                    checkLastError(`restoreSession_${session.id}`);
+                });
+            }
+        });
+    });
+}
+function checkLastError(id) {
+    if (chrome.runtime.lastError) {
+        const msg = chrome.runtime.lastError.message;
+        if (msg && !msg.includes("duplicate id")) {
+            console.error(`Context menu error for ${id}:`, msg);
+        }
+    }
+}
+chrome.runtime.onInstalled.addListener(async (details) => {
+    if (details.reason === 'install') {
+        const newSeed = crypto.getRandomValues(new Uint32Array(4)).join('-');
+        await chrome.storage.local.set({ installSeed: newSeed });
+    } else if (details.reason === 'update') {
+        try {
+            const result = await chrome.storage.local.get(['adblockSettings']);
+            const settings = result.adblockSettings || {};
+            const enabledSources = settings.enabledSources || [];
+            if (enabledSources.length > 0) {
+                await chrome.declarativeNetRequest.updateEnabledRulesets({
+                    enableRulesetIds: enabledSources
+                });
+                console.log('[AdBlock] Đã khôi phục rulesets:', enabledSources);
+            }
+        } catch (e) {
+            console.error('[AdBlock] Lỗi khôi phục rulesets:', e);
+        }
+    }
+
+    createAllContextMenus();
+    try {
+        const result = await chrome.storage.local.get(['appSettings']);
+        if (!result.appSettings) {
+            await chrome.storage.local.set({ appSettings: DEFAULT_SETTINGS });
+            console.log('Initialized default app settings on install');
+        }
+    } catch (e) {
+        console.error('Error initializing default settings:', e);
+    }
+    await updateSecurityRules();
+});
+chrome.runtime.onStartup.addListener(createAllContextMenus);
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === 'GET_TOP_LEVEL_DOMAIN') {
+        const url = sender.tab ? sender.tab.url : null;
+        sendResponse({ domain: safeGetDomain(url) });
+        return false;
+    }
+});
+
+/**
+ * Sync context menus when storage changes (e.g., sessions updated in popup)
+ */
+chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes.appSettings) {
+        const oldValue = changes.appSettings.oldValue || {};
+        const newValue = changes.appSettings.newValue || {};
+
+        const oldSessions = oldValue.savedSessions || [];
+        const newSessions = newValue.savedSessions || [];
+        // Only recreate menus if sessions list actually changed
+        if (JSON.stringify(oldSessions) !== JSON.stringify(newSessions)) {
+            createAllContextMenus();
+        }
+
+        // Sync local variables and alarms
+        videoDetectionEnabled = newValue.videoDownloaderEnabled || false;
+        hibernationEnabled = newValue.hibernationEnabled || false;
+        hibernationTimeout = newValue.hibernationTimeout || 30;
+
+        if (newValue.hibernationEnabled !== oldValue.hibernationEnabled ||
+            newValue.hibernationTimeout !== oldValue.hibernationTimeout) {
+            updateHibernationAlarm(newValue.hibernationEnabled || false, newValue.hibernationTimeout || 30);
+        }
+
+        // Dynamic rule update on settings change
+        updateSecurityRules();
+    }
+});
+
+/**
+ * Context Menu Click Handler
+ */
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+    // Handle session saving commands
+    if (info.menuItemId.startsWith("save")) {
+        const mode = info.menuItemId;
+        const allTabs = await chrome.tabs.query({});
+        let tabsToSave = [];
+
+        if (mode === "saveAllTabs") {
+            tabsToSave = allTabs;
+        } else if (mode === "saveNormalTabs") {
+            tabsToSave = allTabs.filter(t => !t.incognito);
+        } else if (mode === "saveIncognitoTabs") {
+            tabsToSave = allTabs.filter(t => t.incognito);
+        } else if (mode === "saveCurrentTab") {
+            tabsToSave = [tab];
+        }
+
+        if (tabsToSave.length === 0) {
+            chrome.notifications.create({
+                type: 'basic',
+                iconUrl: ASSETS.icons.icon128,
+                title: 'Session Manager',
+                message: 'No suitable tabs found to save.'
+            });
+            return;
+        }
+
+        const timestamp = new Date().toLocaleString();
+        const sessionName = `Quick Session (${timestamp})`;
+
+        const sessionData = {
+            id: Date.now(),
+            name: sessionName,
+            date: new Date().toISOString(),
+            tabType: mode.replace("save", "").toLowerCase(),
+            tabs: tabsToSave.map(t => ({
+                url: t.url,
+                title: t.title,
+                incognito: t.incognito
+            }))
+        };
+
+        const result = await chrome.storage.local.get(['appSettings']);
+        const settings = result.appSettings ? { ...DEFAULT_SETTINGS, ...result.appSettings } : DEFAULT_SETTINGS;
+        if (!settings.savedSessions) settings.savedSessions = [];
+        settings.savedSessions.unshift(sessionData);
+
+        await chrome.storage.local.set({ appSettings: settings });
+
+        chrome.notifications.create({
+            type: 'basic',
+            iconUrl: ASSETS.icons.icon128,
+            title: 'Session Manager',
+            message: `Saved session "${sessionName}" with ${tabsToSave.length} tabs.`
+        });
+    }
+    // Handle session restoration commands
+    else if (info.menuItemId.startsWith("restoreSession_")) {
+        const sessionId = parseInt(info.menuItemId.split("_")[1]);
+        const result = await chrome.storage.local.get(['appSettings']);
+        const settings = result.appSettings ? { ...DEFAULT_SETTINGS, ...result.appSettings } : DEFAULT_SETTINGS;
+        const sessions = settings.savedSessions || [];
+        const session = sessions.find(s => s.id === sessionId);
+
+        if (session) {
+            // Group tabs by incognito status to open in correct window types
+            const normalTabs = session.tabs.filter(t => !t.incognito);
+            const incognitoTabs = session.tabs.filter(t => t.incognito);
+
+            if (normalTabs.length > 0) {
+                try {
+                    chrome.windows.create({
+                        url: normalTabs.map(t => t.url),
+                        incognito: false
+                    });
+                } catch (error) {
+                    console.error("Error creating normal window:", error);
+                }
+            }
+
+            if (incognitoTabs.length > 0) {
+                chrome.extension.isAllowedIncognitoAccess(async (isAllowed) => {
+                    if (isAllowed) {
+                        try {
+                            chrome.windows.create({
+                                url: incognitoTabs.map(t => t.url),
+                                incognito: true
+                            });
+                        } catch (error) {
+                            console.error("Error creating incognito window:", error);
+                        }
+                    } else {
+                        // Fallback to normal window if incognito access not granted
+                        try {
+                            chrome.windows.create({
+                                url: incognitoTabs.map(t => t.url),
+                                incognito: false
+                            });
+                        } catch (error) {
+                            console.error("Error creating fallback normal window:", error);
+                        }
+                    }
+                });
+            }
+        }
+    }
+    // Handle Quick Panic and Vault additions
+    else if (info.menuItemId === "quickPanic") {
+        executePanic();
+    } else if (info.menuItemId === "addToVault") {
+        const item = {
+            id: Date.now(),
+            title: tab.title || "No Title",
+            url: info.linkUrl || info.pageUrl,
+            date: new Date().toISOString()
+        };
+
+        chrome.storage.local.get(['privacyVault'], (result) => {
+            const vault = result.privacyVault || [];
+            vault.push(item);
+            chrome.storage.local.set({ privacyVault: vault }, () => {
+                syncVaultToCloud();
+                chrome.notifications.create({
+                    type: 'basic',
+                    title: 'Privacy Vault',
+                    message: `Đã thêm "${item.title.substring(0, 20)}..." vào két sắt bí mật!`,
+                    iconUrl: ASSETS.icons.icon128
+                });
+            });
+        });
+    } else if (info.menuItemId === "addToFavorites") {
+        const favoriteItem = {
+            name: tab.title || "Website",
+            url: info.linkUrl || info.pageUrl
+        };
+        chrome.storage.local.get(['appSettings'], (result) => {
+            const settings = result.appSettings || DEFAULT_SETTINGS;
+            if (!settings.favoriteWebsites) settings.favoriteWebsites = [];
+
+            // Check if already exists
+            const exists = settings.favoriteWebsites.some(f => f.url === favoriteItem.url);
+            if (!exists) {
+                settings.favoriteWebsites.push(favoriteItem);
+                chrome.storage.local.set({ appSettings: settings }, () => {
+                    chrome.notifications.create({
+                        type: 'basic',
+                        title: 'Favorite Websites',
+                        message: `Đã thêm "${favoriteItem.name}" vào danh sách yêu thích!`,
+                        iconUrl: ASSETS.icons.icon128
+                    });
+                });
+            } else {
+                chrome.notifications.create({
+                    type: 'basic',
+                    title: 'Favorite Websites',
+                    message: `Trang này đã có trong danh sách yêu thích!`,
+                    iconUrl: ASSETS.icons.icon128
+                });
+            }
+        });
+    } else if (info.menuItemId === "quickSaveSession") {
+        executeQuickSaveSession();
+    }
+});
+

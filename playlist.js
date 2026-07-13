@@ -231,14 +231,18 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const titleWrap = document.createElement('div');
             titleWrap.className = 'user-playlist-title';
-            titleWrap.innerHTML = `<span>${pl.type === 'soundcloud_set' ? '💽' : '📂'}</span> ${pl.name}`;
+            const iconSpan = document.createElement('span');
+            iconSpan.textContent = pl.type === 'soundcloud_set' ? '💽' : '📂';
+            titleWrap.appendChild(iconSpan);
+            const nameText = document.createTextNode(' ' + pl.name);
+            titleWrap.appendChild(nameText);
             
             const actionsWrap = document.createElement('div');
             actionsWrap.className = 'user-playlist-actions';
             
             const playBtn = document.createElement('button');
             playBtn.className = 'play-pl-btn';
-            playBtn.innerHTML = '▶ Play';
+            playBtn.textContent = '▶ Play';
             playBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 if (pl.type === 'soundcloud_set') {
@@ -252,7 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const delPlBtn = document.createElement('button');
             delPlBtn.className = 'del-pl-btn';
-            delPlBtn.innerHTML = '🗑';
+            delPlBtn.textContent = '🗑';
             delPlBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 if(confirm('Delete this playlist?')) {
@@ -316,7 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     const delBtn = document.createElement('button');
                     delBtn.className = 'delete-btn';
-                    delBtn.innerHTML = '×';
+                    delBtn.textContent = '×';
                     delBtn.addEventListener('click', (e) => {
                         e.stopPropagation();
                         pl.tracks.splice(tIndex, 1);
@@ -338,7 +342,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 body.appendChild(trackList);
             } else {
-                body.innerHTML = '<div style="font-size: 12px; color: var(--text-muted); opacity: 0.7;">SoundCloud Set. Track details are loaded dynamically inside the player.</div>';
+                const infoDiv = document.createElement('div');
+                Object.assign(infoDiv.style, { fontSize: '12px', color: 'var(--text-muted)', opacity: '0.7' });
+                infoDiv.textContent = 'SoundCloud Set. Track details are loaded dynamically inside the player.';
+                body.appendChild(infoDiv);
             }
             
             header.addEventListener('click', () => {

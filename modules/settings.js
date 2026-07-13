@@ -1,4 +1,4 @@
-import { elements, settings, notify, saveSettings, updateUILanguage, applySettings, state, showConfirm } from '../popup.js';
+import { elements, ASSETS, settings, notify, saveSettings, updateUILanguage, applySettings, state, showConfirm } from '../popup.js';
 import { isValidUrl, hashPassword, generateMasterKey, decryptData, encryptData, createElement } from './utils.js';
 
 const translations = window.translations;
@@ -36,7 +36,7 @@ export function renderCustomBgList() {
         const preview = document.createElement('img');
         preview.src = url;
         preview.className = 'custom-bg-item-preview';
-        preview.onerror = () => { preview.onerror = null; preview.src = 'icons/extension.png'; };
+        preview.onerror = () => { preview.onerror = null; preview.src = ASSETS.icons.extension; };
 
         const urlSpan = document.createElement('span');
         urlSpan.className = 'custom-bg-item-url';
@@ -130,7 +130,7 @@ export function applyPlayerBackground() {
     if (settings.playerBackgroundType === 'custom' && settings.customBgUrl) {
         bgImage = `url('${settings.customBgUrl}')`;
     } else {
-        bgImage = "url('images/anh-phong-canh-66-1.jpg')";
+        bgImage = "url(ASSETS.images.defaultBg)";
     }
 
     playerContainer.style.backgroundImage = `${gradient}, ${bgImage}`;

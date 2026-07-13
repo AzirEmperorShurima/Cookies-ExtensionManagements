@@ -155,26 +155,47 @@ async function openMessage(id) {
     elements.detailSubject.textContent = 'Loading...';
     elements.detailFrom.textContent = '';
     elements.detailDate.textContent = '';
-    elements.detailBody.innerHTML = '<div style="text-align:center; padding: 20px;">Loading message...</div>';
+    
+    elements.detailBody.textContent = '';
+    const loadingDiv = createElement('div', { style: { textAlign: 'center', padding: '20px' } }, 'Loading message...');
+    elements.detailBody.appendChild(loadingDiv);
 
     try {
-        const response = await fetch(`https://www.1secmail.com/api/v1/?action=readMessage&login=\${currentLogin}&domain=\${currentDomain}&id=\${id}`);
+        const response = await fetch(`https://www.1secmail.com/api/v1/?action=readMessage&login=${currentLogin}&domain=${currentDomain}&id=${id}`);
         const msg = await response.json();
         elements.detailSubject.textContent = msg.subject || 'No Subject';
         elements.detailFrom.textContent = msg.from;
         elements.detailDate.textContent = formatTime(msg.date);
 
-        // Render HTML or fallback to text
+        elements.detailBody.textContent = '';
+        
+        // Render HTML safely inside sandbox or fallback to text
         if (msg.htmlBody) {
-            elements.detailBody.innerHTML = msg.htmlBody;
+            const iframe = createElement('iframe', {
+                sandbox: '',
+                style: { width: '100%', height: '400px', border: 'none', background: '#fff', borderRadius: '4px' },
+                srcdoc: msg.htmlBody
+            });
+            elements.detailBody.appendChild(iframe);
         } else if (msg.textBody) {
             elements.detailBody.textContent = msg.textBody;
         } else {
-            elements.detailBody.innerHTML = '<em>Empty message</em>';
+            const em = createElement('em', {}, 'Empty message');
+            elements.detailBody.appendChild(em);
         }
     } catch (e) {
-        elements.detailBody.innerHTML = '<div style="color:red;">Error loading message.</div>';
+        elements.detailBody.textContent = '';
+        const errDiv = createElement('div', { style: { color: 'red' } }, 'Error loading message.');
+        elements.detailBody.appendChild(errDiv);
     }
+}
+
+function createElement(tag, props = {}, text = '') {
+    const el = document.createElement(tag);
+    Object.assign(el, props);
+    if (props.style) Object.assign(el.style, props.style);
+    if (text) el.textContent = text;
+    return el;
 }
 
 function escapeHTML(str) {

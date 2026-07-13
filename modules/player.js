@@ -1,4 +1,4 @@
-import { elements, settings, notify, saveSettings, state, showConfirm } from '../popup.js';
+import { elements, ASSETS, settings, notify, saveSettings, state, showConfirm } from '../popup.js';
 import { isValidUrl, createElement } from './utils.js';
 
 const translations = window.translations;
@@ -296,8 +296,8 @@ export function renderFavoriteWebsites() {
         try {
             const origin = new URL(fav.url).origin;
             favicon.src = `${origin}/favicon.ico`;
-        } catch { favicon.src = 'icons/about-us.png'; }
-        favicon.onerror = () => { favicon.src = 'icons/about-us.png'; };
+        } catch { favicon.src = ASSETS.icons.aboutUs; }
+        favicon.onerror = () => { favicon.src = ASSETS.icons.aboutUs; };
 
         const nameSpan = document.createElement('span');
         nameSpan.className = 'favorite-name';
