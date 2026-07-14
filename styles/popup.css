@@ -2630,7 +2630,9 @@ body.dark-mode .action-btn {
 
 .bg-preview-img.zoomed {
     cursor: zoom-out;
-    transform: scale(2.0) translateZ(0);
+    transform: scale(3.5) translateZ(0);
+    image-rendering: -webkit-optimize-contrast; /* Make it sharper when zoomed */
+    image-rendering: crisp-edges;
     z-index: 10;
 }
 

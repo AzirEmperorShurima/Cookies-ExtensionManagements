@@ -1,5 +1,5 @@
-import { elements, ASSETS, settings, notify, saveSettings, showConfirm } from '../popup.js';
-import { debounce, createElement } from './utils.js';
+import { elements, settings, notify, saveSettings, showConfirm } from '../popup.js';
+import { debounce, createElement, ASSETS } from './utils.js';
 
 let currentCookiesByDomain = {};
 let cachedCookies = [];

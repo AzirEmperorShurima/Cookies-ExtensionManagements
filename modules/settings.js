@@ -1,5 +1,5 @@
-import { elements, ASSETS, settings, notify, saveSettings, updateUILanguage, applySettings, state, showConfirm } from '../popup.js';
-import { isValidUrl, hashPassword, generateMasterKey, decryptData, encryptData, createElement } from './utils.js';
+import { elements, settings, notify, saveSettings, updateUILanguage, applySettings, state, showConfirm } from '../popup.js';
+import { isValidUrl, hashPassword, generateMasterKey, decryptData, encryptData, createElement, ASSETS } from './utils.js';
 
 const translations = window.translations;
 const getDict = () => translations[settings.language || 'vi'] || translations.vi;
@@ -416,7 +416,7 @@ export async function init() {
         sessionNameInput, sessionTabTypeSelect, selectAllTabsBtn, deselectAllTabsBtn,
         cancelSaveSessionBtn, confirmSaveSessionBtn, tabSelectionArea, settingsSearchInput,
         clearSettingsSearch, playerBackgroundType, customBgUrlInput, addCustomBgBtn,
-        customCursorInput, setCustomCursorBtn, resetCursorBtn, playerIsolatedIdentityToggle
+        customCursorInput, setCustomCursorBtn, resetCursorBtn, customCursorToggle, customCursorInputContainer, playerIsolatedIdentityToggle
     } = elements;
 
     // Load initial listings
@@ -1041,6 +1041,22 @@ export async function init() {
         await import('./vault.js').then(m => m.loadVault());
     }
 }
+
+if (customCursorToggle) {
+    customCursorToggle.addEventListener('change', (e) => {
+        if (e.target.checked) {
+            if (customCursorInputContainer) customCursorInputContainer.style.display = 'flex';
+        } else {
+            if (customCursorInputContainer) customCursorInputContainer.style.display = 'none';
+            settings.customCursor = '';
+            saveSettings();
+            import('../popup.js').then(m => m.applySettings());
+            if (customCursorInput) customCursorInput.value = '';
+            notify(getDict().cursorReset || 'Đã khôi phục con trỏ chuột mặc định.', 'success');
+        }
+    });
+}
+
 // Custom Cursor event handlers
 if (setCustomCursorBtn && customCursorInput) {
     setCustomCursorBtn.addEventListener('click', () => {
@@ -1060,39 +1076,92 @@ if (setCustomCursorBtn && customCursorInput) {
     });
 }
 
-if (resetCursorBtn) {
-    resetCursorBtn.addEventListener('click', () => {
-        settings.customCursor = '';
-        saveSettings();
-        import('../popup.js').then(m => m.applySettings());
-        if (customCursorInput) customCursorInput.value = '';
-        notify(getDict().cursorReset || 'Đã khôi phục con trỏ chuột mặc định.', 'success');
-    });
-}
 
-// Preview Image click zoom at clicked point
+// Preview Image zoom and pan logic
 if (elements.bgPreviewImg) {
-    elements.bgPreviewImg.addEventListener('click', (e) => {
-        const img = elements.bgPreviewImg;
-        const container = document.getElementById('bgPreviewContainer');
+    const img = elements.bgPreviewImg;
+    const container = document.getElementById('bgPreviewContainer');
 
-        const isZoomed = img.classList.toggle('zoomed');
+    let zoomState = 0; // 0 = 1x, 1 = 2x, 2 = 3.5x
+    const scales = [1, 2, 3.5];
+    let isDragging = false;
+    let dragStartX = 0, dragStartY = 0;
+    let currentTx = 0, currentTy = 0;
+    let isDragMove = false;
 
-        if (isZoomed) {
-            const rect = img.getBoundingClientRect();
-            const x = ((e.clientX - rect.left) / rect.width) * 100;
-            const y = ((e.clientY - rect.top) / rect.height) * 100;
-
-            img.style.transformOrigin = `${x}% ${y}%`;
-            if (container) {
-                container.classList.add('zoomed-container');
+    // Reset state when image source changes
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'src') {
+                zoomState = 0;
+                currentTx = 0; currentTy = 0;
+                img.style.transform = 'translate(0px, 0px) scale(1)';
+                img.style.transformOrigin = 'center center';
+                img.style.cursor = 'zoom-in';
+                img.classList.remove('zoomed');
+                if(container) container.classList.remove('zoomed-container');
             }
-        } else {
-            img.style.transformOrigin = 'center center';
-            if (container) {
-                container.classList.remove('zoomed-container');
-            }
+        });
+    });
+    observer.observe(img, { attributes: true });
+
+    img.addEventListener('mousedown', (e) => {
+        if (zoomState > 0) {
+            isDragging = true;
+            isDragMove = false;
+            dragStartX = e.clientX - currentTx;
+            dragStartY = e.clientY - currentTy;
+            img.style.cursor = 'grabbing';
+            img.style.transition = 'none';
         }
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        isDragMove = true;
+        currentTx = e.clientX - dragStartX;
+        currentTy = e.clientY - dragStartY;
+        img.style.transform = `translate(${currentTx}px, ${currentTy}px) scale(${scales[zoomState]})`;
+    });
+
+    window.addEventListener('mouseup', () => {
+        if (isDragging) {
+            isDragging = false;
+            img.style.cursor = zoomState > 0 ? 'grab' : 'zoom-in';
+            img.style.transition = 'transform 0.3s ease';
+            // slight delay to prevent click firing
+            setTimeout(() => { isDragMove = false; }, 50);
+        }
+    });
+
+    img.addEventListener('click', (e) => {
+        if (isDragMove) return;
+
+        zoomState = (zoomState + 1) % 3;
+
+        if (zoomState === 0) {
+            currentTx = 0;
+            currentTy = 0;
+            img.style.transformOrigin = 'center center';
+            img.style.cursor = 'zoom-in';
+            img.classList.remove('zoomed');
+            if (container) container.classList.remove('zoomed-container');
+        } else {
+            if (zoomState === 1) {
+                const rect = img.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width) * 100;
+                const y = ((e.clientY - rect.top) / rect.height) * 100;
+                img.style.transformOrigin = `${x}% ${y}%`;
+                currentTx = 0;
+                currentTy = 0;
+            }
+            img.style.cursor = 'grab';
+            img.classList.add('zoomed');
+            if (container) container.classList.add('zoomed-container');
+        }
+
+        img.style.transition = 'transform 0.3s ease';
+        img.style.transform = `translate(${currentTx}px, ${currentTy}px) scale(${scales[zoomState]})`;
     });
 }
 

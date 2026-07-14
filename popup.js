@@ -1118,7 +1118,7 @@ function renderTabManager(searchQuery = '') {
                 if (favIconUrl.startsWith('chrome://')) favIconUrl = ASSETS.icons.default;
 
                 groupHeader.innerHTML = `
-                    <img src="${favIconUrl}" width="16" height="16" onerror="this.src=ASSETS.icons.default">
+                    <img src="${favIconUrl}" width="16" height="16" onerror="this.src='${ASSETS.icons.default}'">
                     <span style="flex:1">${domain}</span>
                     <span class="tab-group-count">${groups[domain].length}</span>
                 `;

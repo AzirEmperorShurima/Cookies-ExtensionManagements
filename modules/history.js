@@ -1,5 +1,5 @@
-import { elements, ASSETS, settings, notify, toggleSection, showConfirm } from '../popup.js';
-import { debounce, createElement } from './utils.js';
+import { elements, settings, notify, toggleSection, showConfirm } from '../popup.js';
+import { debounce, createElement, ASSETS } from './utils.js';
 
 const translations = window.translations;
 

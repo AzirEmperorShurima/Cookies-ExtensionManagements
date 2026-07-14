@@ -184,8 +184,8 @@ export function parseHTML(htmlString) {
 
 export const ASSETS = {
     icons: {
-        default: ASSETS.icons.default,
-        icon128: ASSETS.icons.icon128,
+        default: "icons/icon48.png",
+        icon128: "icons/icon128.png",
         extension: "icons/extension.png",
         extensionDefault: "icons/extension-default.png",
         dev: "icons/dev.png",

@@ -1,5 +1,5 @@
-import { elements, ASSETS, settings, notify, saveSettings, state, showConfirm } from '../popup.js';
-import { isValidUrl, createElement } from './utils.js';
+import { elements, settings, notify, saveSettings, state, showConfirm } from '../popup.js';
+import { isValidUrl, createElement, ASSETS } from './utils.js';
 
 const translations = window.translations;
 

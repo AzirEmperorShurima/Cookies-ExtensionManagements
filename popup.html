@@ -602,11 +602,17 @@
                 <div class="setting-item"
                     style="border-bottom: none; flex-direction: column; align-items: stretch; gap: 8px; padding-bottom: var(--spacing-md);">
                     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                        <span data-i18n="customCursor">Custom Cursor (PNG/CUR)</span>
-                        <button class="info-icon"
-                            data-info="Nhập URL hình ảnh định dạng PNG/CUR kích thước nhỏ (khuyên dùng 24x24 hoặc 32x32) làm con trỏ tùy chỉnh cho extension.">ℹ️</button>
+                        <div>
+                            <span data-i18n="customCursor">Custom Cursor (PNG/CUR)</span>
+                            <button class="info-icon"
+                                data-info="Bật để nhập URL hình ảnh định dạng PNG/CUR làm con trỏ tùy chỉnh cho extension.">ℹ</button>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="customCursorToggle">
+                            <span class="slider"></span>
+                        </label>
                     </div>
-                    <div style="display: flex; gap: 8px; align-items: center; width: 100%; margin-top: 4px;">
+                    <div id="customCursorInputContainer" style="display: none; gap: 8px; align-items: center; width: 100%; margin-top: 4px;">
                         <input type="text" id="customCursorInput" placeholder="https://example.com/cursor.png"
                             style="flex-grow: 1;">
                         <button id="setCustomCursorBtn" class="action-btn" style="padding: 6px 12px;"
