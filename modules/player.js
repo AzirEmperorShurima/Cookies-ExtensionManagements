@@ -2,6 +2,7 @@ import { elements, settings, notify, saveSettings, state, showConfirm } from '..
 import { isValidUrl, createElement, ASSETS } from './utils.js';
 
 const translations = window.translations;
+const getDict = () => translations[settings.language || 'vi'] || translations.vi;
 
 let playerWidth = 600;
 let playerHeight = 400;
@@ -348,7 +349,7 @@ export function checkStealthLock() {
                         currentUrlIndex = playerHistory.length - 1;
                         updatePlayerNavState();
                     }
-                    notify('Dang khoi phuc noi dung...', 'success');
+                    notify(getDict().restoringContent || 'Đang khôi phục nội dung...', 'success');
                 }
             });
         }

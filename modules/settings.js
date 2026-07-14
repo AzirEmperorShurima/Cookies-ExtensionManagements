@@ -717,7 +717,7 @@ export async function init() {
         googleSafeSearchSelect.addEventListener('change', (e) => {
             settings.googleSafeSearch = e.target.value;
             saveSettings();
-            notify('Google SafeSearch Override set to ' + settings.googleSafeSearch, 'success');
+            notify((getDict().googleSafeSearchSet || 'Đã đặt Google SafeSearch thành ') + settings.googleSafeSearch, 'success');
         });
     }
 
@@ -1015,7 +1015,7 @@ export async function init() {
 
             // Pull items using the new key
             import('./vault.js').then(v => {
-                if (v.renderVaultList) v.renderVaultList();
+                if (v.loadVault) v.loadVault();
             });
         });
     }
@@ -1028,19 +1028,18 @@ export async function init() {
                 if (cloudData.appSettings) {
                     Object.assign(settings, cloudData.appSettings);
                     saveSettings();
-                    notify('Settings pulled from Cloud!', 'success');
+                    notify(getDict().settingsPulled || 'Đã kéo cài đặt từ Cloud!', 'success');
                     setTimeout(() => location.reload(), 1000);
                 } else {
-                    notify('No settings found in Cloud.', 'warning');
+                    notify(getDict().noSettingsInCloud || 'Không tìm thấy cài đặt trên Cloud.', 'warning');
                 }
             } catch (e) {
                 console.error(e);
-                notify('Error pulling from Cloud.', 'error');
+                notify(getDict().errorPullingCloud || 'Lỗi khi kéo từ Cloud.', 'error');
             }
         });
         await import('./vault.js').then(m => m.loadVault());
     }
-}
 
 if (customCursorToggle) {
     customCursorToggle.addEventListener('change', (e) => {
@@ -1164,6 +1163,7 @@ if (elements.bgPreviewImg) {
         img.style.transform = `translate(${currentTx}px, ${currentTy}px) scale(${scales[zoomState]})`;
     });
 }
+} // End of init()
 
 export function renderSafeUrls() {
     const { safeUrlsList } = elements;
@@ -1198,7 +1198,7 @@ export function renderSafeUrls() {
             settings.safeUrls.splice(index, 1);
             saveSettings();
             renderSafeUrls();
-            notify('Safe URL removed.', 'warning');
+            notify(getDict().safeUrlRemoved || 'Đã xoá Safe URL.', 'warning');
         };
 
         item.append(info, deleteBtn);

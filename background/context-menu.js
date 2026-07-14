@@ -2,14 +2,27 @@
  * Context Menu Management
  * Using Resilient Manifest V3 style to ensure menus are recreated when needed.
  */
+
+// Helper to create context menu and suppress duplicate id errors
+function safeCreateMenu(options) {
+    chrome.contextMenus.create(options, () => {
+        if (chrome.runtime.lastError) {
+            const msg = chrome.runtime.lastError.message;
+            if (msg && !msg.includes('duplicate id')) {
+                console.error('Context menu error for ' + options.id + ':', msg);
+            }
+        }
+    });
+}
+
 function createAllContextMenus() {
     chrome.contextMenus.removeAll(() => {
-        checkLastError("sessionManager");
-        chrome.contextMenus.create({ id: "addToVault", title: "Add to Privacy Vault 🔐", contexts: ["page", "link"] });
-        chrome.contextMenus.create({ id: "addToFavorites", title: "Add to Favorite Websites ⭐", contexts: ["page", "link"] });
-        chrome.contextMenus.create({ id: "quickPanic", title: "Quick Panic Button 🚨", contexts: ["all"] });
-        chrome.contextMenus.create({ id: "quickSaveSession", title: "Quick Save Session 📋", contexts: ["all"] });
-        chrome.contextMenus.create({
+        
+        safeCreateMenu({ id: "addToVault", title: "Add to Privacy Vault 🔐", contexts: ["page", "link"] });
+        safeCreateMenu({ id: "addToFavorites", title: "Add to Favorite Websites ⭐", contexts: ["page", "link"] });
+        safeCreateMenu({ id: "quickPanic", title: "Quick Panic Button 🚨", contexts: ["all"] });
+        safeCreateMenu({ id: "quickSaveSession", title: "Quick Save Session 📋", contexts: ["all"] });
+        safeCreateMenu({
             id: "sessionManager",
             title: "📋 Session Manager",
             contexts: ["page", "link"]
@@ -26,14 +39,14 @@ function createAllContextMenus() {
         ];
 
         staticItems.forEach(item => {
-            chrome.contextMenus.create({
+            safeCreateMenu({
                 id: item.id,
                 parentId: "sessionManager",
                 title: item.title,
                 type: item.type || "normal",
                 contexts: ["page", "link"]
             });
-            checkLastError(item.id);
+            
         });
 
         // 3. Update restore session items from storage
@@ -42,8 +55,8 @@ function createAllContextMenus() {
             const sessions = settings.savedSessions || [];
 
             if (sessions.length === 0) {
-                checkLastError("noSessions");
-                chrome.contextMenus.create({
+                
+                safeCreateMenu({
                     id: "noSessions",
                     parentId: "restoreSessionParent",
                     title: "(No saved sessions)",
@@ -53,25 +66,28 @@ function createAllContextMenus() {
             } else {
                 // Show up to 5 most recent sessions
                 sessions.slice(0, 5).forEach((session, index) => {
-                    chrome.contextMenus.create({
+                    safeCreateMenu({
                         id: `restoreSession_${session.id}`,
                         parentId: "restoreSessionParent",
                         title: `${index + 1}. ${session.name}`,
                         contexts: ["page", "link"]
                     });
-                    checkLastError(`restoreSession_${session.id}`);
+                    
                 });
             }
         });
     });
 }
-function checkLastError(id) {
-    if (chrome.runtime.lastError) {
-        const msg = chrome.runtime.lastError.message;
-        if (msg && !msg.includes("duplicate id")) {
-            console.error(`Context menu error for ${id}:`, msg);
-        }
+
+function safeCreateMenu({id, title, contexts, parentId, type, enabled }){
+    chrome.contextMenus.create({id, title, contexts, parentId, type, enabled }, () => {
+  if (chrome.runtime.lastError) {
+    const msg = chrome.runtime.lastError.message;
+    if (msg && !msg.includes("duplicate id")) {
+      console.error(`Context menu error for ${id}:`, msg);
     }
+  }
+});
 }
 chrome.runtime.onInstalled.addListener(async (details) => {
     if (details.reason === 'install') {

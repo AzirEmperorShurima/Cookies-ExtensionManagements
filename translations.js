@@ -1,6 +1,15 @@
 const translations = {
     vi: {
         pageTitle: "Privacy & Cookie Manager",
+        restoringContent: "Đang khôi phục nội dung...",
+        enterSyncPass: "Vui lòng nhập Mật khẩu Đồng bộ",
+        syncSuccess: "Đã đồng bộ dữ liệu lên Cloud an toàn",
+        syncRestoreSuccess: "Khôi phục dữ liệu thành công. Vui lòng tải lại trang.",
+        safeUrlRemoved: "Đã xoá Safe URL.",
+        settingsPulled: "Đã kéo cài đặt từ Cloud!",
+        noSettingsInCloud: "Không tìm thấy cài đặt trên Cloud.",
+        errorPullingCloud: "Lỗi khi kéo từ Cloud.",
+        googleSafeSearchSet: "Đã đặt Google SafeSearch thành ",
         languageLabel: "Language / Ngôn ngữ",
         appearance: "Giao diện & Ngôn ngữ",
         darkMode: "Chế độ tối",

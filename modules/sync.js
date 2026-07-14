@@ -160,7 +160,7 @@ export function initSyncUI() {
     upBtn.addEventListener('click', async () => {
         const pwd = passInput.value;
         if (!pwd) {
-            notify("Vui lòng nhập Mật khẩu Đồng bộ", 'error');
+            notify(getDict().enterSyncPass || 'Vui lòng nhập Mật khẩu Đồng bộ', 'error');
             return;
         }
         
@@ -169,7 +169,7 @@ export function initSyncUI() {
             await uploadToCloud(pwd);
             statusMsg.textContent = "✅ Uploaded successfully!";
             statusMsg.style.color = "#00b894";
-            notify("Đã đồng bộ dữ liệu lên Cloud an toàn", "success");
+            notify(getDict().syncSuccess || 'Đã đồng bộ dữ liệu lên Cloud an toàn', 'success');
         } catch (e) {
             statusMsg.textContent = "❌ " + e.message;
             statusMsg.style.color = "#d63031";
@@ -180,7 +180,7 @@ export function initSyncUI() {
     downBtn.addEventListener('click', async () => {
         const pwd = passInput.value;
         if (!pwd) {
-            notify("Vui lòng nhập Mật khẩu Đồng bộ", 'error');
+            notify(getDict().enterSyncPass || 'Vui lòng nhập Mật khẩu Đồng bộ', 'error');
             return;
         }
         
@@ -189,7 +189,7 @@ export function initSyncUI() {
             await restoreFromCloud(pwd);
             statusMsg.textContent = "✅ Restored successfully! Please reload extension.";
             statusMsg.style.color = "#00b894";
-            notify("Khôi phục dữ liệu thành công. Vui lòng tải lại trang.", "success");
+            notify(getDict().syncRestoreSuccess || 'Khôi phục dữ liệu thành công. Vui lòng tải lại trang.', 'success');
             
             // Reload after 2 seconds
             setTimeout(() => window.location.reload(), 2000);
