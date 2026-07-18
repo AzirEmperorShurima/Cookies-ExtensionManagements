@@ -1,5 +1,6 @@
 import { elements, settings, notify, saveSettings, updateUILanguage, applySettings, state, showConfirm } from '../popup.js';
 import { isValidUrl, hashPassword, generateMasterKey, decryptData, encryptData, createElement, ASSETS } from './utils.js';
+import { updatePlayerSize } from './player.js';
 
 const translations = window.translations;
 const getDict = () => translations[settings.language || 'vi'] || translations.vi;
@@ -603,6 +604,60 @@ export async function init() {
             saveSettings();
             chrome.runtime.sendMessage({ type: 'updateSecurityRules' });
             notify(`${getDict().playerIsolatedIdentity || 'Isolated Identity'} ${settings.playerIsolatedIdentity ? (getDict().enabled || 'enabled') : (getDict().disabled || 'disabled')}`, 'success');
+        });
+    }
+
+    if (elements.defaultPlayerWidth) {
+        elements.defaultPlayerWidth.addEventListener('change', (e) => {
+            const val = parseInt(e.target.value, 10);
+            if (val >= 360 && val <= 800) {
+                settings.defaultPlayerWidth = val;
+                saveSettings();
+            }
+        });
+    }
+
+    if (elements.defaultPlayerHeight) {
+        elements.defaultPlayerHeight.addEventListener('change', (e) => {
+            const val = parseInt(e.target.value, 10);
+            if (val >= 300 && val <= 800) {
+                settings.defaultPlayerHeight = val;
+                saveSettings();
+            }
+        });
+    }
+
+    if (elements.followDefaultPlayerSizeToggle) {
+        elements.followDefaultPlayerSizeToggle.addEventListener('change', async (e) => {
+            settings.followDefaultPlayerSize = e.target.checked;
+            if (settings.followDefaultPlayerSize && elements.force100PercentToggle && elements.force100PercentToggle.checked) {
+                settings.force100Percent = false;
+                elements.force100PercentToggle.checked = false;
+            }
+            saveSettings();
+            
+            // Apply dynamically if player module is loaded
+            if (ModuleLoader.loaded.has('player')) {
+                const { updatePlayerSize } = await import('./player.js');
+                updatePlayerSize();
+            }
+        });
+    }
+
+    if (elements.force100PercentToggle) {
+        elements.force100PercentToggle.addEventListener('change', async (e) => {
+            settings.force100Percent = e.target.checked;
+            if (settings.force100Percent && elements.followDefaultPlayerSizeToggle && elements.followDefaultPlayerSizeToggle.checked) {
+                settings.followDefaultPlayerSize = false;
+                elements.followDefaultPlayerSizeToggle.checked = false;
+            }
+            saveSettings();
+            
+            // Apply dynamically if player module is loaded
+            if (ModuleLoader.loaded.has('player')) {
+                const { updatePlayerSize } = await import('./player.js');
+                updatePlayerSize();
+            }
         });
     }
 

@@ -68,6 +68,7 @@ export const elements = {
     defaultPlayerWidth: document.getElementById('defaultPlayerWidth'),
     defaultPlayerHeight: document.getElementById('defaultPlayerHeight'),
     followDefaultPlayerSizeToggle: document.getElementById('followDefaultPlayerSizeToggle'),
+    force100PercentToggle: document.getElementById('force100PercentToggle'),
     playerIsolatedIdentityToggle: document.getElementById('playerIsolatedIdentityToggle'),
     autoClearToggle: document.getElementById('autoClearToggle'),
     showNotifyToggle: document.getElementById('showNotifyToggle'),
@@ -271,7 +272,7 @@ export let settings = {
     showNotifications: true,
     cookieDestroyer: false,
     historyIncognito: false,
-    defaultPlayerWidth: 100,
+    defaultPlayerWidth: 600,
     defaultPlayerHeight: 400,
     followDefaultPlayerSize: true,
     searchEngine: 'google',
@@ -588,6 +589,11 @@ export function applySettings() {
     if (elements.alwaysRequirePasswordToggle) elements.alwaysRequirePasswordToggle.checked = settings.alwaysRequirePassword ?? true;
     if (elements.showPasswordToggle) elements.showPasswordToggle.checked = settings.showPasswordInSettings ?? true;
     if (elements.playerIsolatedIdentityToggle) elements.playerIsolatedIdentityToggle.checked = settings.playerIsolatedIdentity ?? true;
+    
+    if (elements.defaultPlayerWidth) elements.defaultPlayerWidth.value = settings.defaultPlayerWidth || 600;
+    if (elements.defaultPlayerHeight) elements.defaultPlayerHeight.value = settings.defaultPlayerHeight || 400;
+    if (elements.followDefaultPlayerSizeToggle) elements.followDefaultPlayerSizeToggle.checked = settings.followDefaultPlayerSize ?? true;
+    if (elements.force100PercentToggle) elements.force100PercentToggle.checked = settings.force100Percent ?? false;
 
     if (elements.telegramDownloaderToggle) elements.telegramDownloaderToggle.checked = settings.telegramDownloaderEnabled || false;
     

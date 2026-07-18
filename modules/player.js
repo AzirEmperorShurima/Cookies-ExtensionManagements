@@ -18,6 +18,7 @@ let preFocusHeight = 400;
 // Search engine map - dùng settings.searchEngine của user
 const SEARCH_ENGINES = {
     google: 'https://www.google.com/search?q=',
+    startpage: 'https://www.startpage.com/sp/search?query=',
     duckduckgo: 'https://duckduckgo.com/?q=',
     bing: 'https://www.bing.com/search?q=',
     yahoo: 'https://search.yahoo.com/search?p=',
@@ -43,7 +44,7 @@ function buildSearchUrl(query) {
     
     // Force US region & English for Google to spoof location IP detection
     if (engine === 'google' || (!settings.searchEngine)) {
-        url += '&gl=us&hl=en';
+        // url += '&gl=us&hl=en';
         
         // Apply SafeSearch override (blur, active/filter, off)
         const safeMode = settings.googleSafeSearch || 'blur';
@@ -240,27 +241,36 @@ export function updatePlayerSize() {
     const { playerContainer } = elements;
     if (!playerContainer) return;
 
-    // Detect if we are running in a Side Panel (responsive mode)
-    const isPanelMode = window.innerWidth < 800 && window.innerHeight > 600;
+    // User setting to force 100% width/height (mutually exclusive with Follow Size)
+    const isForce100Percent = settings.force100Percent === true;
     
-    if (isPanelMode) {
+    if (isForce100Percent) {
         document.body.classList.add('is-panel');
-        // Let CSS handle the dimensions (100% width/height)
         document.body.style.width = '';
         document.body.style.height = '';
+        
+        const stealthSection = document.getElementById('stealthSection');
+        if (stealthSection) stealthSection.style.width = '';
+        
         playerContainer.style.width = '';
         playerContainer.style.height = '';
     } else {
         document.body.classList.remove('is-panel');
+        // Do not resize body horizontally to avoid squashing tabs and title.
+        // Let body use its max-width: 800px natively.
+        document.body.style.width = '';
+        
+        const extraHeight = Math.max(0, playerHeight - 400);
+        const targetHeight = Math.min(650, 500 + extraHeight);
+        document.body.style.height = `${targetHeight}px`;
+
+        // Resize the white stealth-section outer frame
+        const stealthSection = document.getElementById('stealthSection');
+        if (stealthSection) stealthSection.style.width = `${playerWidth}px`;
+
         playerContainer.style.width = '100%';
         playerContainer.style.marginLeft = '0';
         playerContainer.style.height = `${playerHeight}px`;
-
-        const extraHeight = Math.max(0, playerHeight - 400);
-        const targetHeight = Math.min(650, 500 + extraHeight);
-
-        document.body.style.width = `${playerWidth}px`;
-        document.body.style.height = `${targetHeight}px`;
     }
 }
 
@@ -394,6 +404,7 @@ export function init() {
 
     if (settings.followDefaultPlayerSize) {
         playerWidth = settings.defaultPlayerWidth || 600;
+        if (playerWidth <= 100) playerWidth = 600;
         playerHeight = settings.defaultPlayerHeight || 400;
     }
     updatePlayerSize();

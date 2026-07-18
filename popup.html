@@ -541,10 +541,10 @@
                     </label>
                 </div>
                 <div class="setting-item">
-                    <span data-i18n="playerWidth">Default Player Width (%)</span>
+                    <span data-i18n="playerWidth">Default Player Width (px)</span>
                     <button class="info-icon"
-                        data-info="Đặt chiều rộng mặc định cho Privacy Player (tính theo phần trăm).">ℹ️</button>
-                    <input type="number" id="defaultPlayerWidth" min="50" max="100" value="100">
+                        data-info="Đặt chiều rộng mặc định cho Privacy Player (tính theo pixel).">ℹ️</button>
+                    <input type="number" id="defaultPlayerWidth" min="360" max="800" value="600">
                 </div>
                 <div class="setting-item">
                     <span data-i18n="playerHeight">Default Player Height (px)</span>
@@ -558,6 +558,15 @@
                         data-info="Khi bật, Privacy Player sẽ luôn trở về kích thước mặc định khi bạn mở lại.">ℹ️</button>
                     <label class="switch">
                         <input type="checkbox" id="followDefaultPlayerSizeToggle" checked>
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <span data-i18n="force100Percent">Force 100% Size</span>
+                    <button class="info-icon"
+                        data-info="Ép khung Privacy Player tự động giãn ra chiếm 100% cửa sổ. (Không thể bật cùng lúc với Follow Size)">ℹ️</button>
+                    <label class="switch">
+                        <input type="checkbox" id="force100PercentToggle">
                         <span class="slider round"></span>
                     </label>
                 </div>

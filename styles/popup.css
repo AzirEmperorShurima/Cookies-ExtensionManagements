@@ -3703,7 +3703,7 @@ body.dark-mode .stat-box {
     display: flex;
     justify-content: flex-start;
     align-items: center;
-    flex-wrap: nowrap !important;
+    flex-wrap: wrap;
     margin-bottom: var(--spacing-md);
     gap: 12px;
     width: 100%;
@@ -3747,11 +3747,8 @@ body.dark-mode .stat-box {
     backdrop-filter: blur(8px);
     width: fit-content;
     box-shadow: var(--glass-shadow);
-    overflow-x: auto;
-    white-space: nowrap;
-    max-width: 260px;
-    scrollbar-width: none;
     flex-shrink: 0;
+    flex-wrap: wrap;
 }
 
 .stealth-controls::-webkit-scrollbar {
@@ -4005,6 +4002,7 @@ body.dark-mode .stat-box {
     margin-top: 6px;
     font-size: 0.78rem;
     transition: var(--transition-smooth);
+    display: none !important;
 }
 
 .player-info-bar.hidden {
@@ -5274,12 +5272,12 @@ body.has-focus-mode .mainControls {
 }
 
 .stealth-section.focus-mode-active .stealth-header {
-    display: none !important;
+    /* Keep header visible */
 }
 
-/* Giữ lại thanh URL ở Focus Mode: không, ở bản cập nhật này ẩn hoàn toàn để Truly Full Screen */
+/* Giữ lại thanh URL ở Focus Mode cho tiện lợi */
 .stealth-section.focus-mode-active .stealth-search {
-    display: none !important;
+    /* Keep search visible */
 }
 
 .stealth-section.focus-mode-active .player-container {
