@@ -95,6 +95,18 @@
     "content_scripts": [
         {
             "matches": [
+                "*://*.youtube.com/*",
+                "*://youtube.com/*"
+            ],
+            "js": [
+                "youtube_adblock.js"
+            ],
+            "run_at": "document_start",
+            "world": "MAIN",
+            "all_frames": true
+        },
+        {
+            "matches": [
                 "https://web.telegram.org/*",
                 "https://webk.telegram.org/*",
                 "https://webz.telegram.org/*"

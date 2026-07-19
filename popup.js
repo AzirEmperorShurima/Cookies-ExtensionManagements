@@ -334,10 +334,13 @@ const ModuleLoader = {
 };
 
 export function saveSettings() {
-    chrome.storage.local.set({ appSettings: settings }, () => {
-        if (settings.vaultSyncEnabled) {
-            syncToCloud({ appSettings: settings }).catch(e => console.error('Sync failed', e));
-        }
+    return new Promise(resolve => {
+        chrome.storage.local.set({ appSettings: settings }, () => {
+            if (settings.vaultSyncEnabled) {
+                syncToCloud({ appSettings: settings }).catch(e => console.error('Sync failed', e));
+            }
+            resolve();
+        });
     });
 }
 

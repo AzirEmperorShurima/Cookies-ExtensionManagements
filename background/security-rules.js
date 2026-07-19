@@ -43,7 +43,9 @@ async function updateSecurityRules() {
         'gstatic.com',
         'google.com',
         'hcaptcha.com',
-        'recaptcha.net'
+        'recaptcha.net',
+        'youtube.com',
+        'googlevideo.com'
     ];
 
     // Kết hợp với whitelist của người dùng để cho phép họ tự khắc phục các trang bị lỗi

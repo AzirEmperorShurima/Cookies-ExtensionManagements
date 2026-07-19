@@ -1,4 +1,4 @@
-import { elements, settings, notify, saveSettings, updateUILanguage, applySettings, state, showConfirm } from '../popup.js';
+import { elements, settings, notify, saveSettings, updateUILanguage, applySettings, state, showConfirm, ModuleLoader } from '../popup.js';
 import { isValidUrl, hashPassword, generateMasterKey, decryptData, encryptData, createElement, ASSETS } from './utils.js';
 import { updatePlayerSize } from './player.js';
 

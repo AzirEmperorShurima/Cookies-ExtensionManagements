@@ -35,16 +35,16 @@ export async function initAdblockUI() {
     updateAdblockStats();
 
     // Bind sự kiện lưu cài đặt nhanh khi thay đổi switch
-    adblockEnabledToggle.onchange = () => {
+    adblockEnabledToggle.onchange = async () => {
         settings.adblockEnabled = adblockEnabledToggle.checked;
-        saveSettings();
+        await saveSettings();
         chrome.runtime.sendMessage({ type: 'updateSecurityRules' });
         notify(dict.adblockSaved || 'Đã lưu cấu hình chặn quảng cáo!');
     };
 
     easylistToggle.onchange = async () => {
         settings.easylistEnabled = easylistToggle.checked;
-        saveSettings();
+        await saveSettings();
         
         try {
             await toggleFilterSource('easylist_1', settings.easylistEnabled);
