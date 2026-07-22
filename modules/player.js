@@ -28,6 +28,9 @@ const SEARCH_ENGINES = {
     yandex: 'https://yandex.com/search/?text=',
     swisscows: 'https://swisscows.com/web?query=',
     kagi: 'https://kagi.com/search?q=',
+    baidu: 'https://www.baidu.com/s?wd=',
+    coccoc: 'https://coccoc.com/search?query=',
+    tor: 'https://duckduckgogg42xjoc72x3spihqvjkiqx2i6f52q2lq4h4nht5q2q.onion/?q='
 };
 
 // ─── URL Helpers ──────────────────────────────────────────────────────────────
@@ -224,6 +227,7 @@ export function loadPlayerContent() {
         notify('Privacy Player: Đang tải...', 'success');
     } else {
         const searchUrl = buildSearchUrl(raw);
+        stealthUrl.value = searchUrl; // Fix: Update the address bar to the loaded URL
         _addToHistory(searchUrl);
         _loadIntoPlayer(searchUrl);
         notify('Privacy Player: Đang tìm kiếm...', 'success');
@@ -886,6 +890,16 @@ export function init() {
             const val = e.target.value;
             chrome.storage.local.set({ privacyPlayerGeoMode: val });
             notify('Đã cập nhật vị trí giả lập!', 'success');
+        });
+    }
+
+    const overlaySearchEngine = document.getElementById('overlaySearchEngine');
+    if (overlaySearchEngine) {
+        overlaySearchEngine.addEventListener('change', (e) => {
+            settings.searchEngine = e.target.value;
+            saveSettings();
+            if (elements.searchEngineSelect) elements.searchEngineSelect.value = settings.searchEngine;
+            notify('Đã cập nhật công cụ tìm kiếm', 'success');
         });
     }
 

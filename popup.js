@@ -71,7 +71,7 @@ export const elements = {
     heightUnitBtn: document.getElementById('heightUnitBtn'),
     followDefaultPlayerSizeToggle: document.getElementById('followDefaultPlayerSizeToggle'),
     force100PercentToggle: document.getElementById('force100PercentToggle'),
-    defaultSearchEngine: document.getElementById('defaultSearchEngine'),
+
     overlaySearchEngine: document.getElementById('overlaySearchEngine'),
     geoDropdown: document.getElementById('geoDropdown'),
     playerIsolatedIdentityToggle: document.getElementById('playerIsolatedIdentityToggle'),
@@ -612,7 +612,7 @@ export function applySettings() {
     }
     if (elements.followDefaultPlayerSizeToggle) elements.followDefaultPlayerSizeToggle.checked = settings.followDefaultPlayerSize ?? true;
     if (elements.force100PercentToggle) elements.force100PercentToggle.checked = settings.force100Percent ?? false;
-    if (elements.defaultSearchEngine) elements.defaultSearchEngine.value = settings.searchEngine || 'google';
+
     if (elements.overlaySearchEngine) elements.overlaySearchEngine.value = settings.searchEngine || 'google';
     if (elements.searchEngineSelect) elements.searchEngineSelect.value = settings.searchEngine || 'google';
     if (elements.geoDropdown) elements.geoDropdown.value = settings.blockGeolocation ? 'block' : 'allow';

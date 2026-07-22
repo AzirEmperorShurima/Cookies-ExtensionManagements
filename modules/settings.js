@@ -598,25 +598,9 @@ export async function init() {
         });
     }
 
-    if (elements.defaultSearchEngine) {
-        elements.defaultSearchEngine.addEventListener('change', (e) => {
-            settings.searchEngine = e.target.value;
-            saveSettings();
-            if (elements.overlaySearchEngine) elements.overlaySearchEngine.value = settings.searchEngine;
-            if (searchEngineSelect) searchEngineSelect.value = settings.searchEngine;
-            notify('Đã cập nhật công cụ tìm kiếm', 'success');
-        });
-    }
 
-    if (elements.overlaySearchEngine) {
-        elements.overlaySearchEngine.addEventListener('change', (e) => {
-            settings.searchEngine = e.target.value;
-            saveSettings();
-            if (elements.defaultSearchEngine) elements.defaultSearchEngine.value = settings.searchEngine;
-            if (searchEngineSelect) searchEngineSelect.value = settings.searchEngine;
-            notify('Đã cập nhật công cụ tìm kiếm', 'success');
-        });
-    }
+
+
 
     if (elements.geoDropdown) {
         elements.geoDropdown.addEventListener('change', (e) => {
@@ -828,7 +812,6 @@ export async function init() {
         searchEngineSelect.addEventListener('change', (e) => {
             settings.searchEngine = e.target.value;
             saveSettings();
-            if (elements.defaultSearchEngine) elements.defaultSearchEngine.value = settings.searchEngine;
             if (elements.overlaySearchEngine) elements.overlaySearchEngine.value = settings.searchEngine;
             notify((settings.language === 'en' ? 'Default search engine set to ' : 'Đã thay đổi công cụ tìm kiếm mặc định thành ') + settings.searchEngine, 'success');
         });
