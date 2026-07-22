@@ -5,6 +5,22 @@
     <meta charset="UTF-8">
     <title>Privacy & Cookie Manager</title>
     <link rel="stylesheet" href="styles/popup.css">
+    <style>
+        .status-badge.running {
+            background-color: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            animation: pulse-running 2s infinite;
+        }
+        .status-badge.paused {
+            background-color: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+        @keyframes pulse-running {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+    </style>
 </head>
 
 <body style="opacity: 0; transition: opacity 0.2s ease-in;">
@@ -541,16 +557,40 @@
                     </label>
                 </div>
                 <div class="setting-item">
-                    <span data-i18n="playerWidth">Default Player Width (px)</span>
+                    <span data-i18n="defaultSearchEngine">Search Engine</span>
                     <button class="info-icon"
-                        data-info="Đặt chiều rộng mặc định cho Privacy Player (tính theo pixel).">ℹ️</button>
-                    <input type="number" id="defaultPlayerWidth" min="360" max="800" value="600">
+                        data-info="Chọn công cụ tìm kiếm mặc định cho thanh tìm kiếm của Privacy Player.">ℹ️</button>
+                    <select id="defaultSearchEngine">
+                        <option value="google">Google</option>
+                        <option value="duckduckgo">DuckDuckGo</option>
+                        <option value="bing">Bing</option>
+                        <option value="yahoo">Yahoo</option>
+                        <option value="startpage">Startpage</option>
+                        <option value="brave">Brave Search</option>
+                        <option value="ecosia">Ecosia</option>
+                        <option value="qwant">Qwant</option>
+                        <option value="yandex">Yandex</option>
+                        <option value="swisscows">Swisscows</option>
+                        <option value="kagi">Kagi</option>
+                    </select>
                 </div>
                 <div class="setting-item">
-                    <span data-i18n="playerHeight">Default Player Height (px)</span>
+                    <span data-i18n="playerWidth">Default Player Width</span>
                     <button class="info-icon"
-                        data-info="Đặt chiều cao mặc định cho Privacy Player (tính theo pixel).">ℹ️</button>
-                    <input type="number" id="defaultPlayerHeight" min="300" max="800" value="400">
+                        data-info="Đặt chiều rộng mặc định cho Privacy Player.">ℹ️</button>
+                    <div style="display:flex; align-items:center; gap: 5px;">
+                        <input type="number" id="defaultPlayerWidth" step="any" value="600" style="width: 80px;">
+                        <button id="widthUnitBtn" class="unit-btn" style="padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-main); cursor: pointer;">px</button>
+                    </div>
+                </div>
+                <div class="setting-item">
+                    <span data-i18n="playerHeight">Default Player Height</span>
+                    <button class="info-icon"
+                        data-info="Đặt chiều cao mặc định cho Privacy Player.">ℹ️</button>
+                    <div style="display:flex; align-items:center; gap: 5px;">
+                        <input type="number" id="defaultPlayerHeight" step="any" value="400" style="width: 80px;">
+                        <button id="heightUnitBtn" class="unit-btn" style="padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-main); cursor: pointer;">px</button>
+                    </div>
                 </div>
                 <div class="setting-item">
                     <span data-i18n="followSize">Follow Default Player Size</span>
@@ -1307,12 +1347,28 @@
 
                     <div class="menu-row">
                         <span class="menu-label">🌍 Vị trí:</span>
-                        <select id="geoDropdown" class="menu-select" title="Thay đổi vị trí giả lập hoặc chặn GPS">
-                            <option value="us">Mỹ (US)</option>
-                            <option value="uk">Anh (UK)</option>
-                            <option value="jp">Nhật (JP)</option>
+                        <select id="geoDropdown" class="menu-select" title="Cho phép hoặc chặn GPS">
+                            <option value="allow" selected>Cho phép (Allow)</option>
                             <option value="block">Chặn (Block)</option>
-                            <option value="default">Mặc định</option>
+                        </select>
+                    </div>
+
+                    <div class="menu-divider"></div>
+
+                    <div class="menu-row">
+                        <span class="menu-label">🔍 T.Kiếm:</span>
+                        <select id="overlaySearchEngine" class="menu-select" title="Công cụ tìm kiếm">
+                            <option value="google">Google</option>
+                            <option value="duckduckgo">DuckDuckGo</option>
+                            <option value="bing">Bing</option>
+                            <option value="yahoo">Yahoo</option>
+                            <option value="startpage">Startpage</option>
+                            <option value="brave">Brave Search</option>
+                            <option value="ecosia">Ecosia</option>
+                            <option value="qwant">Qwant</option>
+                            <option value="yandex">Yandex</option>
+                            <option value="swisscows">Swisscows</option>
+                            <option value="kagi">Kagi</option>
                         </select>
                     </div>
 
@@ -1627,6 +1683,7 @@
                         <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
                     </svg>
                     <h3 data-i18n="adblockStatsLabel">Thống kê bộ lọc</h3>
+                    <span id="adblockStatusBadge" class="status-badge running" style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; margin-left: 10px; text-transform: uppercase;">Running</span>
                 </div>
                 <div class="adblock-stats-grid premium-stats">
                     <div class="stat-box glow-box-blue" style="display: flex; flex-direction: column;">

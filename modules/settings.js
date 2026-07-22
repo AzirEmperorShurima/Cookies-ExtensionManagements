@@ -131,7 +131,7 @@ export function applyPlayerBackground() {
     if (settings.playerBackgroundType === 'custom' && settings.customBgUrl) {
         bgImage = `url('${settings.customBgUrl}')`;
     } else {
-        bgImage = "url(ASSETS.images.defaultBg)";
+        bgImage = `url('${ASSETS.images.defaultBg}')`;
     }
 
     playerContainer.style.backgroundImage = `${gradient}, ${bgImage}`;
@@ -598,6 +598,49 @@ export async function init() {
         });
     }
 
+    if (elements.defaultSearchEngine) {
+        elements.defaultSearchEngine.addEventListener('change', (e) => {
+            settings.searchEngine = e.target.value;
+            saveSettings();
+            if (elements.overlaySearchEngine) elements.overlaySearchEngine.value = settings.searchEngine;
+            if (searchEngineSelect) searchEngineSelect.value = settings.searchEngine;
+            notify('Đã cập nhật công cụ tìm kiếm', 'success');
+        });
+    }
+
+    if (elements.overlaySearchEngine) {
+        elements.overlaySearchEngine.addEventListener('change', (e) => {
+            settings.searchEngine = e.target.value;
+            saveSettings();
+            if (elements.defaultSearchEngine) elements.defaultSearchEngine.value = settings.searchEngine;
+            if (searchEngineSelect) searchEngineSelect.value = settings.searchEngine;
+            notify('Đã cập nhật công cụ tìm kiếm', 'success');
+        });
+    }
+
+    if (elements.geoDropdown) {
+        elements.geoDropdown.addEventListener('change', (e) => {
+            settings.blockGeolocation = (e.target.value === 'block');
+            saveSettings();
+            
+            // Apply immediately to iframe if it exists
+            const stealthPlayer = document.getElementById('stealthPlayer');
+            if (stealthPlayer) {
+                if (settings.blockGeolocation) {
+                    stealthPlayer.allow = stealthPlayer.allow.replace(/geolocation\s*/, '').trim();
+                } else {
+                    if (!stealthPlayer.allow.includes('geolocation')) {
+                        stealthPlayer.allow += ' geolocation';
+                    }
+                }
+                // Reload iframe to take effect
+                if (stealthPlayer.src) stealthPlayer.src = stealthPlayer.src;
+            }
+            
+            notify(settings.blockGeolocation ? 'Đã chặn quyền truy cập vị trí' : 'Đã cho phép quyền truy cập vị trí', 'success');
+        });
+    }
+
     if (playerIsolatedIdentityToggle) {
         playerIsolatedIdentityToggle.addEventListener('change', (e) => {
             settings.playerIsolatedIdentity = e.target.checked;
@@ -607,22 +650,43 @@ export async function init() {
         });
     }
 
+    const PX_PER_CM = 37.79527559;
+
+    function toggleSizeUnit() {
+        settings.playerSizeUnit = (settings.playerSizeUnit === 'cm') ? 'px' : 'cm';
+        saveSettings();
+        if (typeof applySettings === 'function') applySettings();
+    }
+
+    if (elements.widthUnitBtn) elements.widthUnitBtn.addEventListener('click', toggleSizeUnit);
+    if (elements.heightUnitBtn) elements.heightUnitBtn.addEventListener('click', toggleSizeUnit);
+
     if (elements.defaultPlayerWidth) {
         elements.defaultPlayerWidth.addEventListener('change', (e) => {
-            const val = parseInt(e.target.value, 10);
-            if (val >= 360 && val <= 800) {
+            let val = parseFloat(e.target.value);
+            if (isNaN(val)) return;
+            if (settings.playerSizeUnit === 'cm') val = val * PX_PER_CM;
+            val = Math.round(val);
+            if (val >= 360 && val <= 1000) {
                 settings.defaultPlayerWidth = val;
                 saveSettings();
+            } else {
+                if (typeof applySettings === 'function') applySettings();
             }
         });
     }
 
     if (elements.defaultPlayerHeight) {
         elements.defaultPlayerHeight.addEventListener('change', (e) => {
-            const val = parseInt(e.target.value, 10);
-            if (val >= 300 && val <= 800) {
+            let val = parseFloat(e.target.value);
+            if (isNaN(val)) return;
+            if (settings.playerSizeUnit === 'cm') val = val * PX_PER_CM;
+            val = Math.round(val);
+            if (val >= 300 && val <= 1000) {
                 settings.defaultPlayerHeight = val;
                 saveSettings();
+            } else {
+                if (typeof applySettings === 'function') applySettings();
             }
         });
     }
@@ -764,6 +828,8 @@ export async function init() {
         searchEngineSelect.addEventListener('change', (e) => {
             settings.searchEngine = e.target.value;
             saveSettings();
+            if (elements.defaultSearchEngine) elements.defaultSearchEngine.value = settings.searchEngine;
+            if (elements.overlaySearchEngine) elements.overlaySearchEngine.value = settings.searchEngine;
             notify((settings.language === 'en' ? 'Default search engine set to ' : 'Đã thay đổi công cụ tìm kiếm mặc định thành ') + settings.searchEngine, 'success');
         });
     }

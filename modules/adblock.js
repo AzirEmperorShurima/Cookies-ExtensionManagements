@@ -37,6 +37,7 @@ export async function initAdblockUI() {
     // Bind sự kiện lưu cài đặt nhanh khi thay đổi switch
     adblockEnabledToggle.onchange = async () => {
         settings.adblockEnabled = adblockEnabledToggle.checked;
+        updateAdblockStats(); // Cập nhật UI ngay lập tức
         await saveSettings();
         chrome.runtime.sendMessage({ type: 'updateSecurityRules' });
         notify(dict.adblockSaved || 'Đã lưu cấu hình chặn quảng cáo!');
@@ -110,13 +111,20 @@ export async function initAdblockUI() {
 export async function updateAdblockStats() {
     const { adblockNetworkCount, adblockCssCount, adsBlockedCount, statAdsBlocked } = elements;
     
-    // Đếm các ruleset tĩnh được bật (EasyList, EasyPrivacy)
-    let staticRulesCount = 0;
-    try {
-        const enabledSets = await chrome.declarativeNetRequest.getEnabledRulesets();
-        if (enabledSets.includes('easylist_1') || enabledSets.includes('easylist_2')) staticRulesCount += 55380;
-        if (enabledSets.includes('easyprivacy_1') || enabledSets.includes('easyprivacy_2')) staticRulesCount += 46770;
-    } catch(e) { console.error('Error getting rulesets:', e); }
+    // Hiển thị trạng thái (Running / Paused)
+    const adblockStatusBadge = document.getElementById('adblockStatusBadge');
+    if (adblockStatusBadge) {
+        if (settings.adblockEnabled === false) {
+            adblockStatusBadge.textContent = 'Paused';
+            adblockStatusBadge.className = 'status-badge paused';
+        } else {
+            adblockStatusBadge.textContent = 'Running';
+            adblockStatusBadge.className = 'status-badge running';
+        }
+    }
+
+    // Đếm các ruleset tĩnh (giữ nguyên số lượng để hiển thị "Loaded" thay vì "Enabled")
+    let staticRulesCount = 55380 + 46770; // EasyList + EasyPrivacy
 
     chrome.storage.local.get(['compiledAdblockRules', 'adblockCssRules', 'adsBlockedCount'], async (res) => {
         const networkRules = res.compiledAdblockRules || [];

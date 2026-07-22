@@ -18,11 +18,16 @@ let preFocusHeight = 400;
 // Search engine map - dùng settings.searchEngine của user
 const SEARCH_ENGINES = {
     google: 'https://www.google.com/search?q=',
-    startpage: 'https://www.startpage.com/sp/search?query=',
     duckduckgo: 'https://duckduckgo.com/?q=',
     bing: 'https://www.bing.com/search?q=',
     yahoo: 'https://search.yahoo.com/search?p=',
+    startpage: 'https://www.startpage.com/sp/search?query=',
     brave: 'https://search.brave.com/search?q=',
+    ecosia: 'https://www.ecosia.org/search?q=',
+    qwant: 'https://www.qwant.com/?q=',
+    yandex: 'https://yandex.com/search/?text=',
+    swisscows: 'https://swisscows.com/web?query=',
+    kagi: 'https://kagi.com/search?q=',
 };
 
 // ─── URL Helpers ──────────────────────────────────────────────────────────────
@@ -252,8 +257,8 @@ export function updatePlayerSize() {
         const stealthSection = document.getElementById('stealthSection');
         if (stealthSection) stealthSection.style.width = '';
         
-        playerContainer.style.width = '';
-        playerContainer.style.height = '';
+        playerContainer.style.width = '100%';
+        playerContainer.style.height = `${playerHeight}px`;
     } else {
         document.body.classList.remove('is-panel');
         // Do not resize body horizontally to avoid squashing tabs and title.
@@ -262,7 +267,7 @@ export function updatePlayerSize() {
         
         const extraHeight = Math.max(0, playerHeight - 400);
         const targetHeight = Math.min(650, 500 + extraHeight);
-        document.body.style.height = `${targetHeight}px`;
+        document.body.style.height = 'auto';
 
         // Resize the white stealth-section outer frame
         const stealthSection = document.getElementById('stealthSection');
@@ -541,6 +546,7 @@ export function init() {
                 playerHeight += 35;
                 if (playerWidth < 800) playerWidth += 50;
                 updatePlayerSize();
+                notify(getDict().playerEnlarged || 'Đã phóng to player.', 'success');
                 if (!settings.followDefaultPlayerSize) {
                     settings.defaultPlayerHeight = playerHeight;
                     settings.defaultPlayerWidth = playerWidth;
@@ -558,6 +564,7 @@ export function init() {
                 playerHeight -= 35;
                 if (playerWidth > 400) playerWidth -= 50;
                 updatePlayerSize();
+                notify(getDict().playerShrunk || 'Đã thu nhỏ player.', 'success');
                 if (!settings.followDefaultPlayerSize) {
                     settings.defaultPlayerHeight = playerHeight;
                     settings.defaultPlayerWidth = playerWidth;

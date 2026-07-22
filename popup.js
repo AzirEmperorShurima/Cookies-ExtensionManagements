@@ -67,8 +67,13 @@ export const elements = {
     darkModeToggle: document.getElementById('darkModeToggle'),
     defaultPlayerWidth: document.getElementById('defaultPlayerWidth'),
     defaultPlayerHeight: document.getElementById('defaultPlayerHeight'),
+    widthUnitBtn: document.getElementById('widthUnitBtn'),
+    heightUnitBtn: document.getElementById('heightUnitBtn'),
     followDefaultPlayerSizeToggle: document.getElementById('followDefaultPlayerSizeToggle'),
     force100PercentToggle: document.getElementById('force100PercentToggle'),
+    defaultSearchEngine: document.getElementById('defaultSearchEngine'),
+    overlaySearchEngine: document.getElementById('overlaySearchEngine'),
+    geoDropdown: document.getElementById('geoDropdown'),
     playerIsolatedIdentityToggle: document.getElementById('playerIsolatedIdentityToggle'),
     autoClearToggle: document.getElementById('autoClearToggle'),
     showNotifyToggle: document.getElementById('showNotifyToggle'),
@@ -316,7 +321,7 @@ export let settings = {
 
 export let activeTab = null;
 
-const ModuleLoader = {
+export const ModuleLoader = {
     loaded: new Set(),
     async load(moduleId) {
         if (this.loaded.has(moduleId)) return;
@@ -593,10 +598,35 @@ export function applySettings() {
     if (elements.showPasswordToggle) elements.showPasswordToggle.checked = settings.showPasswordInSettings ?? true;
     if (elements.playerIsolatedIdentityToggle) elements.playerIsolatedIdentityToggle.checked = settings.playerIsolatedIdentity ?? true;
     
-    if (elements.defaultPlayerWidth) elements.defaultPlayerWidth.value = settings.defaultPlayerWidth || 600;
-    if (elements.defaultPlayerHeight) elements.defaultPlayerHeight.value = settings.defaultPlayerHeight || 400;
+    const sizeUnit = settings.playerSizeUnit || 'px';
+    const PX_PER_CM = 37.79527559;
+    if (elements.widthUnitBtn) elements.widthUnitBtn.textContent = sizeUnit;
+    if (elements.heightUnitBtn) elements.heightUnitBtn.textContent = sizeUnit;
+    if (elements.defaultPlayerWidth) {
+        let w = settings.defaultPlayerWidth || 600;
+        elements.defaultPlayerWidth.value = sizeUnit === 'cm' ? (w / PX_PER_CM).toFixed(2) : w;
+    }
+    if (elements.defaultPlayerHeight) {
+        let h = settings.defaultPlayerHeight || 400;
+        elements.defaultPlayerHeight.value = sizeUnit === 'cm' ? (h / PX_PER_CM).toFixed(2) : h;
+    }
     if (elements.followDefaultPlayerSizeToggle) elements.followDefaultPlayerSizeToggle.checked = settings.followDefaultPlayerSize ?? true;
     if (elements.force100PercentToggle) elements.force100PercentToggle.checked = settings.force100Percent ?? false;
+    if (elements.defaultSearchEngine) elements.defaultSearchEngine.value = settings.searchEngine || 'google';
+    if (elements.overlaySearchEngine) elements.overlaySearchEngine.value = settings.searchEngine || 'google';
+    if (elements.searchEngineSelect) elements.searchEngineSelect.value = settings.searchEngine || 'google';
+    if (elements.geoDropdown) elements.geoDropdown.value = settings.blockGeolocation ? 'block' : 'allow';
+
+    const stealthPlayer = document.getElementById('stealthPlayer');
+    if (stealthPlayer) {
+        if (settings.blockGeolocation) {
+            stealthPlayer.allow = stealthPlayer.allow.replace(/geolocation\s*/, '').trim();
+        } else {
+            if (!stealthPlayer.allow.includes('geolocation')) {
+                stealthPlayer.allow += ' geolocation';
+            }
+        }
+    }
 
     if (elements.telegramDownloaderToggle) elements.telegramDownloaderToggle.checked = settings.telegramDownloaderEnabled || false;
     
@@ -633,6 +663,7 @@ export function applySettings() {
         if (styleEl) styleEl.remove();
     }
     if (elements.customCursorInput) elements.customCursorInput.value = settings.customCursor || '';
+    if (elements.playerBackgroundType) elements.playerBackgroundType.value = settings.playerBackgroundType || 'default';
 
     updateUILanguage();
     document.body.style.opacity = '1';

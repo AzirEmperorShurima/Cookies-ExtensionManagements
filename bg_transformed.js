@@ -1756,14 +1756,18 @@ setInterval(() => {
 // Thống kê quảng cáo bị chặn (Debug mode / Developer mode hỗ trợ onRuleMatchedDebug)
 if (chrome.declarativeNetRequest && chrome.declarativeNetRequest.onRuleMatchedDebug) {
     chrome.declarativeNetRequest.onRuleMatchedDebug.addListener((info) => {
-        if (info.rule && info.rule.ruleId >= 1004 && info.request && info.request.method !== 'OPTIONS') {
-            try {
-                const url = new URL(info.request.url);
-                incrementDailyStat(url.hostname);
-            } catch (e) {
-                incrementDailyStat('ad-network');
+        chrome.storage.local.get(['appSettings'], (res) => {
+            const isAdblockOn = res.appSettings ? (res.appSettings.adblockEnabled !== false) : true;
+            if (!isAdblockOn) return;
+            if (info.rule && info.rule.ruleId >= 1004 && info.request && info.request.method !== 'OPTIONS') {
+                try {
+                    const url = new URL(info.request.url);
+                    incrementDailyStat(url.hostname);
+                } catch (e) {
+                    incrementDailyStat('ad-network');
+                }
             }
-        }
+        });
     });
 }
 
